@@ -6,7 +6,7 @@ import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
 const scene = { apply: vi.fn(), setView: vi.fn(), dispose: vi.fn() };
-const createBedroomScene = vi.fn((..._args: unknown[]) => scene);
+const createBedroomScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({
   createBedroomScene: (...args: unknown[]) => createBedroomScene(...args),
