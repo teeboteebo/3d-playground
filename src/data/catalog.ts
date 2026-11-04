@@ -1,0 +1,134 @@
+export interface Swatch {
+  id: string;
+  name: string;
+  hex: string;
+}
+
+export interface Option {
+  id: string;
+  name: string;
+  hex?: string;
+}
+
+/* Fixed room finishes (the wall, trim, oak and floor toggles were disabled in the original). */
+export const WALL: Swatch = { id: 'antique', name: 'Antique Green 7629', hex: '#8A8F81' };
+export const TRIM: Swatch = { id: 'egg', name: 'Egg White 1001', hex: '#EFEDE2' };
+export const OAK: Swatch = { id: 'mid', name: 'Natural oak', hex: '#C19A6B' };
+export const FLOOR: Swatch = { id: 'smoked', name: 'Smoked oak', hex: '#8A6B4A' };
+
+export const BRASS = '#B08D3C';
+export const INK = '#2F3E36';
+export const CREAM = '#EFEDE2';
+export const OAT = '#D9CDB4';
+export const SAGE = '#6E7667';
+export const ACCENT_DEFAULT = '#B5654A';
+/* The Chessie rug keeps its own terracotta, independent of the accent colour. */
+export const TERRACOTTA = '#B5654A';
+
+export interface PillowSet {
+  id: string;
+  name: string;
+  /** null = follows the accent colour */
+  hex: string | null;
+}
+
+export const PILLOW_SETS: PillowSet[] = [
+  { id: 'clay', name: 'Accent', hex: null },
+  { id: 'calm', name: 'Calm oatmeal', hex: OAT },
+  { id: 'ink', name: 'Ink and brass', hex: INK },
+  { id: 'cream', name: 'All cream', hex: CREAM },
+];
+
+export const WARDROBES: Option[] = [
+  { id: 'wall', name: 'Same green as walls' },
+  { id: 'trim', name: 'Egg white' },
+  { id: 'ink', name: 'Deep ink', hex: INK },
+];
+
+export const ARTS: Option[] = [
+  { id: 'sun', name: 'Clay sun' },
+  { id: 'hills', name: 'Hills' },
+  { id: 'arches', name: 'Arches' },
+];
+
+export const FRAMES: Swatch[] = [
+  { id: 'brass', name: 'Brass frame', hex: BRASS },
+  { id: 'oak', name: 'Oak frame', hex: '#C19A6B' },
+  { id: 'white', name: 'White frame', hex: '#EFEDE2' },
+];
+
+export const MOULD_COLOURS: Option[] = [
+  { id: 'white', name: 'Moulding, white' },
+  { id: 'tone', name: 'Moulding, darker wall tone' },
+];
+
+export const ACCENT_PRESETS: Swatch[] = [
+  { id: 'clay', name: 'Clay', hex: '#B5654A' },
+  { id: 'terracotta', name: 'Terracotta', hex: '#C8694A' },
+  { id: 'rust', name: 'Rust', hex: '#A5472E' },
+  { id: 'mustard', name: 'Mustard', hex: '#C49A3A' },
+  { id: 'rose', name: 'Dusty rose', hex: '#C48B88' },
+  { id: 'plum', name: 'Plum', hex: '#7A4A5E' },
+  { id: 'petrol', name: 'Petrol', hex: '#2F5D62' },
+];
+
+export const RUG_SIZE = { w: 2.0, l: 3.0 };
+
+export type StockState = 'ok' | 'no' | 'un';
+
+export interface Rug {
+  id: string;
+  name: string;
+  vendor: string;
+  price: string;
+  sizes: string;
+  stock: string;
+  st: StockState;
+  url: string;
+  /** colour of the rug's cut edges in 3D */
+  edge: string;
+}
+
+export const RUGS: Rug[] = [
+  { id: 'naver', name: 'Näver, natural white', vendor: 'Granit', price: '4 499 kr', sizes: '200×300', stock: 'In stock', st: 'ok',
+    url: 'https://www.granit.com/se/matta-ull-naver-200x300cm/', edge: OAT },
+  { id: 'stoense', name: 'STOENSE, off-white', vendor: 'IKEA', price: '1 795 kr', sizes: '200×300', stock: 'Stock unconfirmed', st: 'un',
+    url: 'https://www.ikea.com/se/sv/p/stoense-matta-kort-lugg-off-white-20426808/', edge: OAT },
+  { id: 'chessie', name: 'Chessie, terracotta check', vendor: 'Mattfabriken', price: '995 kr (sale)', sizes: '200×300', stock: '200×300 sold out', st: 'no',
+    url: 'https://mattfabriken.se/products/chessie-terracotta-handvavd-ullmatta', edge: TERRACOTTA },
+  { id: 'rista', name: 'Rista, rust border', vendor: 'Rugvista', price: 'price not shown', sizes: '200×300', stock: 'Sold out', st: 'no',
+    url: 'https://www.rugvista.se/p/rista-200x300-cm-rostrod-beige-stor-ullmatta-RVD44061', edge: '#A5472E' },
+  { id: 'palma', name: 'Palma, green vines', vendor: 'Sleepo', price: '10 072 kr', sizes: '200×300', stock: 'Stock not shown', st: 'un',
+    url: 'https://www.sleepo.se/produkter/palma-matta-gron-200x300', edge: '#3E5944' },
+  { id: 'none', name: 'No rug', vendor: '', price: '', sizes: '', stock: '', st: 'un', url: '', edge: OAT },
+];
+
+export interface CameraPose {
+  theta: number;
+  phi: number;
+  dist: number;
+  tx: number;
+  ty: number;
+  tz: number;
+}
+
+export type IconName =
+  | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus';
+
+export interface CameraView {
+  name: string;
+  icon: IconName;
+  pose: CameraPose;
+}
+
+export const VIEWS: CameraView[] = [
+  { name: 'Overview', icon: 'overview', pose: { theta: -0.15, phi: 1.02, dist: 9.6, tx: 0, ty: 1.15, tz: -0.2 } },
+  { name: 'Foot of bed', icon: 'bed', pose: { theta: 0.0, phi: 1.34, dist: 6.8, tx: -0.29, ty: 1.2, tz: -0.6 } },
+  { name: 'Wardrobe wall', icon: 'wardrobe', pose: { theta: -1.3, phi: 1.2, dist: 8.0, tx: 1.0, ty: 1.5, tz: -0.5 } },
+  { name: 'Dresser wall', icon: 'dresser', pose: { theta: 3.14159, phi: 0.95, dist: 8.0, tx: -0.5, ty: 1.4, tz: 1.2 } },
+  { name: 'Top down', icon: 'top', pose: { theta: 0.0, phi: 0.28, dist: 10.5, tx: 0, ty: 0.4, tz: 0.0 } },
+];
+
+export function findById<T extends { id: string }>(list: readonly T[], id: string): T {
+  return list.find((o) => o.id === id) ?? list[0];
+}
