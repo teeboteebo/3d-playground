@@ -57,7 +57,7 @@ export function Panel({ settings, update }: Props) {
         the side panels. The ceiling pendant follows IKEA GULLSUDARE 70 cm (rice paper) at the centre of the room, hung with about
         2 m clearance below. The foot-of-bed bench follows ILVA Amigo (90 × 35 × 45 cm, solid oak, woven seat; the shelf and seat
         weave are simplified). Bedside tables follow AC Design Furniture Cholet (50 × 35 × 25 cm, wall-mounted) and the lamps Mio
-        Adina (26 × 18 × 20 cm). Floor, lamp and the window and door positions are assumed. The front wall is hidden so you can
+        Adina (26 × 18 cm, brushed brass with a textile shade). Floor, lamp and the window and door positions are assumed. The front wall is hidden so you can
         look in; use the Dresser wall view to see it. Rug prices and stock were checked on 3 Nov 2026 and change often.
       </p>
     </aside>

@@ -35,6 +35,9 @@ const RAIL_Y = 0.75;
 const LOW_Y0 = 0.28;
 const LOW_Y1 = RAIL_Y - 0.08;
 const FRAME_T = 0.028;
+/* Mio Adina wall lamp: centre height of its shade, and how far its stem (and the shade's axis) stands off the wall */
+const ADINA_SHADE_Y = 1.35;
+const ADINA_STEM_OUT = 0.105;
 
 const lin = (hex: string) => new THREE.Color(hex).convertSRGBToLinear();
 const std = (hex: string, rough = 0.9, metal = 0) =>
@@ -332,7 +335,8 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
 
   /* ---------- wall-hung bedside tables (AC Design Cholet) + Mio Adina wall lamps ---------- */
   const tableX = [BEDX - 1.32, BEDX + 1.32];
-  const lampBlack = std('#1F1F1D', 0.5, 0.4);
+  const lampBrass = std(BRASS, 0.55, 0.5); // brushed: rougher and duller than the polished brass handles
+  const lampCord = std('#1F1F1D', 0.7, 0);
   const lampShadeMat = std('#DCCDAE', 0.95);
   lampShadeMat.side = THREE.DoubleSide;
   const lampBulb = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
@@ -348,12 +352,26 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       box(0.46, 0.07, 0.02, oakMat, x, TOP - 0.055, zc + 0.165);
       box(0.46, 0.015, 0.32, oakMat, x, TOP - 0.0975, zc);
       add(new THREE.SphereGeometry(0.012, 12, 10), brassMat, x, TOP - 0.055, zc + 0.185);
+      /* Mio Adina, H26 × B18 cm, in brushed brass: round wall disc, a short arm out to a vertical stem, a tapered
+         textile shade on top of the stem, and a black cord with an inline switch down to the table */
       const wz = -L / 2;
-      const ly = 1.35;
-      box(0.07, 0.07, 0.012, lampBlack, x, ly, wz + 0.006, true);
-      add(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 8), lampBlack, x, ly, wz + 0.07, true).rotation.x = Math.PI / 2;
-      add(new THREE.CylinderGeometry(0.075, 0.09, 0.17, 24, 1, true), lampShadeMat, x, ly, wz + 0.13);
-      add(new THREE.SphereGeometry(0.02, 12, 10), lampBulb, x, ly - 0.02, wz + 0.13, true);
+      const sz = wz + ADINA_STEM_OUT;
+      const shadeY0 = ADINA_SHADE_Y - 0.06;
+      const lampY0 = shadeY0 + 0.12 - 0.26; // bottom of the stem: 26 cm below the top of the shade
+      const armY = shadeY0 + 0.12 - 0.173;
+      const disc = add(new THREE.CylinderGeometry(0.055, 0.055, 0.022, 40), lampBrass, x, armY, wz + 0.011);
+      disc.rotation.x = Math.PI / 2;
+      const arm = add(new THREE.CylinderGeometry(0.005, 0.005, ADINA_STEM_OUT - 0.022, 10), lampBrass, x, armY, wz + (0.022 + ADINA_STEM_OUT) / 2);
+      arm.rotation.x = Math.PI / 2;
+      add(new THREE.CylinderGeometry(0.006, 0.006, shadeY0 - lampY0, 12), lampBrass, x, (shadeY0 + lampY0) / 2, sz);
+      add(new THREE.CylinderGeometry(0.013, 0.013, 0.026, 16), lampBrass, x, shadeY0 + 0.013, sz, true); // bulb socket
+      add(new THREE.CylinderGeometry(0.058, 0.09, 0.12, 40, 1, true), lampShadeMat, x, ADINA_SHADE_Y, sz);
+      add(new THREE.SphereGeometry(0.02, 12, 10), lampBulb, x, shadeY0 + 0.045, sz, true);
+      /* cord from the bottom of the disc down the wall to the table top, with the inline switch */
+      const cordX = x + 0.012;
+      const cordTop = armY - 0.05;
+      add(new THREE.CylinderGeometry(0.0025, 0.0025, cordTop - TOP, 6), lampCord, cordX, (cordTop + TOP) / 2, wz + 0.004, true);
+      box(0.022, 0.06, 0.016, lampCord, cordX, cordTop - 0.22, wz + 0.01, true);
     }),
   );
 
@@ -474,7 +492,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     return { key, glow };
   };
   const lamp = bulb(dcx - 0.2, 1.3, dcz, 8);
-  const wallLamps = tableX.map((x) => bulb(x, 1.35, -L / 2 + 0.13, 7));
+  const wallLamps = tableX.map((x) => bulb(x, ADINA_SHADE_Y - 0.015, -L / 2 + ADINA_STEM_OUT, 7));
   const daylightCasters: THREE.Light[] = [sun, ...windowLights];
 
   /* ---------- wall moulding, bed wall: rail at 75 cm, three columns, big panels above, small below ---------- */
