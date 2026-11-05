@@ -39,19 +39,27 @@ export function Stage({ settings, update }: Props) {
   }, [settings]);
 
   const pendantOn = settings.pendant === 'on';
+  const eve = settings.time === 'eve';
 
   return (
     <div className="stage-wrap" ref={wrapRef}>
       <canvas ref={canvasRef} className="stage-canvas" aria-label="3D bedroom preview. Drag to orbit, scroll or pinch to zoom." />
       <div className="hint">Drag to orbit · scroll or pinch to zoom</div>
       <div className="lightbar" role="group" aria-label="Lighting">
-        <button type="button" aria-pressed={settings.time === 'day'} onClick={() => update({ time: 'day' })}>
-          <Icon name="sun" />
-          <span>Daylight</span>
-        </button>
-        <button type="button" aria-pressed={settings.time === 'eve'} onClick={() => update({ time: 'eve' })}>
-          <Icon name="moon" />
-          <span>Evening lamp</span>
+        <button
+          type="button"
+          role="switch"
+          className="daynight"
+          aria-checked={eve}
+          aria-label="Evening lighting"
+          onClick={() => update({ time: eve ? 'day' : 'eve' })}
+        >
+          <span className="dn-track" aria-hidden="true">
+            <span className="dn-knob" />
+            <Icon name="sun" />
+            <Icon name="moon" />
+          </span>
+          <span aria-hidden="true">{eve ? 'Evening' : 'Daylight'}</span>
         </button>
         <button type="button" aria-pressed={pendantOn} onClick={() => update({ pendant: pendantOn ? 'off' : 'on' })}>
           <Icon name="pendant" />

@@ -44,8 +44,13 @@ describe('App', () => {
   it('toggles lighting and the pendant', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: 'Evening lamp' }));
+    const daynight = screen.getByRole('switch', { name: 'Evening lighting' });
+    expect(daynight).toHaveAttribute('aria-checked', 'false');
+    await user.click(daynight);
     expect(lastApplied().time).toBe('eve');
+    expect(daynight).toHaveAttribute('aria-checked', 'true');
+    await user.click(daynight);
+    expect(lastApplied().time).toBe('day');
     await user.click(screen.getByRole('button', { name: 'Pendant on' }));
     expect(screen.getByRole('button', { name: 'Pendant off' })).toHaveAttribute('aria-pressed', 'false');
     expect(lastApplied().pendant).toBe('off');

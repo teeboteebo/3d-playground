@@ -30,7 +30,11 @@ const W = 4.3;
 const L = 3.95;
 const H = 3.3;
 const BEDX = (-W / 2 + (W / 2 - 0.58)) / 2;
-const RAIL_Y = 0.8;
+const RAIL_Y = 0.75;
+/* lower moulding panels run from just above the skirting to just under the rail */
+const LOW_Y0 = 0.28;
+const LOW_Y1 = RAIL_Y - 0.08;
+const FRAME_T = 0.028;
 
 const lin = (hex: string) => new THREE.Color(hex).convertSRGBToLinear();
 const std = (hex: string, rough = 0.9, metal = 0) =>
@@ -46,7 +50,9 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   }
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  /* plain PCF filters over each light's shadow.radius, so shadow edges come out soft
+     (PCFSoftShadowMap ignores radius in this three.js version and gives razor-sharp edges) */
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 60);
@@ -333,7 +339,8 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   const tableParts = tableX.map((x) =>
     collect(() => {
       const zc = -L / 2 + 0.175;
-      const TOP = 0.65;
+      /* 24 cm tall, centred inside the lower panel's frame so it sits clear of the rail and the frame strips */
+      const TOP = (LOW_Y0 + LOW_Y1) / 2 + 0.12;
       box(0.5, 0.02, 0.35, oakMat, x, TOP - 0.01, zc);
       box(0.5, 0.02, 0.35, oakMat, x, TOP - 0.24, zc);
       for (const o of [-0.24, 0.24]) box(0.02, 0.21, 0.35, oakMat, x + o, TOP - 0.125, zc);
@@ -345,7 +352,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       const ly = 1.35;
       box(0.07, 0.07, 0.012, lampBlack, x, ly, wz + 0.006, true);
       add(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 8), lampBlack, x, ly, wz + 0.07, true).rotation.x = Math.PI / 2;
-      add(new THREE.CylinderGeometry(0.075, 0.09, 0.17, 24, 1, true), lampShadeMat, x, ly, wz + 0.13, true);
+      add(new THREE.CylinderGeometry(0.075, 0.09, 0.17, 24, 1, true), lampShadeMat, x, ly, wz + 0.13);
       add(new THREE.SphereGeometry(0.02, 12, 10), lampBulb, x, ly - 0.02, wz + 0.13, true);
     }),
   );
@@ -372,8 +379,13 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 20), trimMat, 0, H - 0.015, 0, true);
     add(new THREE.SphereGeometry(0.05, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffe6b8 }), 0, pendantY, 0, true);
   });
-  const pendantLight = new THREE.PointLight(0xffd7a0, 0, 7, 2);
+  const pendantLight = new THREE.PointLight(0xffc890, 0, 9, 1.3);
   pendantLight.position.set(0, pendantY, 0);
+  pendantLight.shadow.mapSize.set(256, 256);
+  pendantLight.shadow.radius = 16;
+  pendantLight.shadow.camera.near = 0.05;
+  pendantLight.shadow.camera.far = 9;
+  pendantLight.shadow.bias = -0.002;
   scene.add(pendantLight);
 
   /* ---------- two built-in Pax wardrobes (right wall) ---------- */
@@ -416,7 +428,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   };
 
   /* ---------- lights ---------- */
-  const hemi = new THREE.HemisphereLight(0xffffff, 0xd9cdb4, 0.9);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0xb8a98c, 0.45);
   scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff1d6, 0.9);
   sun.position.set(-7, 5, -0.8);
@@ -424,29 +436,55 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   scene.add(sun, sun.target);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.radius = 1;
   Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 22 });
   sun.shadow.bias = -0.0006;
-  const lamp = new THREE.PointLight(0xffc98a, 0, 6, 2);
-  lamp.position.set(dcx - 0.2, 1.33, dcz - 0.08);
-  scene.add(lamp);
-  const wallLamps = tableX.map((x) => {
-    const l = new THREE.PointLight(0xffc98a, 0, 4, 2);
-    l.position.set(x, 1.3, -L / 2 + 0.2);
-    scene.add(l);
+  sun.shadow.normalBias = 0.02;
+  /* daylight spilling in through each window: soft, shadow-casting and falling off across the room,
+     so the window side reads bright and the far wall, corners and undersides of furniture go dim */
+  const windowLights = WIN_Z.map((cz) => {
+    const l = new THREE.SpotLight(0xeef3ff, 0, 7.5, 1.15, 1, 1.6);
+    l.position.set(-W / 2 + 0.32, 2.15, cz);
+    l.target.position.set(0.9, 0.2, cz * 0.6);
+    l.castShadow = true;
+    l.shadow.mapSize.set(1024, 1024);
+    l.shadow.radius = 1;
+    l.shadow.camera.near = 0.1;
+    l.shadow.camera.far = 8;
+    l.shadow.bias = -0.0008;
+    l.shadow.normalBias = 0.02;
+    scene.add(l, l.target);
     return l;
   });
-  const fill = new THREE.PointLight(0xffffff, 0.25, 12, 2);
-  fill.position.set(0, 3.0, 2.2);
-  scene.add(fill);
+  /* evening lamps: the bulb sits inside its shade and the shade casts (heavily blurred) shadows, so each
+     lamp throws a pool of light down and a cone up the wall. A second, shadowless glow light stands in
+     for the light a fabric or paper shade lets through, so the cone edges fade instead of cutting to dark. */
+  /* long reach and gentle decay so each lamp's light blends into the next instead of forming its own pool */
+  const bulb = (x: number, y: number, z: number, distance: number) => {
+    const key = new THREE.PointLight(0xffb978, 0, distance, 1.3);
+    key.position.set(x, y, z);
+    key.shadow.mapSize.set(256, 256);
+    key.shadow.radius = 16;
+    key.shadow.camera.near = 0.02;
+    key.shadow.camera.far = distance;
+    key.shadow.bias = -0.003;
+    const glow = new THREE.PointLight(0xffc48a, 0, distance, 1.3);
+    glow.position.set(x, y, z);
+    scene.add(key, glow);
+    return { key, glow };
+  };
+  const lamp = bulb(dcx - 0.2, 1.3, dcz, 8);
+  const wallLamps = tableX.map((x) => bulb(x, 1.35, -L / 2 + 0.13, 7));
+  const daylightCasters: THREE.Light[] = [sun, ...windowLights];
 
-  /* ---------- wall moulding, bed wall: rail at 80 cm, three columns, big panels above, small below ---------- */
+  /* ---------- wall moulding, bed wall: rail at 75 cm, three columns, big panels above, small below ---------- */
   let mouldParts: THREE.Mesh[] = [];
   let lastLayout = '';
   function mstrip(w: number, h: number, x: number, y: number, d = 0.014) {
     mouldParts.push(box(w, h, d, mouldMat, x, y, -L / 2 + d / 2, true));
   }
   function frameOf(strip: (w: number, h: number, x: number, y: number) => void, x0: number, x1: number, y0: number, y1: number) {
-    const t = 0.028;
+    const t = FRAME_T;
     const cx = (x0 + x1) / 2;
     const cy = (y0 + y1) / 2;
     strip(x1 - x0, t, cx, y0 + t / 2);
@@ -466,7 +504,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     mouldParts = [];
     mstrip(W, 0.04, 0, RAIL_Y, 0.02);
     for (const [x0, x1] of layout.columns) {
-      frameOf(mstrip, BEDX + x0, BEDX + x1, 0.28, RAIL_Y - 0.08);
+      frameOf(mstrip, BEDX + x0, BEDX + x1, LOW_Y0, LOW_Y1);
       frameOf(mstrip, BEDX + x0, BEDX + x1, RAIL_Y + 0.08, 3.0);
     }
     /* the wall-hung tables and lamps ride with the side columns */
@@ -474,7 +512,8 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       const dx = nx - tableX[i];
       tableX[i] = nx;
       for (const m of tableParts[i]) m.position.x += dx;
-      wallLamps[i].position.x = nx;
+      wallLamps[i].key.position.x = nx;
+      wallLamps[i].glow.position.x = nx;
     });
   }
 
@@ -489,7 +528,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       if (r1 > r0) fstrip(r1 - r0, 0.04, (r0 + r1) / 2, RAIL_Y, 0.012);
     }
     for (const [c0, c1] of [[-1.9, -0.8], [1.485, 2.05]]) {
-      frameOf(fstrip, c0, c1, 0.28, RAIL_Y - 0.08);
+      frameOf(fstrip, c0, c1, LOW_Y0, LOW_Y1);
       frameOf(fstrip, c0, c1, RAIL_Y + 0.08, 3.0);
     }
   });
@@ -531,15 +570,32 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     }
 
     const eve = s.time === 'eve';
-    sun.intensity = eve ? 0 : 0.95;
-    hemi.intensity = eve ? 0.2 : 0.9;
-    hemi.color.set(eve ? 0x8fa0c0 : 0xffffff);
-    fill.intensity = eve ? 0.05 : 0.25;
-    lamp.intensity = eve ? 1.5 : 0;
-    for (const l of wallLamps) l.intensity = eve ? 0.9 : 0;
+    /* daylight: a strong low sun through the windows does most of the work, with a dim sky fill so
+       corners, the far side of furniture and the floor under the bed fall into real shade */
+    sun.intensity = eve ? 0 : 1.6;
+    /* evening: the window lights become faint, cool moonlight */
+    for (const l of windowLights) {
+      l.intensity = eve ? 0.18 : 1.6;
+      l.color.set(eve ? 0x8ea6d6 : 0xeef3ff);
+    }
+    /* evening: warm bounce light off the lamp-lit walls and ceiling fills in what faces away from the lamps */
+    hemi.intensity = eve ? 0.3 : 0.26;
+    hemi.color.set(eve ? 0xa68a6c : 0xdfe8f2);
+    hemi.groundColor.set(eve ? 0x5c4836 : 0xb8a98c);
     const pon = s.pendant === 'on';
+    lamp.key.intensity = eve ? 0.55 : 0;
+    lamp.glow.intensity = eve ? 0.5 : 0;
+    for (const l of wallLamps) {
+      l.key.intensity = eve ? 0.35 : 0;
+      l.glow.intensity = eve ? 0.35 : 0;
+    }
     for (const m of pendantParts) m.visible = pon;
-    pendantLight.intensity = eve && pon ? 1.3 : 0;
+    pendantLight.intensity = eve && pon ? 0.7 : 0;
+    /* only the lights that are actually on render shadow maps (point-light shadows cost six passes each) */
+    for (const l of daylightCasters) l.castShadow = !eve;
+    lamp.key.castShadow = eve;
+    for (const l of wallLamps) l.key.castShadow = eve;
+    pendantLight.castShadow = eve && pon;
     paperMat.emissive.set(eve ? 0xffc27a : 0x000000);
     paperMat.emissiveIntensity = eve ? 0.7 : 0;
     for (const m of [lampShadeMat, shadeMat]) {

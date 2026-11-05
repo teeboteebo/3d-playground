@@ -53,7 +53,7 @@ export function Panel({ settings, update }: Props) {
         Colours are screen approximations of the hex values, and real paint shifts with your light. Room is 430 × 395 cm with a
         330 cm ceiling. The bed follows IKEA TONSTAD 160×200 (169 × 209 cm, headboard 116 cm) and the dresser Mio TOVA (80 × 42 ×
         100 cm); both are simplified shapes, and the mirror shows a stylised reflection. Wall moulding runs along the bed wall: a
-        rail at sill height (80 cm) with three columns of panels, big above and small below; the bedside tables and lamps sit in
+        rail at 75 cm with three columns of panels, big above and small below; the bedside tables and lamps sit in
         the side panels. The ceiling pendant follows IKEA GULLSUDARE 70 cm (rice paper) at the centre of the room, hung with about
         2 m clearance below. The foot-of-bed bench follows ILVA Amigo (90 × 35 × 45 cm, solid oak, woven seat; the shelf and seat
         weave are simplified). Bedside tables follow AC Design Furniture Cholet (50 × 35 × 25 cm, wall-mounted) and the lamps Mio

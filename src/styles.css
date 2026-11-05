@@ -31,6 +31,14 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-
 .lightbar button{font:500 12px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
 .lightbar button:hover{border-color:var(--accent)}
 .viewbar button[aria-pressed="true"],.lightbar button[aria-pressed="true"]{background:var(--chip-on);border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.lightbar .daynight{padding:4px 10px 4px 4px}
+.dn-track{position:relative;display:inline-flex;align-items:center;gap:4px;padding:3px;border-radius:999px;background:var(--bg);border:1px solid var(--line)}
+.dn-track .ic{position:relative;z-index:1;width:14px;height:14px;margin:2px;color:var(--muted);transition:color .2s}
+.dn-knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--chip-on);box-shadow:inset 0 0 0 1px var(--accent);transition:transform .22s ease}
+.daynight[aria-checked="false"] .dn-track .ic:first-of-type,.daynight[aria-checked="true"] .dn-track .ic:last-of-type{color:var(--fg)}
+.daynight[aria-checked="true"] .dn-knob{transform:translateX(22px)}
+.daynight span:last-child{min-width:52px;text-align:left}
+@media (prefers-reduced-motion: reduce){.dn-knob,.dn-track .ic{transition:none}}
 .ic{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .grp{margin-top:12px}.grp:first-of-type{margin-top:0}
 h3{font:600 11.5px var(--body);color:var(--muted);margin:0 0 6px}
