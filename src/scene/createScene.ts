@@ -458,8 +458,8 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   });
   /* evening lamps: the bulb sits inside its shade and the shade casts (heavily blurred) shadows, so each
      lamp throws a pool of light down and a cone up the wall. A second, shadowless glow light stands in
-     for the light a fabric or paper shade lets through, so the cone edges fade instead of cutting to dark. */
-  /* long reach and gentle decay so each lamp's light blends into the next instead of forming its own pool */
+     for the light a fabric or paper shade lets through, so the cone edges fade instead of cutting to dark.
+     Long reach and gentle decay let each lamp's light blend into the next instead of forming its own pool. */
   const bulb = (x: number, y: number, z: number, distance: number) => {
     const key = new THREE.PointLight(0xffb978, 0, distance, 1.3);
     key.position.set(x, y, z);
