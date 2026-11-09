@@ -1,12 +1,16 @@
 import * as THREE from 'three';
 import {
-  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById,
+  BRASS, CREAM, FLOORS, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById, type RoomId,
   type CameraPose,
 } from '../data/catalog';
 import { mixHex } from '../lib/color';
 import type { Settings } from '../state/settings';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { CEILING, apartmentBounds } from './apartment';
 import { buildApartment } from './buildApartment';
+import { loadFurniture } from './furniture';
+import { isClick, pickRoom } from './pickRoom';
+import { addRoomLights } from './roomLights';
 import { bedWallLayout } from './layout';
 import { pillowColours } from './palette';
 import {
@@ -46,7 +50,13 @@ const std = (hex: string, rough = 0.9, metal = 0) =>
   new THREE.MeshStandardMaterial({ color: lin(hex), roughness: rough, metalness: metal });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLElement, initial: Settings): BedroomScene {
+export function createBedroomScene(
+  canvas: HTMLCanvasElement,
+  container: HTMLElement,
+  initial: Settings,
+  /** called with the room under a click (not a drag), or null for a click outside the apartment */
+  onPick?: (room: RoomId | null) => void,
+): BedroomScene {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -74,7 +84,8 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   });
   const trimMat = std(TRIM.hex, 0.6);
   const woodTex = woodTexture(OAK.hex);
-  const floorMat = new THREE.MeshStandardMaterial({ roughness: 0.42, map: floorTexture(FLOOR.hex, W) });
+  /* floor maps are set in apply() from the chosen tone */
+  const floorMat = new THREE.MeshStandardMaterial({ roughness: 0.42 });
   const oakMat = new THREE.MeshStandardMaterial({ roughness: 0.6, map: woodTex });
   const oakDeepMat = new THREE.MeshStandardMaterial({ roughness: 0.65, color: new THREE.Color(0.8, 0.8, 0.8), map: woodTex });
   const brassMat = std(BRASS, 0.35, 0.55);
@@ -173,8 +184,30 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   const apartment = buildApartment({
     trim: trimMat,
     glass: glassMat,
-    floor: (_room, w, d) => new THREE.MeshStandardMaterial({ roughness: 0.42, map: floorTexture(FLOOR.hex, w, d) }),
+    floor: () => new THREE.MeshStandardMaterial({ roughness: 0.42 }),
   });
+  floor.userData.room = 'bedroom';
+  const pickFloors = [floor, ...Object.values(apartment.rooms).map((r) => r.floor)];
+  /* one parquet texture per room and tone, made on first use */
+  const floorTextures = new Map<string, THREE.CanvasTexture>();
+  function setFloor(mat: THREE.MeshStandardMaterial, room: RoomId, toneId: string) {
+    const key = `${room}|${toneId}`;
+    let t = floorTextures.get(key);
+    if (!t) {
+      const hex = findById(FLOORS, toneId).hex;
+      const r = room === 'bedroom' ? null : apartment.rooms[room];
+      t = r ? floorTexture(hex, r.width, r.depth) : floorTexture(hex, W);
+      floorTextures.set(key, t);
+    }
+    if (mat.map !== t) {
+      mat.map = t;
+      mat.needsUpdate = true;
+    }
+  }
+  const furniture = loadFurniture(scene, (url) =>
+    new GLTFLoader().loadAsync(import.meta.env.BASE_URL + url).then((g) => g.scene),
+  );
+  const roomLights = addRoomLights(scene);
   scene.add(apartment.group);
   for (const l of apartment.windowLights) scene.add(l, l.target);
 
@@ -582,13 +615,21 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   let artKey = '';
   function apply(s: Settings) {
     current = s;
-    const mouldHex = s.mould === 'tone' ? WALL.hex : TRIM.hex;
+    const wallHex = findById(PAINTS, s.walls.bedroom).hex;
+    wallMat.color.copy(lin(wallHex));
+    const mouldHex = s.mould === 'tone' ? wallHex : TRIM.hex;
     for (const m of [mouldMat, mouldFMat]) {
       m.color.copy(lin(mouldHex));
       if (s.mould === 'tone') m.color.multiplyScalar(0.82);
     }
     layoutBedWall(s);
-    wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : WALL.hex));
+    wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : wallHex));
+    setFloor(floorMat, 'bedroom', s.floors.bedroom);
+    for (const [id, r] of Object.entries(apartment.rooms) as [Exclude<RoomId, 'bedroom'>, (typeof apartment.rooms)['hall']][]) {
+      r.wall.color.copy(lin(findById(PAINTS, s.walls[id]).hex));
+      setFloor(r.floor.material, id, s.floors[id]);
+    }
+    furniture.setHidden(s.hidden);
 
     vaseMat.color.copy(lin(s.accent));
     const pl = pillowColours(s.pillows, s.accent);
@@ -615,6 +656,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     }
 
     const eve = s.time === 'eve';
+    roomLights.setEvening(eve);
     /* daylight: a strong low sun through the windows does most of the work, with a dim sky fill so
        corners, the far side of furniture and the floor under the bed fall into real shade */
     sun.intensity = eve ? 0 : 1.6;
@@ -660,9 +702,17 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     const [a, b] = Array.from(pts.values());
     return Math.hypot(a.x - b.x, a.y - b.y);
   };
+  /* where the current press started and how many pointers it has used, to tell a click from an orbit or pinch */
+  let pressAt = { x: 0, y: 0 };
+  let pressPointers = 0;
   const onDown = (e: PointerEvent) => {
     canvas.setPointerCapture(e.pointerId);
+    if (pts.size === 0) {
+      pressAt = { x: e.clientX, y: e.clientY };
+      pressPointers = 0;
+    }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pressPointers = Math.max(pressPointers, pts.size);
     if (pts.size === 2) lastPinch = pinchDistance();
   };
   const onMove = (e: PointerEvent) => {
@@ -682,7 +732,13 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     }
   };
   const onUp = (e: PointerEvent) => {
+    const last = pts.size === 1 && pts.has(e.pointerId);
     pts.delete(e.pointerId);
+    if (last && e.type === 'pointerup' && onPick && isClick(pressAt, { x: e.clientX, y: e.clientY }, pressPointers)) {
+      const r = canvas.getBoundingClientRect();
+      const ndc = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+      onPick(pickRoom(ndc, camera, pickFloors));
+    }
     lastPinch = 0;
   };
   const onWheel = (e: WheelEvent) => {
@@ -767,6 +823,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
         m.dispose();
       }
       for (const t of rugTextures.values()) t.dispose();
+      for (const t of floorTextures.values()) t.dispose();
       renderer.dispose();
     },
   };

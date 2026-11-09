@@ -4,15 +4,23 @@ import { CEILING, OPENINGS, ROOMS, SKIRTING, roomWalls, type Opening, type Room,
 export interface ApartmentMaterials {
   trim: THREE.Material;
   glass: THREE.Material;
-  /** floor material for a room, given its outline's width and depth */
-  floor: (room: Room, width: number, depth: number) => THREE.Material;
+  /** floor material for a room; the scene swaps its map when the floor tone changes */
+  floor: (room: Room) => THREE.MeshStandardMaterial;
 }
 
 export interface Apartment {
   group: THREE.Group;
   /** one soft daylight per window, pointed into its room; intensities are set by the scene */
   windowLights: THREE.SpotLight[];
-  wallMaterials: THREE.MeshStandardMaterial[];
+  /** per room: its wall material (recoloured by the scene) and its floor, with the outline's width and depth */
+  rooms: Record<Room['id'], ApartmentRoom>;
+}
+
+export interface ApartmentRoom {
+  wall: THREE.MeshStandardMaterial;
+  floor: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
+  width: number;
+  depth: number;
 }
 
 const lin = (hex: string) => new THREE.Color(hex).convertSRGBToLinear();
@@ -22,7 +30,7 @@ const FRAME_W = 0.07;
 export function buildApartment(mats: ApartmentMaterials): Apartment {
   const group = new THREE.Group();
   group.name = 'apartment';
-  const wallMaterials: THREE.MeshStandardMaterial[] = [];
+  const rooms = {} as Record<Room['id'], ApartmentRoom>;
   const windowLights: THREE.SpotLight[] = [];
 
   const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, cast = true) => {
@@ -39,7 +47,6 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
   for (const room of ROOMS) {
     const wallMat = new THREE.MeshStandardMaterial({ color: lin(room.wall), roughness: 0.95 });
     wallMat.shadowSide = THREE.DoubleSide;
-    wallMaterials.push(wallMat);
 
     /* floor, and an invisible ceiling that still casts shadows so the sun only comes in through windows */
     const { minX, maxX, minZ, maxZ } = extent(room.poly);
@@ -49,8 +56,12 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     for (let i = 0; i < uv.count; i++) {
       uv.setXY(i, (pos.getX(i) - minX) / (maxX - minX), (maxZ - pos.getZ(i)) / (maxZ - minZ));
     }
-    const floor = mesh(floorGeo, mats.floor(room, maxX - minX, maxZ - minZ), false);
+    const floor = new THREE.Mesh(floorGeo, mats.floor(room));
+    floor.receiveShadow = true;
     floor.name = `${room.id}-floor`;
+    floor.userData.room = room.id;
+    group.add(floor);
+    rooms[room.id] = { wall: wallMat, floor, width: maxX - minX, depth: maxZ - minZ };
     const ceil = mesh(
       flatShape(room.poly, CEILING),
       new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }),
@@ -129,7 +140,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     piece(len / 2, o.y1 - 0.01, len, 0.02);
   }
 
-  return { group, windowLights, wallMaterials };
+  return { group, windowLights, rooms };
 }
 
 /* ---------- geometry ---------- */
