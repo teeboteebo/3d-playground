@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FRAMES, findById } from '../../data/catalog';
-import type { Settings } from '../../state/settings';
+import type { BedroomSettings } from '../../state/settings';
 import { lin, std } from '../materials';
 import { artTexture } from '../textures';
 import type { Kit } from './kit';
@@ -61,7 +61,7 @@ export function dresserLamp(parent: THREE.Object3D) {
 /** Repaints the painting (its picture and frame) and the vase for the settings. */
 export function paintingApplier(m: BedroomMaterials) {
   let artKey = '';
-  return (s: Settings, evening: boolean) => {
+  return (s: BedroomSettings, evening: boolean) => {
     m.vase.color.copy(lin(s.accent));
     if (artKey !== `${s.art}|${s.accent}`) {
       artKey = `${s.art}|${s.accent}`;

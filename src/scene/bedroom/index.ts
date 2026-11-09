@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { INK, PAINTS, TRIM, findById } from '../../data/catalog';
-import type { Settings } from '../../state/settings';
+import type { BedroomSettings, Settings } from '../../state/settings';
 import { lin } from '../materials';
 import { pillowColours } from '../palette';
 import { buildBed } from './bed';
@@ -55,23 +55,24 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
     bedside.moveTo(1, right);
   });
   const painting = paintingApplier(m);
-  let current: Settings | null = null;
+  let current: BedroomSettings | null = null;
 
   return {
     shared: { trim: m.trim, glass: m.glass },
     windowLights: windows,
-    apply(s) {
+    apply(settings) {
+      const s = settings.bedroom;
       current = s;
-      const evening = s.time === 'eve';
-      const wallHex = findById(PAINTS, s.walls.bedroom).hex;
+      const evening = settings.time === 'eve';
+      const wallHex = findById(PAINTS, settings.walls.bedroom).hex;
       m.wall.color.copy(lin(wallHex));
-      const mouldHex = s.mould === 'tone' ? wallHex : TRIM.hex;
+      const mouldHex = s.mouldColour === 'tone' ? wallHex : TRIM.hex;
       for (const mat of [m.mouldBed, m.mouldDresser]) {
         mat.color.copy(lin(mouldHex));
-        if (s.mould === 'tone') mat.color.multiplyScalar(0.82);
+        if (s.mouldColour === 'tone') mat.color.multiplyScalar(0.82);
       }
       bedMould.layout(s);
-      m.wardrobe.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : wallHex));
+      m.wardrobe.color.copy(lin(s.wardrobes === 'trim' ? TRIM.hex : s.wardrobes === 'ink' ? INK : wallHex));
 
       const pl = pillowColours(s.pillows, s.accent);
       [pl.euro[0], pl.euro[1], pl.std[0], pl.std[1], pl.lumbar].forEach((hex, i) => m.pillows[i].color.copy(lin(hex)));
@@ -92,8 +93,8 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       setVisible(frontParts, fv);
       setVisible(paintParts, fv);
       mirror.visible = fv;
-      setVisible(bedMould.parts, cam.z > -L / 2 - 0.05 && current?.mouldB !== 'off');
-      setVisible(dresserMould, fv && current?.mouldF !== 'off');
+      setVisible(bedMould.parts, cam.z > -L / 2 - 0.05 && current?.mouldBedWall !== 'off');
+      setVisible(dresserMould, fv && current?.mouldDresserWall !== 'off');
     },
     dispose() {
       rug.dispose();

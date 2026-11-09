@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { mainView, viewsFor } from '../data/catalog';
 import { createApartmentScene, type ApartmentScene } from '../scene/createScene';
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { DayNightSwitch } from './DayNightSwitch';
 import { Icon } from './Icon';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 export function Stage({ settings, update }: Props) {

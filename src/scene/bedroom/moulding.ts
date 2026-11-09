@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { Settings } from '../../state/settings';
+import type { BedroomSettings } from '../../state/settings';
 import { bedWallLayout } from '../layout';
 import type { Kit } from './kit';
 import { BEDX, FRAME_T, FRONT_DOOR_X0, FRONT_DOOR_X1, L, LOW_Y0, LOW_Y1, MIRROR_HALF, MIRROR_X, RAIL_Y, W } from './dimensions';
@@ -32,8 +32,8 @@ export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTab
     get parts(): readonly THREE.Object3D[] {
       return parts;
     },
-    layout(s: Settings) {
-      const layout = bedWallLayout(s.mcen, s.mgap, s.msw);
+    layout(s: BedroomSettings) {
+      const layout = bedWallLayout(s.mouldCentre, s.mouldGap, s.mouldSide);
       const key = `${layout.centreHalf}|${layout.gap}|${layout.sideWidth}`;
       if (key === lastLayout) return;
       lastLayout = key;

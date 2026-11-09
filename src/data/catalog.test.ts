@@ -12,7 +12,7 @@ describe('views by room', () => {
   });
 
   it("picks each selection's main view", () => {
-    expect(mainView('end').name).toBe('Office');
+    expect(mainView('office').name).toBe('Office');
     expect(mainView('bedroom').name).toBe('Foot of bed');
     expect(mainView('all').name).toBe('Apartment');
   });

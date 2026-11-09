@@ -1,12 +1,13 @@
 import { PAINTS } from '../data/catalog';
 import type { RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { ChipGroup } from './ChipGroup';
 
 interface Props {
   room: RoomId;
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 /** Wall paint for one room. Floors are the bedroom's smoked oak everywhere and are not a choice. */

@@ -37,11 +37,16 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   between rooms, and helpers for sizes and extents. Scene coordinates are metres with the bedroom centred on the
   origin, x east and z south; the conversion from SketchUp coordinates is at the top of the file.
 - `src/data/catalog.ts`: palettes, paints, rugs, pillows, art, camera views and the living-room furniture list
-- `src/state/`: the settings type, sanitising/migration of saved settings, and the `useSettings` hook
-  (persists to `localStorage['bedroom-viz']`)
+- `src/state/`: the settings, grouped by room and versioned (`version: 2`), with sanitising and migration of
+  anything saved earlier, and the `useSettings` hook (persists to `localStorage['apartment-playground']`; settings
+  saved under the old `bedroom-viz` key are read and migrated)
 - `src/scene/`: the imperative three.js scene
-  - `createScene.ts`: builds the scene, applies settings and runs the orbit camera; the bedroom is built here by hand
+  - `createScene.ts`: wires the pieces together: renderer, rooms, furniture, lighting, camera and the frame loop
+  - `bedroom/`: the hand-built bedroom, one module per part (shell, windows, bed, dresser, bedside lamps, pendant,
+    wardrobes, rug, moulding), each owning what its settings change; `dimensions.ts` holds its measurements
   - `buildApartment.ts` / `apartment.ts`: the other rooms' walls, floors, windows and doors, built from their outlines
+  - `daylight.ts`, `roomLights.ts`: sun, sky and window light; evening ceiling lights in the other rooms
+  - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`
   - `textures.ts`: procedural canvas textures (wood, parquet, rugs, art)
   - pure helpers for layout, palettes, picking rooms and freeing GPU resources, each with tests

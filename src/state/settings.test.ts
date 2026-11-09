@@ -1,75 +1,109 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULTS, STORAGE_KEY, loadSettings, sanitizeSettings, saveSettings } from './settings';
+import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
+
+const v2 = (patch: Record<string, unknown>) => ({ version: 2, ...patch });
 
 describe('sanitizeSettings', () => {
   it('returns defaults for empty or garbage input', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULTS);
     expect(sanitizeSettings('x')).toEqual(DEFAULTS);
-    expect(sanitizeSettings({ rug: 'flying-carpet', time: 'noon', accent: 'red' })).toEqual(DEFAULTS);
+    expect(sanitizeSettings(v2({ time: 'noon', bedroom: { rug: 'flying-carpet', accent: 'red' } }))).toEqual(DEFAULTS);
   });
 
   it('keeps valid values and upper-cases the accent', () => {
-    const s = sanitizeSettings({ accent: '#2f5d62', rug: 'palma', pillows: 'ink', time: 'eve', pendant: 'off', mould: 'tone' });
-    expect(s).toMatchObject({ accent: '#2F5D62', rug: 'palma', pillows: 'ink', time: 'eve', pendant: 'off', mould: 'tone' });
+    const s = sanitizeSettings(v2({ time: 'eve', bedroom: { accent: '#2f5d62', rug: 'palma', pillows: 'ink', pendant: 'off', mouldColour: 'tone' } }));
+    expect(s.time).toBe('eve');
+    expect(s.bedroom).toMatchObject({ accent: '#2F5D62', rug: 'palma', pillows: 'ink', pendant: 'off', mouldColour: 'tone' });
   });
 
   it('clamps slider values and falls back for zero/NaN', () => {
-    expect(sanitizeSettings({ mgap: 99, mcen: 1, msw: 'abc' })).toMatchObject({ mgap: 30, mcen: 150, msw: 68 });
-    expect(sanitizeSettings({ mgap: 0 })).toMatchObject({ mgap: 8 });
-    expect(sanitizeSettings({ mgap: '12' })).toMatchObject({ mgap: 12 });
-  });
-
-  it('migrates the legacy mould "off" value to white + hidden bed-wall moulding', () => {
-    expect(sanitizeSettings({ mould: 'off', mouldB: 'on' })).toMatchObject({ mould: 'white', mouldB: 'off' });
-  });
-
-  it('ignores the legacy fixed-finish keys from the single-file app', () => {
-    const s = sanitizeSettings({ wall: 'ink', trim: 'white', floor: 'herring', oak: 'dark', size: '170x240' });
-    expect(s).toEqual(DEFAULTS);
-  });
-});
-
-describe('rooms', () => {
-  it('gives settings saved before rooms existed the room defaults', () => {
-    expect(sanitizeSettings({ rug: 'rista' })).toMatchObject({
-      rug: 'rista',
-      room: 'all',
-      walls: { bedroom: 'antique', hall: 'frostrok', living: 'frostrok', end: 'devine' },
-      hidden: [],
-    });
+    const b = (bedroom: Record<string, unknown>) => sanitizeSettings(v2({ bedroom })).bedroom;
+    expect(b({ mouldGap: 99, mouldCentre: 1, mouldSide: 'abc' })).toMatchObject({ mouldGap: 30, mouldCentre: 150, mouldSide: 68 });
+    expect(b({ mouldGap: 0 })).toMatchObject({ mouldGap: 8 });
+    expect(b({ mouldGap: '12' })).toMatchObject({ mouldGap: 12 });
   });
 
   it('has no floor setting: every room uses the bedroom floor', () => {
-    expect('floors' in sanitizeSettings({ floors: { hall: 'light' } })).toBe(false);
-  });
-
-  it('moves rooms off paints that were removed to their Jotun defaults', () => {
-    expect(sanitizeSettings({ walls: { living: 'greige', end: 'bluegrey' } }).walls).toMatchObject({ living: 'frostrok', end: 'devine' });
+    expect('floors' in sanitizeSettings(v2({ floors: { hall: 'light' } }))).toBe(false);
   });
 
   it('replaces unknown rooms, swatches and furniture ids', () => {
-    const s = sanitizeSettings({
-      room: 'attic',
-      walls: { living: 'chalk', end: 'neon' },
-      hidden: ['sofa', 'piano', 3, 'sofa'],
-    });
+    const s = sanitizeSettings(v2({ room: 'attic', walls: { living: 'chalk', office: 'neon' }, living: { hidden: ['sofa', 'piano', 3, 'sofa'] } }));
     expect(s.room).toBe('all');
     expect(s.walls.living).toBe('chalk');
-    expect(s.walls.end).toBe('devine');
-    expect(s.hidden).toEqual(['sofa']);
+    expect(s.walls.office).toBe('devine');
+    expect(s.living.hidden).toEqual(['sofa']);
   });
 
   it('keeps a valid selected room', () => {
-    expect(sanitizeSettings({ room: 'living' }).room).toBe('living');
+    expect(sanitizeSettings(v2({ room: 'living' })).room).toBe('living');
+  });
+});
+
+describe('migrating flat settings from before version 2', () => {
+  it('moves the bedroom fields under bedroom, with their new names', () => {
+    const s = sanitizeSettings({
+      accent: '#2f5d62', mould: 'tone', mouldB: 'off', mouldF: 'off', mgap: 12, mcen: 160, msw: 70,
+      pendant: 'off', ward: 'ink', rug: 'rista', pillows: 'ink', art: 'hills', frame: 'oak', time: 'eve',
+    });
+    expect(s.time).toBe('eve');
+    expect(s.bedroom).toEqual({
+      accent: '#2F5D62', mouldColour: 'tone', mouldBedWall: 'off', mouldDresserWall: 'off', mouldGap: 12, mouldCentre: 160,
+      mouldSide: 70, pendant: 'off', wardrobes: 'ink', rug: 'rista', pillows: 'ink', art: 'hills', frame: 'oak',
+    });
+  });
+
+  it('moves the hidden furniture under living', () => {
+    expect(sanitizeSettings({ hidden: ['sofa', 'piano'] }).living.hidden).toEqual(['sofa']);
+  });
+
+  it("renames the office from 'end', in the selection and the wall colours", () => {
+    const s = sanitizeSettings({ room: 'end', walls: { end: 'chalk' } });
+    expect(s.room).toBe('office');
+    expect(s.walls.office).toBe('chalk');
+  });
+
+  it('gives settings saved before rooms existed the room defaults', () => {
+    const s = sanitizeSettings({ rug: 'rista' });
+    expect(s.bedroom.rug).toBe('rista');
+    expect(s.room).toBe('all');
+    expect(s.walls).toEqual({ bedroom: 'antique', hall: 'frostrok', living: 'frostrok', office: 'devine' });
+  });
+
+  it('moves rooms off paints that were removed to their Jotun defaults', () => {
+    expect(sanitizeSettings({ walls: { living: 'greige', end: 'bluegrey' } }).walls).toMatchObject({ living: 'frostrok', office: 'devine' });
+  });
+
+  it('migrates the single-file app\'s mould "off" value to white + hidden bed-wall moulding', () => {
+    expect(sanitizeSettings({ mould: 'off', mouldB: 'on' }).bedroom).toMatchObject({ mouldColour: 'white', mouldBedWall: 'off' });
+  });
+
+  it("ignores the single-file app's fixed-finish keys", () => {
+    expect(sanitizeSettings({ wall: 'ink', trim: 'white', floor: 'herring', oak: 'dark', size: '170x240' })).toEqual(DEFAULTS);
+  });
+});
+
+describe('applyPatch', () => {
+  it('merges a room patch into that room, keeping its other fields', () => {
+    const s = applyPatch(DEFAULTS, { time: 'eve', bedroom: { rug: 'palma' } });
+    expect(s.time).toBe('eve');
+    expect(s.bedroom).toEqual({ ...DEFAULTS.bedroom, rug: 'palma' });
+    expect(s.living).toEqual(DEFAULTS.living);
   });
 });
 
 describe('load/save', () => {
-  it('round-trips through storage under the original key', () => {
-    const s = { ...DEFAULTS, rug: 'rista' };
+  it('round-trips through storage', () => {
+    const s = applyPatch(DEFAULTS, { bedroom: { rug: 'rista' } });
     saveSettings(s);
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!)).toEqual(s);
     expect(loadSettings()).toEqual(s);
+  });
+
+  it('reads settings saved under the old key when there are none under the new one', () => {
+    localStorage.clear();
+    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ rug: 'rista', room: 'end' }));
+    expect(loadSettings()).toMatchObject({ room: 'office', bedroom: { rug: 'rista' } });
   });
 
   it('survives corrupt JSON and throwing storage', () => {

@@ -56,7 +56,7 @@ export function createApartmentScene(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 60);
 
-  const bedroom = buildBedroom(scene, initial.accent);
+  const bedroom = buildBedroom(scene, initial.bedroom.accent);
 
   /* the rest of the apartment: hall, living room and office (structure only), with the bedroom's trim and glass */
   const apartment = buildApartment({
@@ -84,7 +84,7 @@ export function createApartmentScene(
     const evening = s.time === 'eve';
     bedroom.apply(s);
     for (const r of SHELL_ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
-    furniture.setHidden(s.hidden);
+    furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
     roomLights.setEvening(evening);
