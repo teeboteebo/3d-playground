@@ -270,6 +270,8 @@ export function floorTexture(hex: string, roomWidth: number, roomDepth?: number)
 }
 
 export function weaveTexture(): THREE.CanvasTexture {
+  /* the RNG state this texture has always been drawn from, fixed so it no longer depends on what was drawn first */
+  reseed(-1653740271);
   const c = makeCanvas(256, 256);
   const g = c.getContext('2d')!;
   g.fillStyle = '#CDB48C';
