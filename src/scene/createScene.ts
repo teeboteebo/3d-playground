@@ -783,7 +783,8 @@ export function createApartmentScene(
     setVisible(mouldFParts, fv && current.mouldF !== 'off');
     renderer.render(scene, camera);
     /* lets screenshot tests wait for a still frame: the camera has arrived and the furniture has loaded */
-    canvas.dataset.settled = String(arriving && furnitureReady);
+    const settled = String(arriving && furnitureReady);
+    if (canvas.dataset.settled !== settled) canvas.dataset.settled = settled;
     raf = requestAnimationFrame(frame);
   }
 
@@ -794,6 +795,7 @@ export function createApartmentScene(
     apply,
     setView(pose) {
       Object.assign(goal, pose);
+      canvas.dataset.settled = 'false';
     },
     dispose() {
       cancelAnimationFrame(raf);
