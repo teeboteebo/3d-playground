@@ -6,7 +6,7 @@ import {
 import { mixHex } from '../lib/color';
 import type { Settings } from '../state/settings';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { CEILING, apartmentBounds } from './apartment';
+import { BEDROOM_POLY, CEILING, ROOMS, apartmentBounds } from './apartment';
 import { buildApartment } from './buildApartment';
 import { loadFurniture } from './furniture';
 import { isClick, pickRoom } from './pickRoom';
@@ -187,8 +187,7 @@ export function createBedroomScene(
   });
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
-  floor.userData.room = 'bedroom';
-  const pickFloors = [floor, ...Object.values(apartment.rooms).map((r) => r.floor)];
+  const pickRooms = [{ id: 'bedroom' as const, poly: BEDROOM_POLY }, ...ROOMS];
   const furniture = loadFurniture(scene, (url) =>
     new GLTFLoader().loadAsync(import.meta.env.BASE_URL + url).then((g) => g.scene),
   );
@@ -687,11 +686,16 @@ export function createBedroomScene(
   };
   /* where the current press started and how many pointers it has used, to tell a click from an orbit or pinch */
   let pressAt = { x: 0, y: 0 };
+  let pressTravel = 0;
   let pressPointers = 0;
+  const travel = (e: PointerEvent) => {
+    pressTravel = Math.max(pressTravel, Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y));
+  };
   const onDown = (e: PointerEvent) => {
     canvas.setPointerCapture(e.pointerId);
     if (pts.size === 0) {
       pressAt = { x: e.clientX, y: e.clientY };
+      pressTravel = 0;
       pressPointers = 0;
     }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -701,6 +705,7 @@ export function createBedroomScene(
   const onMove = (e: PointerEvent) => {
     const p = pts.get(e.pointerId);
     if (!p) return;
+    travel(e);
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     p.x = e.clientX;
@@ -717,10 +722,11 @@ export function createBedroomScene(
   const onUp = (e: PointerEvent) => {
     const last = pts.size === 1 && pts.has(e.pointerId);
     pts.delete(e.pointerId);
-    if (last && e.type === 'pointerup' && onPick && isClick(pressAt, { x: e.clientX, y: e.clientY }, pressPointers)) {
+    if (last) travel(e);
+    if (last && e.type === 'pointerup' && onPick && isClick(pressTravel, pressPointers)) {
       const r = canvas.getBoundingClientRect();
       const ndc = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
-      onPick(pickRoom(ndc, camera, pickFloors));
+      onPick(pickRoom(ndc, camera, scene.children, pickRooms));
     }
     lastPinch = 0;
   };

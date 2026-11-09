@@ -59,7 +59,6 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     const floor = new THREE.Mesh(floorGeo, mats.floor(room));
     floor.receiveShadow = true;
     floor.name = `${room.id}-floor`;
-    floor.userData.room = room.id;
     group.add(floor);
     rooms[room.id] = { wall: wallMat, floor, width: maxX - minX, depth: maxZ - minZ };
     const ceil = mesh(
