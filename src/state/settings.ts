@@ -7,56 +7,87 @@ import { clamp } from '../lib/math';
 
 export type OnOff = 'on' | 'off';
 
-export interface Settings {
+/** What can be changed in the bedroom. */
+export interface BedroomSettings {
   accent: string;
-  mould: 'white' | 'tone';
-  mouldB: OnOff;
-  mouldF: OnOff;
-  mgap: number;
-  mcen: number;
-  msw: number;
+  mouldColour: 'white' | 'tone';
+  mouldBedWall: OnOff;
+  mouldDresserWall: OnOff;
+  /** bed-wall moulding layout, in cm: gap between columns, centre column width, side column width */
+  mouldGap: number;
+  mouldCentre: number;
+  mouldSide: number;
   pendant: OnOff;
-  ward: string;
+  wardrobes: string;
   rug: string;
   pillows: string;
   art: string;
   frame: string;
-  time: 'day' | 'eve';
-  /** selected room, or 'all' for none */
-  room: RoomSelection;
-  /** paint id per room */
-  walls: Record<RoomId, string>;
+}
+
+/** What can be changed in the living room. */
+export interface LivingSettings {
   /** furniture ids switched off */
   hidden: string[];
 }
 
-export const STORAGE_KEY = 'bedroom-viz';
+export interface Settings {
+  version: 2;
+  /** selected room, or 'all' for none */
+  room: RoomSelection;
+  /** lighting, shared by every room */
+  time: 'day' | 'eve';
+  /** paint id per room */
+  walls: Record<RoomId, string>;
+  bedroom: BedroomSettings;
+  living: LivingSettings;
+}
+
+/** a change to the settings: top-level fields, and any fields of a room's own settings */
+export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living'>> & {
+  bedroom?: Partial<BedroomSettings>;
+  living?: Partial<LivingSettings>;
+};
+
+export function applyPatch(s: Settings, p: SettingsPatch): Settings {
+  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living } };
+}
+
+export const STORAGE_KEY = 'apartment-playground';
+/** where settings were saved before version 2 (by this app and by the original single-file app) */
+export const LEGACY_STORAGE_KEY = 'bedroom-viz';
 
 export const DEFAULTS: Settings = {
-  accent: ACCENT_DEFAULT,
-  mould: 'white',
-  mouldB: 'on',
-  mouldF: 'on',
-  mgap: 8,
-  mcen: 180,
-  msw: 68,
-  pendant: 'on',
-  ward: 'wall',
-  rug: 'naver',
-  pillows: 'clay',
-  art: 'sun',
-  frame: 'brass',
-  time: 'day',
+  version: 2,
   room: 'all',
+  time: 'day',
   walls: Object.fromEntries(ROOMS.map((r) => [r.id, r.paint])) as Record<RoomId, string>,
-  hidden: [],
+  bedroom: {
+    accent: ACCENT_DEFAULT,
+    mouldColour: 'white',
+    mouldBedWall: 'on',
+    mouldDresserWall: 'on',
+    mouldGap: 8,
+    mouldCentre: 180,
+    mouldSide: 68,
+    pendant: 'on',
+    wardrobes: 'wall',
+    rug: 'naver',
+    pillows: 'clay',
+    art: 'sun',
+    frame: 'brass',
+  },
+  living: { hidden: [] },
 };
 
 export const SLIDERS = {
-  mgap: { min: 4, max: 30, step: 1 },
-  mcen: { min: 150, max: 200, step: 2 },
-  msw: { min: 50, max: 90, step: 1 },
+  mouldGap: { min: 4, max: 30, step: 1 },
+  mouldCentre: { min: 150, max: 200, step: 2 },
+  mouldSide: { min: 50, max: 90, step: 1 },
 } as const;
+
+type Raw = Record<string, unknown>;
+const obj = (v: unknown): Raw => (v && typeof v === 'object' ? v : {}) as Raw;
 
 function num(v: unknown, fallback: number, min: number, max: number): number {
   const n = Number(v);
@@ -68,49 +99,90 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], fallback: T)
 }
 
 const ids = (list: readonly { id: string }[]) => list.map((o) => o.id);
+const onOff = (v: unknown): OnOff => (v === 'off' ? 'off' : 'on');
+/** the office's id was 'end' before version 2 */
+const roomId = (v: unknown) => (v === 'end' ? 'office' : v);
 
 /** one valid swatch id per room, falling back to that room's default */
 function perRoom(v: unknown, allowed: readonly string[], fallback: Record<RoomId, string>): Record<RoomId, string> {
-  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
-  return Object.fromEntries(ROOM_IDS.map((r) => [r, oneOf(o[r], allowed, fallback[r])])) as Record<RoomId, string>;
+  const o = obj(v);
+  const legacy: Raw = { ...o, office: o.office ?? o.end };
+  return Object.fromEntries(ROOM_IDS.map((r) => [r, oneOf(legacy[r], allowed, fallback[r])])) as Record<RoomId, string>;
 }
 
-/**
- * Turn anything found in storage (including settings saved by the original
- * single-file app) into a valid Settings object.
- */
-export function sanitizeSettings(raw: unknown): Settings {
-  const s = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const onOff = (v: unknown): OnOff => (v === 'off' ? 'off' : 'on');
+/** Settings saved before version 2 were flat, with short field names; move them into the version 2 shape. */
+function fromVersion1(s: Raw): Raw {
   // Legacy: mould 'off' meant "white moulding, hidden on the bed wall".
   const legacyOff = s.mould === 'off';
   return {
-    accent: isHex(s.accent) ? s.accent.toUpperCase() : DEFAULTS.accent,
-    mould: oneOf(s.mould, ['white', 'tone'] as const, 'white'),
-    mouldB: legacyOff ? 'off' : onOff(s.mouldB),
-    mouldF: onOff(s.mouldF),
-    mgap: num(s.mgap, DEFAULTS.mgap, SLIDERS.mgap.min, SLIDERS.mgap.max),
-    mcen: num(s.mcen, DEFAULTS.mcen, SLIDERS.mcen.min, SLIDERS.mcen.max),
-    msw: num(s.msw, DEFAULTS.msw, SLIDERS.msw.min, SLIDERS.msw.max),
-    pendant: onOff(s.pendant),
-    ward: oneOf(s.ward, ids(WARDROBES), DEFAULTS.ward),
-    rug: oneOf(s.rug, ids(RUGS), DEFAULTS.rug),
-    pillows: oneOf(s.pillows, ids(PILLOW_SETS), DEFAULTS.pillows),
-    art: oneOf(s.art, ids(ARTS), DEFAULTS.art),
-    frame: oneOf(s.frame, ids(FRAMES), DEFAULTS.frame),
+    room: s.room,
+    time: s.time,
+    walls: s.walls,
+    bedroom: {
+      accent: s.accent,
+      mouldColour: s.mould,
+      mouldBedWall: legacyOff ? 'off' : s.mouldB,
+      mouldDresserWall: s.mouldF,
+      mouldGap: s.mgap,
+      mouldCentre: s.mcen,
+      mouldSide: s.msw,
+      pendant: s.pendant,
+      wardrobes: s.ward,
+      rug: s.rug,
+      pillows: s.pillows,
+      art: s.art,
+      frame: s.frame,
+    },
+    living: { hidden: s.hidden },
+  };
+}
+
+function sanitizeBedroom(raw: unknown): BedroomSettings {
+  const b = obj(raw);
+  const d = DEFAULTS.bedroom;
+  return {
+    accent: isHex(b.accent) ? b.accent.toUpperCase() : d.accent,
+    mouldColour: oneOf(b.mouldColour, ['white', 'tone'] as const, d.mouldColour),
+    mouldBedWall: onOff(b.mouldBedWall),
+    mouldDresserWall: onOff(b.mouldDresserWall),
+    mouldGap: num(b.mouldGap, d.mouldGap, SLIDERS.mouldGap.min, SLIDERS.mouldGap.max),
+    mouldCentre: num(b.mouldCentre, d.mouldCentre, SLIDERS.mouldCentre.min, SLIDERS.mouldCentre.max),
+    mouldSide: num(b.mouldSide, d.mouldSide, SLIDERS.mouldSide.min, SLIDERS.mouldSide.max),
+    pendant: onOff(b.pendant),
+    wardrobes: oneOf(b.wardrobes, ids(WARDROBES), d.wardrobes),
+    rug: oneOf(b.rug, ids(RUGS), d.rug),
+    pillows: oneOf(b.pillows, ids(PILLOW_SETS), d.pillows),
+    art: oneOf(b.art, ids(ARTS), d.art),
+    frame: oneOf(b.frame, ids(FRAMES), d.frame),
+  };
+}
+
+/**
+ * Turn anything found in storage (including flat settings saved before version 2, and those saved by the
+ * original single-file app) into valid Settings.
+ */
+export function sanitizeSettings(raw: unknown): Settings {
+  const r = obj(raw);
+  const s = r.version === 2 ? r : fromVersion1(r);
+  const hidden = obj(s.living).hidden;
+  return {
+    version: 2,
+    room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
-    room: oneOf(s.room, ['all', ...ROOM_IDS] as const, 'all'),
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
-    hidden: Array.isArray(s.hidden) ? [...new Set(s.hidden.filter((h) => ids(FURNITURE).includes(h as string)) as string[])] : [],
+    bedroom: sanitizeBedroom(s.bedroom),
+    living: {
+      hidden: Array.isArray(hidden) ? [...new Set(hidden.filter((h): h is string => ids(FURNITURE).includes(h as string)))] : [],
+    },
   };
 }
 
 export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = safeStorage()): Settings {
   try {
-    const raw = storage?.getItem(STORAGE_KEY);
+    const raw = storage?.getItem(STORAGE_KEY) ?? storage?.getItem(LEGACY_STORAGE_KEY);
     return sanitizeSettings(raw ? JSON.parse(raw) : null);
   } catch {
-    return { ...DEFAULTS };
+    return sanitizeSettings(null);
   }
 }
 

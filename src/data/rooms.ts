@@ -6,7 +6,7 @@
  *   x = 14.666 − model x,   z = model y − 3.008,   y = model height.
  */
 
-export type RoomId = 'bedroom' | 'hall' | 'living' | 'end';
+export type RoomId = 'bedroom' | 'hall' | 'living' | 'office';
 export type RoomSelection = RoomId | 'all';
 
 export type XZ = readonly [number, number];
@@ -67,7 +67,7 @@ export const ROOMS: Room[] = [
     view: 'Living room',
   },
   {
-    id: 'end',
+    id: 'office',
     name: 'Office',
     poly: [[8.89, -1.925], [11.89, -1.925], [11.89, 1.355], [11.35, 2.075], [9.63, 2.075], [8.89, 0.925]],
     paint: 'devine',

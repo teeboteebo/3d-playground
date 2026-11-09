@@ -1,15 +1,16 @@
 import { FURNITURE } from '../data/catalog';
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 export function LivingPanel({ settings, update }: Props) {
-  const toggle = (id: string) =>
-    update({ hidden: settings.hidden.includes(id) ? settings.hidden.filter((h) => h !== id) : [...settings.hidden, id] });
+  const { hidden } = settings.living;
+  const toggle = (id: string) => update({ living: { hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id] } });
   return (
     <>
       <h1>Living room</h1>
@@ -20,7 +21,7 @@ export function LivingPanel({ settings, update }: Props) {
         <div className="checks" role="group" aria-label="Furniture">
           {FURNITURE.map((f) => (
             <label key={f.id}>
-              <input type="checkbox" checked={!settings.hidden.includes(f.id)} onChange={() => toggle(f.id)} />
+              <input type="checkbox" checked={!hidden.includes(f.id)} onChange={() => toggle(f.id)} />
               <span>{f.name}</span>
             </label>
           ))}

@@ -1,5 +1,6 @@
 import { ARTS, BRASS, FRAMES, OAK, PAINTS, PILLOW_SETS, TRIM, WARDROBES, findById } from '../data/catalog';
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { AccentPicker } from './AccentPicker';
 import { ChipGroup } from './ChipGroup';
 import { FinishSection } from './FinishSection';
@@ -9,19 +10,21 @@ import { RugList } from './RugList';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 export function BedroomPanel({ settings, update }: Props) {
+  const b = settings.bedroom;
+  const set = (patch: Partial<typeof b>) => update({ bedroom: patch });
   const strip: [string, string][] = [
     ['Walls', findById(PAINTS, settings.walls.bedroom).hex],
     ['Trim', TRIM.hex],
     ['Oak', OAK.hex],
     ['Brass', BRASS],
-    ['Accent', settings.accent],
+    ['Accent', b.accent],
   ];
-  const pillowOptions = PILLOW_SETS.map((p) => ({ ...p, hex: p.hex ?? settings.accent }));
-  const pendantOn = settings.pendant === 'on';
+  const pillowOptions = PILLOW_SETS.map((p) => ({ ...p, hex: p.hex ?? b.accent }));
+  const pendantOn = b.pendant === 'on';
 
   return (
     <>
@@ -39,27 +42,27 @@ export function BedroomPanel({ settings, update }: Props) {
       <FinishSection room="bedroom" settings={settings} update={update} />
       <section>
         <h2>Ceiling pendant</h2>
-        <button type="button" className="chip" aria-pressed={pendantOn} onClick={() => update({ pendant: pendantOn ? 'off' : 'on' })}>
+        <button type="button" className="chip" aria-pressed={pendantOn} onClick={() => set({ pendant: pendantOn ? 'off' : 'on' })}>
           <Icon name="pendant" />
           <span>Pendant {pendantOn ? 'on' : 'off'}</span>
         </button>
       </section>
-      <AccentPicker value={settings.accent} onChange={(accent) => update({ accent })} />
+      <AccentPicker value={b.accent} onChange={(accent) => set({ accent })} />
       <MouldingSection settings={settings} update={update} />
       <section>
         <h2>Wardrobes</h2>
-        <ChipGroup label="Wardrobes" options={WARDROBES} value={settings.ward} onChange={(ward) => update({ ward })} />
+        <ChipGroup label="Wardrobes" options={WARDROBES} value={b.wardrobes} onChange={(wardrobes) => set({ wardrobes })} />
       </section>
       <section>
         <h2>Pillows and throw</h2>
-        <ChipGroup label="Pillows and throw" options={pillowOptions} value={settings.pillows} onChange={(pillows) => update({ pillows })} />
+        <ChipGroup label="Pillows and throw" options={pillowOptions} value={b.pillows} onChange={(pillows) => set({ pillows })} />
       </section>
       <section>
         <h2>Painting</h2>
-        <ChipGroup label="Painting" options={ARTS} value={settings.art} onChange={(art) => update({ art })} />
-        <ChipGroup className="mt6" label="Frame" options={FRAMES} value={settings.frame} onChange={(frame) => update({ frame })} />
+        <ChipGroup label="Painting" options={ARTS} value={b.art} onChange={(art) => set({ art })} />
+        <ChipGroup className="mt6" label="Frame" options={FRAMES} value={b.frame} onChange={(frame) => set({ frame })} />
       </section>
-      <RugList value={settings.rug} onChange={(rug) => update({ rug })} />
+      <RugList value={b.rug} onChange={(rug) => set({ rug })} />
       <p className="note">
         Colours are screen approximations of the hex values, and real paint shifts with your light. Room is 430 × 395 cm with a
         330 cm ceiling. The bed follows IKEA TONSTAD 160×200 (169 × 209 cm, headboard 116 cm) and the dresser Mio TOVA (80 × 42 ×

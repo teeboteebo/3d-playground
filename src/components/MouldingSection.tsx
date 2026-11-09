@@ -1,26 +1,29 @@
 import { MOULD_COLOURS } from '../data/catalog';
-import { SLIDERS, type Settings } from '../state/settings';
+import { SLIDERS, type BedroomSettings, type Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { ChipGroup } from './ChipGroup';
 import { Icon } from './Icon';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 const WALLS = [
-  { key: 'mouldB', label: 'Bed wall' },
-  { key: 'mouldF', label: 'Dresser wall' },
+  { key: 'mouldBedWall', label: 'Bed wall' },
+  { key: 'mouldDresserWall', label: 'Dresser wall' },
 ] as const;
 
 const SLIDER_LABELS = [
-  { key: 'mgap', label: 'Column spacing' },
-  { key: 'mcen', label: 'Centre width' },
-  { key: 'msw', label: 'Side width' },
+  { key: 'mouldGap', label: 'Column spacing' },
+  { key: 'mouldCentre', label: 'Centre width' },
+  { key: 'mouldSide', label: 'Side width' },
 ] as const;
 
 export function MouldingSection({ settings, update }: Props) {
-  const bedOn = settings.mouldB === 'on';
+  const b = settings.bedroom;
+  const set = (patch: Partial<BedroomSettings>) => update({ bedroom: patch });
+  const bedOn = b.mouldBedWall === 'on';
   return (
     <section>
       <h2>Wall moulding</h2>
@@ -29,17 +32,17 @@ export function MouldingSection({ settings, update }: Props) {
         <ChipGroup
           label="Moulding colour"
           options={MOULD_COLOURS}
-          value={settings.mould}
-          onChange={(id) => update({ mould: id as Settings['mould'] })}
+          value={b.mouldColour}
+          onChange={(id) => set({ mouldColour: id as BedroomSettings['mouldColour'] })}
         />
       </div>
       <div className="grp">
         <h3>Show on</h3>
         <div className="chips" role="group" aria-label="Show moulding on">
           {WALLS.map(({ key, label }) => {
-            const on = settings[key] === 'on';
+            const on = b[key] === 'on';
             return (
-              <button key={key} type="button" className="chip" aria-pressed={on} onClick={() => update({ [key]: on ? 'off' : 'on' })}>
+              <button key={key} type="button" className="chip" aria-pressed={on} onClick={() => set({ [key]: on ? 'off' : 'on' })}>
                 <Icon name={on ? 'check' : 'plus'} />
                 <span>{label}</span>
               </button>
@@ -51,13 +54,13 @@ export function MouldingSection({ settings, update }: Props) {
         <h3>Bed wall layout</h3>
         {SLIDER_LABELS.map(({ key, label }) => (
           <label className="sl" key={key}>
-            {label} <b>{settings[key]} cm</b>
+            {label} <b>{b[key]} cm</b>
             <input
               type="range"
               {...SLIDERS[key]}
-              value={settings[key]}
+              value={b[key]}
               disabled={!bedOn}
-              onChange={(e) => update({ [key]: Number(e.target.value) })}
+              onChange={(e) => set({ [key]: Number(e.target.value) })}
             />
           </label>
         ))}

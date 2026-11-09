@@ -1,4 +1,5 @@
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { AllRoomsPanel } from './AllRoomsPanel';
 import { BedroomPanel } from './BedroomPanel';
 import { LivingPanel } from './LivingPanel';
@@ -6,7 +7,7 @@ import { SimpleRoomPanel } from './SimpleRoomPanel';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 /**

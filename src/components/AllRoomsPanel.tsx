@@ -1,11 +1,12 @@
 import { PAINTS, findById } from '../data/catalog';
 import { ROOMS, roomSize } from '../data/rooms';
 import type { Settings } from '../state/settings';
+import type { Update } from '../state/useSettings';
 import { DayNightSwitch } from './DayNightSwitch';
 
 interface Props {
   settings: Settings;
-  update: (patch: Partial<Settings>) => void;
+  update: Update;
 }
 
 /** What the panel shows with no room selected: shared lighting and the rooms to pick from. */
