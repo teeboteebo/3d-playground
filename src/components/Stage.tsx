@@ -15,7 +15,7 @@ export function Stage({ settings, update }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<BedroomScene | null>(null);
   const settingsRef = useRef(settings);
-  /** set when a 3D click changes the room, so that change keeps the camera where the user put it */
+  /** set when a 3D click changes the room, so that change keeps the camera's rotation and zoom */
   const pickedRef = useRef(false);
   const updateRef = useRef(update);
   useEffect(() => {
@@ -50,13 +50,16 @@ export function Stage({ settings, update }: Props) {
     sceneRef.current?.apply(settings);
   }, [settings]);
 
-  /* selecting a room from the panel flies the camera to it; picking it in 3D keeps the current view */
+  /* selecting a room from the panel flies the camera to its view; picking it in 3D only moves the pivot to the
+     room, keeping the rotation and zoom the user had */
   useEffect(() => {
+    const pose = mainView(settings.room).pose;
     if (pickedRef.current) {
       pickedRef.current = false;
+      sceneRef.current?.setView({ tx: pose.tx, ty: pose.ty, tz: pose.tz });
       return;
     }
-    sceneRef.current?.setView(mainView(settings.room).pose);
+    sceneRef.current?.setView(pose);
   }, [settings.room]);
 
   return (

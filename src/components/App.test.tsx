@@ -177,14 +177,25 @@ describe('App', () => {
     expect(lastApplied().room).toBe('all');
   });
 
-  it('keeps the camera where it is when a room is picked in 3D', async () => {
+  it('moves only the pivot, not the rotation or zoom, when a room is picked in 3D', async () => {
+    render(<App />);
+    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    const pivot = (sel: 'hall' | 'all') => {
+      const { tx, ty, tz } = mainView(sel).pose;
+      return { tx, ty, tz };
+    };
+    await act(async () => onPick('hall'));
+    expect(scene.setView).toHaveBeenLastCalledWith(pivot('hall'));
+    await act(async () => onPick(null));
+    expect(lastApplied().room).toBe('all');
+    expect(scene.setView).toHaveBeenLastCalledWith(pivot('all'));
+  });
+
+  it('leaves the camera alone when a 3D pick changes nothing', async () => {
     render(<App />);
     const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
     scene.setView.mockClear();
-    await act(async () => onPick('hall'));
-    await act(async () => onPick('living'));
-    await act(async () => onPick(null));
-    expect(lastApplied().room).toBe('all');
+    await act(async () => onPick(null)); // already at all rooms
     expect(scene.setView).not.toHaveBeenCalled();
   });
 

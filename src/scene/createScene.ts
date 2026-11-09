@@ -20,7 +20,8 @@ import {
 
 export interface BedroomScene {
   apply(settings: Settings): void;
-  setView(pose: CameraPose): void;
+  /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
+  setView(pose: Partial<CameraPose>): void;
   dispose(): void;
 }
 
