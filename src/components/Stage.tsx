@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { mainView, viewsFor } from '../data/catalog';
-import { createApartmentScene, type ApartmentScene } from '../scene/createScene';
+import type { ApartmentScene } from '../scene/createScene';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { DayNightSwitch } from './DayNightSwitch';
@@ -24,24 +24,31 @@ export function Stage({ settings, update }: Props) {
   }, [update]);
   const [webgl, setWebgl] = useState(true);
 
-  /* build the three.js scene once; it is torn down on unmount */
+  /* build the three.js scene once; it is torn down on unmount. three.js is loaded on demand, so the panel can
+     show before the 3D code has arrived */
   useEffect(() => {
-    let scene: ApartmentScene;
-    try {
-      scene = createApartmentScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) => {
-        const next = room ?? 'all';
-        if (next === settingsRef.current.room) return;
-        pickedRef.current = true;
-        updateRef.current({ room: next });
+    let scene: ApartmentScene | null = null;
+    let cancelled = false;
+    void import('../scene/createScene')
+      .then(({ createApartmentScene }) => {
+        if (cancelled) return;
+        scene = createApartmentScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) => {
+          const next = room ?? 'all';
+          if (next === settingsRef.current.room) return;
+          pickedRef.current = true;
+          updateRef.current({ room: next });
+        });
+        sceneRef.current = scene;
+        /* the selection's view, which the effect below could not set while the scene was loading */
+        scene.setView(mainView(settingsRef.current.room).pose);
+      })
+      .catch((e: unknown) => {
+        console.warn(e);
+        if (!cancelled) setWebgl(false);
       });
-    } catch (e) {
-      console.warn(e);
-      setWebgl(false); // eslint-disable-line react-hooks/set-state-in-effect -- one-off capability probe
-      return;
-    }
-    sceneRef.current = scene;
     return () => {
-      scene.dispose();
+      cancelled = true;
+      scene?.dispose();
       sceneRef.current = null;
     };
   }, []);

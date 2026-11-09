@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { lin, std } from '../materials';
+import { mergeMeshes } from '../merge';
 import type { Kit } from './kit';
 import { H, PENDANT_Y } from './dimensions';
 import { glowShade } from './lamps';
@@ -8,7 +9,7 @@ import type { BedroomMaterials } from './materials';
 /** IKEA GULLSUDARE 70 cm rice-paper pendant at the centre of the room, hung with about 2 m clearance below. */
 export function buildPendant({ add, collect, parent }: Kit, m: BedroomMaterials) {
   const paper = new THREE.MeshStandardMaterial({ color: lin('#F4F1E8'), roughness: 1, side: THREE.DoubleSide });
-  const parts = collect(() => {
+  const parts = mergeMeshes(collect(() => {
     const pg = new THREE.SphereGeometry(0.35, 56, 36);
     const pp = pg.attributes.position;
     for (let i = 0; i < pp.count; i++) {
@@ -26,7 +27,7 @@ export function buildPendant({ add, collect, parent }: Kit, m: BedroomMaterials)
     add(new THREE.CylinderGeometry(0.004, 0.004, H - (PENDANT_Y + 0.35), 6), std('#EDEBE4', 0.8), 0, (H + PENDANT_Y + 0.35) / 2, 0, true);
     add(new THREE.CylinderGeometry(0.05, 0.05, 0.03, 20), m.trim, 0, H - 0.015, 0, true);
     add(new THREE.SphereGeometry(0.05, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffe6b8 }), 0, PENDANT_Y, 0, true);
-  });
+  }));
   const light = new THREE.PointLight(0xffc890, 0, 9, 1.3);
   light.position.set(0, PENDANT_Y, 0);
   light.shadow.mapSize.set(256, 256);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
 import { ROOMS, type RoomId } from '../data/rooms';
@@ -69,10 +70,18 @@ export function createApartmentScene(
   scene.add(apartment.group);
   for (const l of apartment.windowLights) scene.add(l, l.target);
 
-  const furniture = loadFurniture(scene, (piece) =>
-    piece.file
-      ? new GLTFLoader().loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene)
-      : Promise.resolve(quebecRug()),
+  /* the scene is drawn only when something changes: a setting, the camera, the canvas size or a piece loading */
+  let dirty = true;
+  const invalidate = () => {
+    dirty = true;
+  };
+
+  /* the models are meshopt-compressed (see README) */
+  const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  const furniture = loadFurniture(
+    scene,
+    (piece) => (piece.file ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene) : Promise.resolve(quebecRug())),
+    invalidate,
   );
   let furnitureReady = false;
   void furniture.ready.then(() => (furnitureReady = true));
@@ -81,6 +90,7 @@ export function createApartmentScene(
   const sky = addSkyAndSun(scene);
 
   function apply(s: Settings) {
+    invalidate();
     const evening = s.time === 'eve';
     bedroom.apply(s);
     for (const r of SHELL_ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
@@ -92,6 +102,8 @@ export function createApartmentScene(
 
   const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => onPick?.(pickRoom(ndc, camera, scene.children, ROOMS)));
 
+  /* the pending animation frame; 0 until the first frame */
+  let raf = 0;
   function fit() {
     const r = container.getBoundingClientRect();
     const w = Math.max(1, r.width);
@@ -100,17 +112,26 @@ export function createApartmentScene(
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    /* resizing clears the canvas, so draw again now rather than show a blank frame, and once more next frame,
+       when the camera has stepped back or in for the new shape */
+    if (raf) draw();
+    invalidate();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
   ro?.observe(container);
   window.addEventListener('resize', fit);
   fit();
 
-  let raf = 0;
-  function frame() {
-    const arrived = orbit.update();
+  function draw() {
     bedroom.showFrom(camera.position);
     renderer.render(scene, camera);
+    dirty = false;
+  }
+  /* a restored WebGL context starts blank */
+  canvas.addEventListener('webglcontextrestored', invalidate);
+  function frame() {
+    const { moved, arrived } = orbit.update();
+    if (moved || dirty) draw();
     /* lets screenshot tests wait for a still frame: the camera has arrived and the furniture has loaded */
     const settled = String(arrived && furnitureReady);
     if (canvas.dataset.settled !== settled) canvas.dataset.settled = settled;
@@ -130,6 +151,7 @@ export function createApartmentScene(
       cancelAnimationFrame(raf);
       ro?.disconnect();
       window.removeEventListener('resize', fit);
+      canvas.removeEventListener('webglcontextrestored', invalidate);
       orbit.dispose();
       furniture.dispose();
       disposeTree(scene);

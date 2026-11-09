@@ -48,10 +48,21 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `daylight.ts`, `roomLights.ts`: sun, sky and window light; evening ceiling lights in the other rooms
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`
-  - `textures.ts`: procedural canvas textures (wood, parquet, rugs, art)
+  - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down
+  - `canvas.ts` / `textures.ts`: procedural canvas drawing (no three.js, so the panel's rug thumbnails can use it)
+    and the three.js textures made from it
   - pure helpers for layout, palettes, picking rooms and freeing GPU resources, each with tests
 - `src/components/`: React UI; `Stage` owns the canvas and bridges settings into the scene
 - `e2e/`: Playwright smoke and screenshot tests
+
+### Performance
+
+- The scene is drawn only when something changes (a setting, the camera, the canvas size, a model loading); an idle
+  page draws nothing.
+- Static parts of each room are merged into one mesh per material.
+- three.js and the scene load in a chunk of their own, after the panel.
+- The models in `public/models/` are meshopt-compressed. To add one, compress it the same way:
+  `npx @gltf-transform/cli meshopt in.glb public/models/living/out.glb --level medium`.
 
 three.js is pinned to r128, the version the original single-file app used. Newer releases change colour management
 and light units, which would visibly change the scene.

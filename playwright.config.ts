@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-const PORT = 5199;
+/* PW_PORT lets two checkouts run their browser tests at once without sharing a dev server */
+const PORT = Number(process.env.PW_PORT ?? 5199);
 
 /**
  * Browser tests against the dev server.

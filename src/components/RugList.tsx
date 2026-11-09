@@ -1,5 +1,5 @@
 import { RUGS } from '../data/catalog';
-import { rugThumbnail } from '../scene/textures';
+import { rugThumbnail } from '../scene/canvas';
 
 interface Props {
   value: string;
