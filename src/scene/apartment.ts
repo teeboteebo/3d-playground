@@ -1,3 +1,5 @@
+import type { RoomId } from '../data/catalog';
+
 /**
  * The rest of the apartment around the bedroom: hall, living room and the end room, decoded from the
  * SketchUp model (Lojtnants_base.skp). Only structure: walls, openings, floors and ceilings.
@@ -13,7 +15,7 @@ export const CEILING = 3.3;
 export const SKIRTING = 0.18;
 
 export interface Room {
-  id: 'hall' | 'living' | 'end';
+  id: Exclude<RoomId, 'bedroom'>;
   name: string;
   /** floor outline, in order around the room */
   poly: XZ[];

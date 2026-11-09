@@ -29,6 +29,36 @@ describe('sanitizeSettings', () => {
   });
 });
 
+describe('rooms', () => {
+  it('gives settings saved before rooms existed the room defaults', () => {
+    expect(sanitizeSettings({ rug: 'rista' })).toMatchObject({
+      rug: 'rista',
+      room: 'all',
+      walls: { bedroom: 'antique', hall: 'antique', living: 'greige', end: 'bluegrey' },
+      floors: { bedroom: 'smoked', hall: 'smoked', living: 'smoked', end: 'smoked' },
+      hidden: [],
+    });
+  });
+
+  it('replaces unknown rooms, swatches and furniture ids', () => {
+    const s = sanitizeSettings({
+      room: 'attic',
+      walls: { living: 'chalk', end: 'neon' },
+      floors: { hall: 'light' },
+      hidden: ['sofa', 'piano', 3, 'sofa'],
+    });
+    expect(s.room).toBe('all');
+    expect(s.walls.living).toBe('chalk');
+    expect(s.walls.end).toBe('bluegrey');
+    expect(s.floors.hall).toBe('light');
+    expect(s.hidden).toEqual(['sofa']);
+  });
+
+  it('keeps a valid selected room', () => {
+    expect(sanitizeSettings({ room: 'living' }).room).toBe('living');
+  });
+});
+
 describe('load/save', () => {
   it('round-trips through storage under the original key', () => {
     const s = { ...DEFAULTS, rug: 'rista' };

@@ -1,4 +1,7 @@
-import { ACCENT_DEFAULT, ARTS, FRAMES, PILLOW_SETS, RUGS, WARDROBES } from '../data/catalog';
+import {
+  ACCENT_DEFAULT, ARTS, FLOORS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, ROOM_LIST, RUGS, WARDROBES,
+  type RoomId, type RoomSelection,
+} from '../data/catalog';
 import { isHex } from '../lib/color';
 
 export type OnOff = 'on' | 'off';
@@ -18,6 +21,14 @@ export interface Settings {
   art: string;
   frame: string;
   time: 'day' | 'eve';
+  /** selected room, or 'all' for none */
+  room: RoomSelection;
+  /** paint id per room */
+  walls: Record<RoomId, string>;
+  /** floor id per room */
+  floors: Record<RoomId, string>;
+  /** furniture ids switched off */
+  hidden: string[];
 }
 
 export const STORAGE_KEY = 'bedroom-viz';
@@ -37,6 +48,10 @@ export const DEFAULTS: Settings = {
   art: 'sun',
   frame: 'brass',
   time: 'day',
+  room: 'all',
+  walls: { bedroom: 'antique', hall: 'antique', living: 'greige', end: 'bluegrey' },
+  floors: { bedroom: 'smoked', hall: 'smoked', living: 'smoked', end: 'smoked' },
+  hidden: [],
 };
 
 export const SLIDERS = {
@@ -57,6 +72,13 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], fallback: T)
 }
 
 const ids = (list: readonly { id: string }[]) => list.map((o) => o.id);
+const ROOM_IDS = ids(ROOM_LIST) as RoomId[];
+
+/** one valid swatch id per room, falling back to that room's default */
+function perRoom(v: unknown, allowed: readonly string[], fallback: Record<RoomId, string>): Record<RoomId, string> {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
+  return Object.fromEntries(ROOM_IDS.map((r) => [r, oneOf(o[r], allowed, fallback[r])])) as Record<RoomId, string>;
+}
 
 /**
  * Turn anything found in storage (including settings saved by the original
@@ -82,6 +104,10 @@ export function sanitizeSettings(raw: unknown): Settings {
     art: oneOf(s.art, ids(ARTS), DEFAULTS.art),
     frame: oneOf(s.frame, ids(FRAMES), DEFAULTS.frame),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
+    room: oneOf(s.room, ['all', ...ROOM_IDS] as const, 'all'),
+    walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
+    floors: perRoom(s.floors, ids(FLOORS), DEFAULTS.floors),
+    hidden: Array.isArray(s.hidden) ? [...new Set(s.hidden.filter((h) => ids(FURNITURE).includes(h as string)) as string[])] : [],
   };
 }
 
