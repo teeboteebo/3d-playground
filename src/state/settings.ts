@@ -1,8 +1,9 @@
 import {
-  ACCENT_DEFAULT, ARTS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, ROOM_LIST, RUGS, WARDROBES,
-  type RoomId, type RoomSelection,
+  ACCENT_DEFAULT, ARTS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, RUGS, WARDROBES,
 } from '../data/catalog';
+import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
+import { clamp } from '../lib/math';
 
 export type OnOff = 'on' | 'off';
 
@@ -47,7 +48,7 @@ export const DEFAULTS: Settings = {
   frame: 'brass',
   time: 'day',
   room: 'all',
-  walls: { bedroom: 'antique', hall: 'frostrok', living: 'frostrok', end: 'devine' },
+  walls: Object.fromEntries(ROOMS.map((r) => [r.id, r.paint])) as Record<RoomId, string>,
   hidden: [],
 };
 
@@ -56,8 +57,6 @@ export const SLIDERS = {
   mcen: { min: 150, max: 200, step: 2 },
   msw: { min: 50, max: 90, step: 1 },
 } as const;
-
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 function num(v: unknown, fallback: number, min: number, max: number): number {
   const n = Number(v);
@@ -69,7 +68,6 @@ function oneOf<T extends string>(v: unknown, allowed: readonly T[], fallback: T)
 }
 
 const ids = (list: readonly { id: string }[]) => list.map((o) => o.id);
-const ROOM_IDS = ids(ROOM_LIST) as RoomId[];
 
 /** one valid swatch id per room, falling back to that room's default */
 function perRoom(v: unknown, allowed: readonly string[], fallback: Record<RoomId, string>): Record<RoomId, string> {

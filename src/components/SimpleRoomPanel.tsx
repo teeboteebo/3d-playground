@@ -1,4 +1,4 @@
-import { ROOM_LIST, type RoomId } from '../data/catalog';
+import { roomById, roomSize, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { FinishSection } from './FinishSection';
 
@@ -15,12 +15,12 @@ interface Props {
 
 /** A room without furniture of its own yet: just its finishes. */
 export function SimpleRoomPanel({ room, settings, update }: Props) {
-  const info = ROOM_LIST.find((r) => r.id === room)!;
+  const info = roomById(room);
   return (
     <>
       <h1>{info.name}</h1>
       <p className="sub">
-        {info.size}. {BLURB[room]}
+        {roomSize(info)}. {BLURB[room]}
       </p>
       <FinishSection room={room} settings={settings} update={update} />
     </>

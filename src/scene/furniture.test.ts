@@ -47,4 +47,21 @@ describe('loadFurniture', () => {
     await f.ready;
     expect(byFile(scene, 'sofa').visible).toBe(false);
   });
+
+  it('frees a piece that finishes loading after dispose, instead of adding it', async () => {
+    const scene = new THREE.Scene();
+    let release!: (o: THREE.Object3D) => void;
+    const late = new Promise<THREE.Object3D>((r) => (release = r));
+    const f = loadFurniture(scene, (piece) => (piece.id === 'sofa' ? late : Promise.resolve(new THREE.Group())));
+    await Promise.resolve();
+    f.dispose();
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshStandardMaterial({ map: new THREE.Texture() });
+    const freed = [vi.spyOn(geometry, 'dispose'), vi.spyOn(material, 'dispose'), vi.spyOn(material.map!, 'dispose')];
+    const sofa = new THREE.Group().add(new THREE.Mesh(geometry, material));
+    release(sofa);
+    await f.ready;
+    expect(scene.getObjectByName('sofa')).toBeUndefined();
+    for (const spy of freed) expect(spy).toHaveBeenCalled();
+  });
 });
