@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { VIEWS } from '../data/catalog';
+import { VIEWS, mainView } from '../data/catalog';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
@@ -17,8 +17,17 @@ const stored = (): Settings => JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   createBedroomScene.mockImplementation(() => scene);
 });
+
+/** render with a room already selected, as a returning visitor would have it */
+const renderIn = (room: Settings['room']) => {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ room }));
+  return render(<App />);
+};
+const switcher = () => screen.getByRole('group', { name: 'Room' });
+const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
   it('creates the scene with the saved settings and disposes it on unmount', () => {
@@ -32,7 +41,7 @@ describe('App', () => {
 
   it('applies and persists chip selections', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     const painting = screen.getByRole('group', { name: 'Painting' });
     await user.click(within(painting).getByRole('button', { name: 'Hills' }));
     expect(within(painting).getByRole('button', { name: 'Hills' })).toHaveAttribute('aria-pressed', 'true');
@@ -43,7 +52,7 @@ describe('App', () => {
 
   it('toggles lighting and the pendant', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     const daynight = screen.getByRole('switch', { name: 'Evening lighting' });
     expect(daynight).toHaveAttribute('aria-checked', 'false');
     await user.click(daynight);
@@ -58,14 +67,14 @@ describe('App', () => {
 
   it('moves the camera to a preset view', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     await user.click(screen.getByRole('button', { name: 'Top down' }));
     expect(scene.setView).toHaveBeenCalledWith(VIEWS.find((v) => v.name === 'Top down')!.pose);
   });
 
   it('accepts valid accent hex input and rejects invalid input', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     const hex = screen.getByRole('textbox', { name: 'Accent hex' });
     await user.clear(hex);
     await user.type(hex, '2f5d62{Enter}');
@@ -81,7 +90,7 @@ describe('App', () => {
 
   it('pillow "Accent" swatch follows the accent colour', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     await user.click(screen.getByRole('button', { name: 'Mustard' }));
     const accentPillow = within(screen.getByRole('group', { name: 'Pillows and throw' })).getByRole('button', { name: 'Accent' });
     expect(accentPillow.querySelector('.dot')).toHaveStyle({ background: '#C49A3A' });
@@ -89,7 +98,7 @@ describe('App', () => {
 
   it('disables the bed-wall layout sliders when bed-wall moulding is hidden', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     const slider = screen.getByRole('slider', { name: /Column spacing/ });
     expect(slider).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Bed wall' }));
@@ -100,7 +109,7 @@ describe('App', () => {
 
   it('selects a rug by click or keyboard, but not via its shop link', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     const rug = screen.getByText('Palma, green vines').closest('.rug') as HTMLElement;
     await user.click(within(rug).getByRole('link'));
     expect(lastApplied().rug).toBe(DEFAULTS.rug);
@@ -120,9 +129,71 @@ describe('App', () => {
       throw new Error('no webgl');
     });
     const user = userEvent.setup();
-    render(<App />);
+    renderIn('bedroom');
     expect(screen.getByRole('alert')).toHaveTextContent('needs WebGL');
     await user.click(screen.getByRole('button', { name: 'Arches' }));
     expect(stored().art).toBe('arches');
+  });
+
+  it('shows the apartment controls when no room is selected', () => {
+    render(<App />);
+    expect(screen.getByRole('heading', { name: 'Apartment' })).toBeInTheDocument();
+    expect(within(screen.getByRole('list', { name: 'Rooms' })).getAllByRole('button')).toHaveLength(4);
+    expect(within(switcher()).getByRole('button', { name: 'All rooms' })).toHaveAttribute('aria-pressed', 'true');
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('all').pose);
+  });
+
+  it("selects a room from the switcher and shows that room's controls", async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(within(switcher()).getByRole('button', { name: 'Living room' }));
+    expect(screen.getByRole('group', { name: 'Furniture' })).toBeInTheDocument();
+    expect(lastApplied().room).toBe('living');
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
+  });
+
+  it('selecting from the room list ends where the switcher does', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(within(screen.getByRole('list', { name: 'Rooms' })).getByRole('button', { name: /End room/ }));
+    expect(within(switcher()).getByRole('button', { name: 'End room' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('heading', { name: 'End room' })).toBeInTheDocument();
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('end').pose);
+  });
+
+  it('selects the room clicked in 3D, and deselects on a click outside', async () => {
+    render(<App />);
+    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    await act(async () => onPick('hall'));
+    expect(lastApplied().room).toBe('hall');
+    expect(screen.getByRole('heading', { name: 'Hall' })).toBeInTheDocument();
+    await act(async () => onPick(null));
+    expect(lastApplied().room).toBe('all');
+  });
+
+  it('hides living-room furniture and repaints a room', async () => {
+    const user = userEvent.setup();
+    renderIn('living');
+    await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('checkbox', { name: 'Sofa' }));
+    expect(lastApplied().hidden).toEqual(['sofa']);
+    await user.click(within(switcher()).getByRole('button', { name: 'Hall' }));
+    await user.click(within(screen.getByRole('group', { name: 'Wall colour' })).getByRole('button', { name: 'Chalk white' }));
+    expect(lastApplied().walls.hall).toBe('chalk');
+  });
+
+  it('shows the camera views for the selection', () => {
+    const { unmount } = render(<App />);
+    expect(viewNames()).toEqual(['Apartment', 'Foot of bed', 'Hall', 'Living room', 'End room']);
+    unmount();
+    renderIn('bedroom');
+    expect(viewNames()).toEqual(['Overview', 'Foot of bed', 'Wardrobe wall', 'Dresser wall', 'Top down']);
+  });
+
+  it('only offers the pendant in the bedroom', () => {
+    const { unmount } = render(<App />);
+    expect(screen.queryByRole('button', { name: /Pendant/ })).toBeNull();
+    unmount();
+    renderIn('bedroom');
+    expect(screen.getByRole('button', { name: 'Pendant on' })).toBeInTheDocument();
   });
 });
