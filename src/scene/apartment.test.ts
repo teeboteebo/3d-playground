@@ -63,7 +63,7 @@ describe('apartment rooms', () => {
     expect(roomWalls(room('hall'))).toHaveLength(3);
   });
 
-  it('spans the bedroom through the end room', () => {
+  it('spans the bedroom through the office', () => {
     const b = apartmentBounds();
     expect(b.minX).toBeCloseTo(-2.15);
     expect(b.maxX).toBeCloseTo(11.89);

@@ -181,7 +181,7 @@ export function createBedroomScene(
   ceil.castShadow = true;
   scene.add(ceil);
 
-  /* ---------- the rest of the apartment: hall, living room and end room (structure only) ---------- */
+  /* ---------- the rest of the apartment: hall, living room and office (structure only) ---------- */
   const apartment = buildApartment({
     trim: trimMat,
     glass: glassMat,
@@ -258,20 +258,11 @@ export function createBedroomScene(
     }
   });
 
-  /* ---------- double doors (right wall) ---------- */
+  /* ---------- open doorway to the hall (right wall): just its frame, no doors ---------- */
   const doorParts = collect(() => {
-    for (const z of [0.85, 1.45]) {
-      box(0.04, 2.56, 0.59, trimMat, W / 2 - 0.04, 1.28, z);
-      box(0.012, 1.2, 0.4, trimMat, W / 2 - 0.07, 1.85, z);
-      box(0.012, 0.95, 0.4, trimMat, W / 2 - 0.07, 0.62, z);
-    }
     box(0.03, 2.6, 0.07, trimMat, W / 2 - 0.015, 1.3, 0.55 - 0.035);
     box(0.03, 2.6, 0.07, trimMat, W / 2 - 0.015, 1.3, 1.75 + 0.035);
     box(0.03, 0.07, 1.34, trimMat, W / 2 - 0.015, 2.615, 1.15);
-    for (const z of [1.08, 1.22]) {
-      add(new THREE.SphereGeometry(0.03, 16, 12), brassMat, W / 2 - 0.085, 1.0, z);
-      add(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 10), brassMat, W / 2 - 0.07, 1.0, z).rotation.z = Math.PI / 2;
-    }
   });
 
   /* ---------- bed (IKEA TONSTAD 160x200), bench (ILVA Amigo) and pillows, shifted by BEDX ---------- */

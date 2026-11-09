@@ -1,7 +1,7 @@
 import type { RoomId } from '../data/catalog';
 
 /**
- * The rest of the apartment around the bedroom: hall, living room and the end room, decoded from the
+ * The rest of the apartment around the bedroom: hall, living room and the office, decoded from the
  * SketchUp model (Lojtnants_base.skp). Only structure: walls, openings, floors and ceilings.
  *
  * Scene coordinates are metres with the bedroom centred on the origin:
@@ -57,24 +57,24 @@ export const ROOMS: Room[] = [
   },
   {
     id: 'end',
-    name: 'End room',
+    name: 'Office',
     poly: [[8.89, -1.925], [11.89, -1.925], [11.89, 1.355], [11.35, 2.075], [9.63, 2.075], [8.89, 0.925]],
     wall: '#758396',
   },
 ];
 
 export const OPENINGS: Opening[] = [
-  /* bedroom ↔ hall: matches the bedroom's double-door opening (z 0.55–1.75, 2.58 high) */
+  /* bedroom ↔ hall: matches the bedroom's doorway (z 0.55–1.75, 2.58 high) */
   { kind: 'passage', a: [2.25, 0.55], b: [2.25, 1.75], y0: 0, y1: 2.58, depth: 0.2 },
   /* hall ↔ living room */
   { kind: 'passage', a: [3.59, 0.885], b: [3.59, 1.755], y0: 0, y1: 2.378, depth: 0.2 },
-  /* living room ↔ end room */
+  /* living room ↔ office */
   { kind: 'passage', a: [8.79, -0.185], b: [8.79, 0.685], y0: 0, y1: 2.43, depth: 0.2 },
   /* living room bay window, in the angled corner */
   { kind: 'window', a: [8.636, 1.582], b: [7.436, 2.682], y0: 0.84, y1: 2.72, depth: 0 },
-  /* end room window, north wall */
+  /* office window, north wall */
   { kind: 'window', a: [10.7, 2.075], b: [9.63, 2.075], y0: 0.8, y1: 2.66, depth: 0 },
-  /* end room outer door, in the angled corner */
+  /* office outer door, in the angled corner */
   { kind: 'door', a: [11.842, 1.419], b: [11.362, 2.059], y0: 0, y1: 2.2, depth: 0 },
 ];
 

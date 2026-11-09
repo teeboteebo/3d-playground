@@ -222,7 +222,7 @@ describe('App', () => {
   it('offers no floor choice in any room', async () => {
     const user = userEvent.setup();
     render(<App />);
-    for (const name of ['Bedroom', 'Hall', 'Living room', 'End room']) {
+    for (const name of ['Bedroom', 'Hall', 'Living room', 'Office']) {
       await user.click(within(roomList()).getByRole('button', { name: new RegExp(name) }));
       expect(screen.queryByRole('group', { name: 'Floor' })).toBeNull();
       await user.click(back());
@@ -240,7 +240,7 @@ describe('App', () => {
 
   it('shows the camera views for the selection', () => {
     const { unmount } = render(<App />);
-    expect(viewNames()).toEqual(['Apartment', 'Foot of bed', 'Hall', 'Living room', 'End room']);
+    expect(viewNames()).toEqual(['Apartment', 'Foot of bed', 'Hall', 'Living room', 'Office']);
     unmount();
     renderIn('bedroom');
     expect(viewNames()).toEqual(['Overview', 'Foot of bed', 'Wardrobe wall', 'Dresser wall', 'Top down']);
