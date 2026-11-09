@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { CEILING, OPENINGS, ROOMS, apartmentBounds, centroid, roomWalls } from './apartment';
+import { CEILING, OPENINGS, ROOMS, apartmentBounds, centroid, roomSize } from '../data/rooms';
+import { roomWalls } from './apartment';
+import { SHELL_ROOMS } from './buildApartment';
 
 const room = (id: string) => ROOMS.find((r) => r.id === id)!;
+
 const size = (id: string) => {
   const xs = room(id).poly.map((p) => p[0]);
   const zs = room(id).poly.map((p) => p[1]);
@@ -38,7 +41,7 @@ describe('apartment rooms', () => {
   });
 
   it('cuts each opening into the walls on both sides of it', () => {
-    const walls = ROOMS.flatMap((r) => roomWalls(r));
+    const walls = SHELL_ROOMS.flatMap((r) => roomWalls(r));
     const cuts = (i: number) => walls.filter((w) => w.holes.some((h) => h.opening === OPENINGS[i])).map((w) => w.room.id);
     expect(cuts(0)).toEqual(['hall']); // the bedroom side is built by the bedroom itself
     expect(cuts(1).sort()).toEqual(['hall', 'living']);
@@ -67,5 +70,14 @@ describe('apartment rooms', () => {
     const b = apartmentBounds();
     expect(b.minX).toBeCloseTo(-2.15);
     expect(b.maxX).toBeCloseTo(11.89);
+  });
+
+  it('labels each room with its outline size', () => {
+    expect(ROOMS.map((r) => `${r.name}: ${roomSize(r)}`)).toEqual([
+      'Bedroom: 430 × 395 cm',
+      'Hall: 114 × 310 cm',
+      'Living room: 500 × 465 cm',
+      'Office: 300 × 400 cm',
+    ]);
   });
 });

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import type { XZ } from './apartment';
+import type { XZ } from '../data/rooms';
 import { isClick, pickRoom } from './pickRoom';
 
 describe('isClick', () => {

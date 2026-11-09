@@ -1,4 +1,5 @@
-import { PAINTS, type RoomId } from '../data/catalog';
+import { PAINTS } from '../data/catalog';
+import type { RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { ChipGroup } from './ChipGroup';
 

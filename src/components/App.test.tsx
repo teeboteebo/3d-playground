@@ -6,10 +6,10 @@ import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
 const scene = { apply: vi.fn(), setView: vi.fn(), dispose: vi.fn() };
-const createBedroomScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
+const createApartmentScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({
-  createBedroomScene: (...args: unknown[]) => createBedroomScene(...args),
+  createApartmentScene: (...args: unknown[]) => createApartmentScene(...args),
 }));
 
 const lastApplied = (): Settings => scene.apply.mock.calls.at(-1)![0];
@@ -18,7 +18,7 @@ const stored = (): Settings => JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
-  createBedroomScene.mockImplementation(() => scene);
+  createApartmentScene.mockImplementation(() => scene);
 });
 
 /** render with a room already selected, as a returning visitor would have it */
@@ -34,8 +34,8 @@ describe('App', () => {
   it('creates the scene with the saved settings and disposes it on unmount', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ rug: 'rista', time: 'eve' }));
     const { unmount } = render(<App />);
-    expect(createBedroomScene).toHaveBeenCalledTimes(1);
-    expect(createBedroomScene.mock.calls[0][2]).toMatchObject({ rug: 'rista', time: 'eve' });
+    expect(createApartmentScene).toHaveBeenCalledTimes(1);
+    expect(createApartmentScene.mock.calls[0][2]).toMatchObject({ rug: 'rista', time: 'eve' });
     unmount();
     expect(scene.dispose).toHaveBeenCalledTimes(1);
   });
@@ -126,7 +126,7 @@ describe('App', () => {
 
   it('shows the WebGL fallback and keeps the panel working when the scene cannot be created', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    createBedroomScene.mockImplementation(() => {
+    createApartmentScene.mockImplementation(() => {
       throw new Error('no webgl');
     });
     const user = userEvent.setup();
@@ -169,7 +169,7 @@ describe('App', () => {
 
   it('selects the room clicked in 3D, and deselects on a click outside', async () => {
     render(<App />);
-    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     await act(async () => onPick('hall'));
     expect(lastApplied().room).toBe('hall');
     expect(screen.getByRole('heading', { name: 'Hall' })).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe('App', () => {
 
   it('moves only the pivot, not the rotation or zoom, when a room is picked in 3D', async () => {
     render(<App />);
-    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     const pivot = (sel: 'hall' | 'all') => {
       const { tx, ty, tz } = mainView(sel).pose;
       return { tx, ty, tz };
@@ -193,7 +193,7 @@ describe('App', () => {
 
   it('leaves the camera alone when a 3D pick changes nothing', async () => {
     render(<App />);
-    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     scene.setView.mockClear();
     await act(async () => onPick(null)); // already at all rooms
     expect(scene.setView).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe('App', () => {
   it('still flies from the sidebar after a 3D pick that changed nothing', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     await act(async () => onPick(null)); // already at all rooms
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);

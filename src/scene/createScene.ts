@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 import {
-  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById, type RoomId,
+  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById,
   type CameraPose,
 } from '../data/catalog';
+import { BEDROOM_DOOR, BEDROOM_HALF, CEILING, ROOMS, apartmentBounds, type RoomId } from '../data/rooms';
 import { mixHex } from '../lib/color';
+import { clamp } from '../lib/math';
 import type { Settings } from '../state/settings';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import { BEDROOM_POLY, CEILING, ROOMS, apartmentBounds } from './apartment';
-import { buildApartment } from './buildApartment';
+import { buildApartment, type ShellRoomId } from './buildApartment';
+import { setWindowSpot, windowSpot } from './daylight';
+import { disposeTree } from './dispose';
+import { lin, std } from './materials';
 import { loadFurniture } from './furniture';
 import { isClick, pickRoom } from './pickRoom';
 import { addRoomLights } from './roomLights';
@@ -18,7 +22,7 @@ import {
   artTexture, canvasTexture, floorTexture, getRugCanvases, mirrorTexture, weaveTexture, woodTexture,
 } from './textures';
 
-export interface BedroomScene {
+export interface ApartmentScene {
   apply(settings: Settings): void;
   /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
@@ -33,10 +37,14 @@ export class WebGLUnavailableError extends Error {
   }
 }
 
-/* Room dimensions (metres). */
-const W = 4.3;
-const L = 3.95;
-const H = 3.3;
+/* Bedroom dimensions (metres): width along x, length along z, ceiling height. */
+const W = BEDROOM_HALF.x * 2;
+const L = BEDROOM_HALF.z * 2;
+const H = CEILING;
+/* the doorway to the hall, on the east wall (z range and height) */
+const DOOR_Z0 = BEDROOM_DOOR.a[1];
+const DOOR_Z1 = BEDROOM_DOOR.b[1];
+const DOOR_H = BEDROOM_DOOR.y1;
 const BEDX = (-W / 2 + (W / 2 - 0.58)) / 2;
 const RAIL_Y = 0.75;
 /* lower moulding panels run from just above the skirting to just under the rail */
@@ -47,18 +55,13 @@ const FRAME_T = 0.028;
 const ADINA_SHADE_Y = 1.35;
 const ADINA_STEM_OUT = 0.105;
 
-const lin = (hex: string) => new THREE.Color(hex).convertSRGBToLinear();
-const std = (hex: string, rough = 0.9, metal = 0) =>
-  new THREE.MeshStandardMaterial({ color: lin(hex), roughness: rough, metalness: metal });
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
-
-export function createBedroomScene(
+export function createApartmentScene(
   canvas: HTMLCanvasElement,
   container: HTMLElement,
   initial: Settings,
   /** called with the room under a click (not a drag), or null for a click outside the apartment */
   onPick?: (room: RoomId | null) => void,
-): BedroomScene {
+): ApartmentScene {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -163,7 +166,9 @@ export function createBedroomScene(
   left.rotation.y = Math.PI / 2;
   left.position.set(-W / 2, 0, 0);
 
-  const right = wall([[-L / 2, 0], [0.55, 0], [0.55, 2.58], [1.75, 2.58], [1.75, 0], [L / 2, 0], [L / 2, H], [-L / 2, H], [-L / 2, 0]]);
+  const right = wall([
+    [-L / 2, 0], [DOOR_Z0, 0], [DOOR_Z0, DOOR_H], [DOOR_Z1, DOOR_H], [DOOR_Z1, 0], [L / 2, 0], [L / 2, H], [-L / 2, H], [-L / 2, 0],
+  ]);
   right.rotation.y = -Math.PI / 2;
   right.position.set(W / 2, 0, 0);
 
@@ -189,12 +194,13 @@ export function createBedroomScene(
   });
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
-  const pickRooms = [{ id: 'bedroom' as const, poly: BEDROOM_POLY }, ...ROOMS];
   const furniture = loadFurniture(scene, (piece) =>
     piece.file
       ? new GLTFLoader().loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene)
       : Promise.resolve(quebecRug()),
   );
+  let furnitureReady = false;
+  void furniture.ready.then(() => (furnitureReady = true));
   const roomLights = addRoomLights(scene);
   scene.add(apartment.group);
   for (const l of apartment.windowLights) scene.add(l, l.target);
@@ -202,8 +208,10 @@ export function createBedroomScene(
   /* skirting */
   box(W - 0.58, 0.18, 0.02, trimMat, -0.29, 0.09, -L / 2 + 0.01);
   box(0.02, 0.18, L, trimMat, -W / 2 + 0.01, 0.09, 0);
-  box(0.02, 0.18, 0.525, trimMat, W / 2 - 0.01, 0.09, 0.2875);
-  box(0.02, 0.18, 0.225, trimMat, W / 2 - 0.01, 0.09, 1.8625);
+  /* east wall: from the end of the wardrobes (2 m in) to the doorway, and from the doorway to the corner */
+  const WARD_END = -L / 2 + 2;
+  box(0.02, 0.18, DOOR_Z0 - WARD_END, trimMat, W / 2 - 0.01, 0.09, (WARD_END + DOOR_Z0) / 2);
+  box(0.02, 0.18, L / 2 - DOOR_Z1, trimMat, W / 2 - 0.01, 0.09, (DOOR_Z1 + L / 2) / 2);
 
   /* ---------- two arched windows + curtains (left wall) ---------- */
   const windowParts = collect(() => {
@@ -260,9 +268,10 @@ export function createBedroomScene(
 
   /* ---------- open doorway to the hall (right wall): just its frame, no doors ---------- */
   const doorParts = collect(() => {
-    box(0.03, 2.6, 0.07, trimMat, W / 2 - 0.015, 1.3, 0.55 - 0.035);
-    box(0.03, 2.6, 0.07, trimMat, W / 2 - 0.015, 1.3, 1.75 + 0.035);
-    box(0.03, 0.07, 1.34, trimMat, W / 2 - 0.015, 2.615, 1.15);
+    const postH = DOOR_H + 0.02;
+    box(0.03, postH, 0.07, trimMat, W / 2 - 0.015, postH / 2, DOOR_Z0 - 0.035);
+    box(0.03, postH, 0.07, trimMat, W / 2 - 0.015, postH / 2, DOOR_Z1 + 0.035);
+    box(0.03, 0.07, DOOR_Z1 - DOOR_Z0 + 0.14, trimMat, W / 2 - 0.015, DOOR_H + 0.035, (DOOR_Z0 + DOOR_Z1) / 2);
   });
 
   /* ---------- bed (IKEA TONSTAD 160x200), bench (ILVA Amigo) and pillows, shifted by BEDX ---------- */
@@ -500,9 +509,7 @@ export function createBedroomScene(
   /* daylight spilling in through each window: soft, shadow-casting and falling off across the room,
      so the window side reads bright and the far wall, corners and undersides of furniture go dim */
   const windowLights = WIN_Z.map((cz) => {
-    const l = new THREE.SpotLight(0xeef3ff, 0, 7.5, 1.15, 1, 1.6);
-    l.position.set(-W / 2 + 0.32, 2.15, cz);
-    l.target.position.set(0.9, 0.2, cz * 0.6);
+    const l = windowSpot(new THREE.Vector3(-W / 2 + 0.32, 2.15, cz), new THREE.Vector3(0.9, 0.2, cz * 0.6));
     l.castShadow = true;
     l.shadow.mapSize.set(1024, 1024);
     l.shadow.radius = 1;
@@ -603,7 +610,7 @@ export function createBedroomScene(
     }
     layoutBedWall(s);
     wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : wallHex));
-    for (const [id, r] of Object.entries(apartment.rooms) as [Exclude<RoomId, 'bedroom'>, (typeof apartment.rooms)['hall']][]) {
+    for (const [id, r] of Object.entries(apartment.rooms) as [ShellRoomId, (typeof apartment.rooms)['hall']][]) {
       r.wall.color.copy(lin(findById(PAINTS, s.walls[id]).hex));
     }
     furniture.setHidden(s.hidden);
@@ -638,10 +645,7 @@ export function createBedroomScene(
        corners, the far side of furniture and the floor under the bed fall into real shade */
     sun.intensity = eve ? 0 : 1.6;
     /* evening: the window lights become faint, cool moonlight */
-    for (const l of [...windowLights, ...apartment.windowLights]) {
-      l.intensity = eve ? 0.18 : 1.6;
-      l.color.set(eve ? 0x8ea6d6 : 0xeef3ff);
-    }
+    for (const l of [...windowLights, ...apartment.windowLights]) setWindowSpot(l, eve);
     /* evening: warm bounce light off the lamp-lit walls and ceiling fills in what faces away from the lamps */
     hemi.intensity = eve ? 0.3 : 0.26;
     hemi.color.set(eve ? 0xa68a6c : 0xdfe8f2);
@@ -721,7 +725,7 @@ export function createBedroomScene(
     if (last && e.type === 'pointerup' && onPick && isClick(pressTravel, pressPointers)) {
       const r = canvas.getBoundingClientRect();
       const ndc = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
-      onPick(pickRoom(ndc, camera, scene.children, pickRooms));
+      onPick(pickRoom(ndc, camera, scene.children, ROOMS));
     }
     lastPinch = 0;
   };
@@ -754,7 +758,10 @@ export function createBedroomScene(
   };
   let raf = 0;
   function frame() {
-    for (const key of Object.keys(cur) as (keyof CameraPose)[]) cur[key] += (goal[key] - cur[key]) * 0.14;
+    /* ease towards the goal, and snap onto it once close, so the camera comes to rest exactly there */
+    const keys = Object.keys(cur) as (keyof CameraPose)[];
+    const arriving = keys.every((k) => Math.abs(goal[k] - cur[k]) < 1e-3);
+    for (const k of keys) cur[k] = arriving ? goal[k] : cur[k] + (goal[k] - cur[k]) * 0.14;
     const d = cur.dist * Math.max(1, 1.15 / camera.aspect);
     camera.position.set(
       cur.tx + d * Math.sin(cur.phi) * Math.sin(cur.theta),
@@ -775,6 +782,9 @@ export function createBedroomScene(
     setVisible(mouldParts, bv && current.mouldB !== 'off');
     setVisible(mouldFParts, fv && current.mouldF !== 'off');
     renderer.render(scene, camera);
+    /* lets screenshot tests wait for a still frame: the camera has arrived and the furniture has loaded */
+    const settled = String(arriving && furnitureReady);
+    if (canvas.dataset.settled !== settled) canvas.dataset.settled = settled;
     raf = requestAnimationFrame(frame);
   }
 
@@ -785,6 +795,7 @@ export function createBedroomScene(
     apply,
     setView(pose) {
       Object.assign(goal, pose);
+      canvas.dataset.settled = 'false';
     },
     dispose() {
       cancelAnimationFrame(raf);
@@ -795,17 +806,8 @@ export function createBedroomScene(
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onUp);
       canvas.removeEventListener('wheel', onWheel);
-      const materials = new Set<THREE.Material>();
-      scene.traverse((o) => {
-        if (o instanceof THREE.Mesh) {
-          o.geometry.dispose();
-          for (const m of Array.isArray(o.material) ? o.material : [o.material]) materials.add(m);
-        }
-      });
-      for (const m of materials) {
-        for (const v of Object.values(m)) if (v instanceof THREE.Texture) v.dispose();
-        m.dispose();
-      }
+      furniture.dispose();
+      disposeTree(scene);
       for (const t of rugTextures.values()) t.dispose();
       renderer.dispose();
     },

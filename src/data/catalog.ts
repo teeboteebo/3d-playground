@@ -1,3 +1,5 @@
+import { ROOMS, roomById, type RoomSelection } from './rooms';
+
 export interface Swatch {
   id: string;
   name: string;
@@ -116,8 +118,6 @@ export type IconName =
   | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus'
   | 'plan' | 'hall' | 'sofa' | 'room';
 
-export type RoomId = 'bedroom' | 'hall' | 'living' | 'end';
-export type RoomSelection = RoomId | 'all';
 
 export interface CameraView {
   name: string;
@@ -152,21 +152,6 @@ export const PAINTS: Swatch[] = [
   { id: 'stone', name: 'Warm stone', hex: '#B9B3A7' },
 ];
 
-export interface RoomInfo {
-  id: RoomId;
-  name: string;
-  size: string;
-  /** name of the view the camera flies to when the room is selected */
-  view: string;
-}
-
-export const ROOM_LIST: RoomInfo[] = [
-  { id: 'bedroom', name: 'Bedroom', size: '430 × 395 cm', view: 'Foot of bed' },
-  { id: 'hall', name: 'Hall', size: '114 × 310 cm', view: 'Hall' },
-  { id: 'living', name: 'Living room', size: '500 × 465 cm', view: 'Living room' },
-  { id: 'end', name: 'Office', size: '300 × 400 cm', view: 'Office' },
-];
-
 export interface FurniturePiece {
   id: string;
   name: string;
@@ -197,12 +182,12 @@ const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;
 
 /** the camera view a selection flies to */
 export function mainView(sel: RoomSelection): CameraView {
-  return sel === 'all' ? viewNamed('Apartment') : viewNamed(ROOM_LIST.find((r) => r.id === sel)!.view);
+  return sel === 'all' ? viewNamed('Apartment') : viewNamed(roomById(sel).view);
 }
 
 /** the view buttons shown for a selection */
 export function viewsFor(sel: RoomSelection): CameraView[] {
-  return sel === 'all' ? [mainView('all'), ...ROOM_LIST.map((r) => mainView(r.id))] : VIEWS.filter((v) => v.room === sel);
+  return sel === 'all' ? [mainView('all'), ...ROOMS.map((r) => mainView(r.id))] : VIEWS.filter((v) => v.room === sel);
 }
 
 export function findById<T extends { id: string }>(list: readonly T[], id: string): T {

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import type { RoomId } from '../data/catalog';
-import type { XZ } from './apartment';
+import type { RoomId, XZ } from '../data/rooms';
 
 /** furthest a pointer may travel during a press and still count as a click, in px */
 const CLICK_SLOP = 5;

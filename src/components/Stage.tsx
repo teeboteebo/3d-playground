@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { mainView, viewsFor } from '../data/catalog';
-import { createBedroomScene, type BedroomScene } from '../scene/createScene';
+import { createApartmentScene, type ApartmentScene } from '../scene/createScene';
 import type { Settings } from '../state/settings';
 import { DayNightSwitch } from './DayNightSwitch';
 import { Icon } from './Icon';
@@ -13,7 +13,7 @@ interface Props {
 export function Stage({ settings, update }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sceneRef = useRef<BedroomScene | null>(null);
+  const sceneRef = useRef<ApartmentScene | null>(null);
   const settingsRef = useRef(settings);
   /** set when a 3D click changes the room, so that change keeps the camera's rotation and zoom */
   const pickedRef = useRef(false);
@@ -25,9 +25,9 @@ export function Stage({ settings, update }: Props) {
 
   /* build the three.js scene once; it is torn down on unmount */
   useEffect(() => {
-    let scene: BedroomScene;
+    let scene: ApartmentScene;
     try {
-      scene = createBedroomScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) => {
+      scene = createApartmentScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) => {
         const next = room ?? 'all';
         if (next === settingsRef.current.room) return;
         pickedRef.current = true;

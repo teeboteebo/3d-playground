@@ -1,5 +1,11 @@
 import * as THREE from 'three';
-import { CEILING, OPENINGS, ROOMS, SKIRTING, roomWalls, type Opening, type Room, type Wall, type XZ } from './apartment';
+import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
+import { roomWalls, type Wall } from './apartment';
+import { windowSpot } from './daylight';
+
+/** the rooms built here from their outlines; the bedroom has its own, hand-built shell */
+export type ShellRoomId = Exclude<RoomId, 'bedroom'>;
+export const SHELL_ROOMS = ROOMS.filter((r): r is Room & { id: ShellRoomId } => r.id !== 'bedroom');
 
 export interface ApartmentMaterials {
   trim: THREE.Material;
@@ -13,7 +19,7 @@ export interface Apartment {
   /** one soft daylight per window, pointed into its room; intensities are set by the scene */
   windowLights: THREE.SpotLight[];
   /** per room: its wall material (recoloured by the scene) and its floor, with the outline's width and depth */
-  rooms: Record<Room['id'], ApartmentRoom>;
+  rooms: Record<ShellRoomId, ApartmentRoom>;
 }
 
 export interface ApartmentRoom {
@@ -23,14 +29,13 @@ export interface ApartmentRoom {
   depth: number;
 }
 
-const lin = (hex: string) => new THREE.Color(hex).convertSRGBToLinear();
 const FRAME_W = 0.07;
 
-/** Builds every room in ROOMS into one group. Walls are single-sided and face into their room, like the bedroom's. */
+/** Builds every room in SHELL_ROOMS into one group. Walls are single-sided and face into their room, like the bedroom's. */
 export function buildApartment(mats: ApartmentMaterials): Apartment {
   const group = new THREE.Group();
   group.name = 'apartment';
-  const rooms = {} as Record<Room['id'], ApartmentRoom>;
+  const rooms = {} as Record<ShellRoomId, ApartmentRoom>;
   const windowLights: THREE.SpotLight[] = [];
 
   const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, cast = true) => {
@@ -44,8 +49,9 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
   const wallBox = (wall: Wall, u: number, v: number, w: number, su: number, sv: number, sw: number, mat: THREE.Material) =>
     place(mesh(new THREE.BoxGeometry(su, sv, sw), mat), wall, u, v, w);
 
-  for (const room of ROOMS) {
-    const wallMat = new THREE.MeshStandardMaterial({ color: lin(room.wall), roughness: 0.95 });
+  for (const room of SHELL_ROOMS) {
+    /* coloured by the scene from the room's paint setting */
+    const wallMat = new THREE.MeshStandardMaterial({ roughness: 0.95 });
     wallMat.shadowSide = THREE.DoubleSide;
 
     /* floor, and an invisible ceiling that still casts shadows so the sun only comes in through windows */
@@ -144,15 +150,6 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
 
 /* ---------- geometry ---------- */
 
-function extent(poly: readonly XZ[]) {
-  return {
-    minX: Math.min(...poly.map((p) => p[0])),
-    maxX: Math.max(...poly.map((p) => p[0])),
-    minZ: Math.min(...poly.map((p) => p[1])),
-    maxZ: Math.max(...poly.map((p) => p[1])),
-  };
-}
-
 /** a horizontal polygon at height y, facing up (floors) */
 function flatShape(poly: readonly XZ[], y = 0): THREE.ShapeGeometry {
   const s = new THREE.Shape(poly.map(([x, z]) => new THREE.Vector2(x, -z)));
@@ -214,8 +211,8 @@ function wallGeometry(wall: Wall): THREE.ShapeGeometry {
 function windowLight(wall: Wall, u0: number, u1: number, o: Opening): THREE.SpotLight {
   const f = wallFrame(wall);
   const uc = (u0 + u1) / 2;
-  const l = new THREE.SpotLight(0xeef3ff, 0, 7.5, 1.15, 1, 1.6);
-  l.position.copy(new THREE.Vector3(uc, Math.min(o.y1 - 0.4, 2.15), 0.32).applyMatrix4(f));
-  l.target.position.copy(new THREE.Vector3(uc, 0.2, 2.6).applyMatrix4(f));
-  return l;
+  return windowSpot(
+    new THREE.Vector3(uc, Math.min(o.y1 - 0.4, 2.15), 0.32).applyMatrix4(f),
+    new THREE.Vector3(uc, 0.2, 2.6).applyMatrix4(f),
+  );
 }

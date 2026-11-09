@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { FURNITURE, type FurniturePiece } from '../data/catalog';
+import { disposeTree } from './dispose';
 
 export interface Furniture {
   /** hide these furniture ids, show the rest (also applies to pieces still loading) */
   setHidden(ids: readonly string[]): void;
   /** settles once every piece has loaded or failed; never rejects */
   ready: Promise<void>;
+  /** stop adding pieces: any that finish loading later are freed instead (the scene owns the ones already added) */
+  dispose(): void;
 }
 
 /**
@@ -16,11 +19,16 @@ export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePie
   let hidden: readonly string[] = [];
   const loaded = new Map<string, THREE.Object3D>();
   let warned = false;
+  let disposed = false;
 
   const ready = Promise.all(
     FURNITURE.map((piece) =>
       load(piece).then(
         (obj) => {
+          if (disposed) {
+            disposeTree(obj);
+            return;
+          }
           const { id } = piece;
           obj.name = id;
           obj.visible = !hidden.includes(id);
@@ -45,5 +53,8 @@ export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePie
       for (const [id, obj] of loaded) obj.visible = !hidden.includes(id);
     },
     ready,
+    dispose() {
+      disposed = true;
+    },
   };
 }
