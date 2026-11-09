@@ -34,23 +34,28 @@ describe('rooms', () => {
     expect(sanitizeSettings({ rug: 'rista' })).toMatchObject({
       rug: 'rista',
       room: 'all',
-      walls: { bedroom: 'antique', hall: 'antique', living: 'greige', end: 'bluegrey' },
-      floors: { bedroom: 'smoked', hall: 'smoked', living: 'smoked', end: 'smoked' },
+      walls: { bedroom: 'antique', hall: 'frostrok', living: 'frostrok', end: 'devine' },
       hidden: [],
     });
+  });
+
+  it('has no floor setting: every room uses the bedroom floor', () => {
+    expect('floors' in sanitizeSettings({ floors: { hall: 'light' } })).toBe(false);
+  });
+
+  it('moves rooms off paints that were removed to their Jotun defaults', () => {
+    expect(sanitizeSettings({ walls: { living: 'greige', end: 'bluegrey' } }).walls).toMatchObject({ living: 'frostrok', end: 'devine' });
   });
 
   it('replaces unknown rooms, swatches and furniture ids', () => {
     const s = sanitizeSettings({
       room: 'attic',
       walls: { living: 'chalk', end: 'neon' },
-      floors: { hall: 'light' },
       hidden: ['sofa', 'piano', 3, 'sofa'],
     });
     expect(s.room).toBe('all');
     expect(s.walls.living).toBe('chalk');
-    expect(s.walls.end).toBe('bluegrey');
-    expect(s.floors.hall).toBe('light');
+    expect(s.walls.end).toBe('devine');
     expect(s.hidden).toEqual(['sofa']);
   });
 

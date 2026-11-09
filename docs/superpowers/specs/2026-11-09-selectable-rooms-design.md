@@ -27,6 +27,14 @@ Success criteria:
 - Furniture assets total at most ~5 MB and load after the rooms are visible.
 - Lint, typecheck, tests and build pass.
 
+## Amendment (2026-11-09, after implementation)
+
+- Floors are not a choice: every room uses the bedroom's smoked-oak herringbone. The `floors` setting and
+  floor controls are removed.
+- Default wall colours: hall and living room Jotun Froströk 1376 (`#E4E0D3`), end room Jotun Devine 12083
+  (`#D2BEA9`); the bedroom stays Antique Green 7629. These replace the model's greige and blue-grey in the
+  paint palette. Hex values are screen approximations from colour databases.
+
 ## Decisions
 
 | Topic | Choice | Why |

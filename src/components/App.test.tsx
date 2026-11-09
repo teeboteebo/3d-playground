@@ -181,6 +181,24 @@ describe('App', () => {
     expect(lastApplied().walls.hall).toBe('chalk');
   });
 
+  it('offers no floor choice in any room', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    for (const name of ['Bedroom', 'Hall', 'Living room', 'End room']) {
+      await user.click(within(switcher()).getByRole('button', { name }));
+      expect(screen.queryByRole('group', { name: 'Floor' })).toBeNull();
+    }
+  });
+
+  it('offers the Jotun wall colours', async () => {
+    const user = userEvent.setup();
+    renderIn('end');
+    const walls = screen.getByRole('group', { name: 'Wall colour' });
+    expect(within(walls).getByRole('button', { name: 'Devine 12083' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(within(walls).getByRole('button', { name: 'Froströk 1376' }));
+    expect(lastApplied().walls.end).toBe('frostrok');
+  });
+
   it('shows the camera views for the selection', () => {
     const { unmount } = render(<App />);
     expect(viewNames()).toEqual(['Apartment', 'Foot of bed', 'Hall', 'Living room', 'End room']);

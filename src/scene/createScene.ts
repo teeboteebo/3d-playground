@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  BRASS, CREAM, FLOORS, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById, type RoomId,
+  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById, type RoomId,
   type CameraPose,
 } from '../data/catalog';
 import { mixHex } from '../lib/color';
@@ -84,8 +84,7 @@ export function createBedroomScene(
   });
   const trimMat = std(TRIM.hex, 0.6);
   const woodTex = woodTexture(OAK.hex);
-  /* floor maps are set in apply() from the chosen tone */
-  const floorMat = new THREE.MeshStandardMaterial({ roughness: 0.42 });
+  const floorMat = new THREE.MeshStandardMaterial({ roughness: 0.42, map: floorTexture(FLOOR.hex, W) });
   const oakMat = new THREE.MeshStandardMaterial({ roughness: 0.6, map: woodTex });
   const oakDeepMat = new THREE.MeshStandardMaterial({ roughness: 0.65, color: new THREE.Color(0.8, 0.8, 0.8), map: woodTex });
   const brassMat = std(BRASS, 0.35, 0.55);
@@ -186,24 +185,10 @@ export function createBedroomScene(
     glass: glassMat,
     floor: () => new THREE.MeshStandardMaterial({ roughness: 0.42 }),
   });
+  /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
+  for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
   floor.userData.room = 'bedroom';
   const pickFloors = [floor, ...Object.values(apartment.rooms).map((r) => r.floor)];
-  /* one parquet texture per room and tone, made on first use */
-  const floorTextures = new Map<string, THREE.CanvasTexture>();
-  function setFloor(mat: THREE.MeshStandardMaterial, room: RoomId, toneId: string) {
-    const key = `${room}|${toneId}`;
-    let t = floorTextures.get(key);
-    if (!t) {
-      const hex = findById(FLOORS, toneId).hex;
-      const r = room === 'bedroom' ? null : apartment.rooms[room];
-      t = r ? floorTexture(hex, r.width, r.depth) : floorTexture(hex, W);
-      floorTextures.set(key, t);
-    }
-    if (mat.map !== t) {
-      mat.map = t;
-      mat.needsUpdate = true;
-    }
-  }
   const furniture = loadFurniture(scene, (url) =>
     new GLTFLoader().loadAsync(import.meta.env.BASE_URL + url).then((g) => g.scene),
   );
@@ -624,10 +609,8 @@ export function createBedroomScene(
     }
     layoutBedWall(s);
     wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : wallHex));
-    setFloor(floorMat, 'bedroom', s.floors.bedroom);
     for (const [id, r] of Object.entries(apartment.rooms) as [Exclude<RoomId, 'bedroom'>, (typeof apartment.rooms)['hall']][]) {
       r.wall.color.copy(lin(findById(PAINTS, s.walls[id]).hex));
-      setFloor(r.floor.material, id, s.floors[id]);
     }
     furniture.setHidden(s.hidden);
 
@@ -823,7 +806,6 @@ export function createBedroomScene(
         m.dispose();
       }
       for (const t of rugTextures.values()) t.dispose();
-      for (const t of floorTextures.values()) t.dispose();
       renderer.dispose();
     },
   };

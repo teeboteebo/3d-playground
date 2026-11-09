@@ -144,18 +144,12 @@ export const VIEWS: CameraView[] = [
 /** wall paints offered for every room */
 export const PAINTS: Swatch[] = [
   WALL,
-  { id: 'greige', name: 'Greige', hex: '#A29885' },
-  { id: 'bluegrey', name: 'Blue-grey', hex: '#758396' },
+  /* Jotun hex values are screen approximations from colour databases */
+  { id: 'frostrok', name: 'Froströk 1376', hex: '#E4E0D3' },
+  { id: 'devine', name: 'Devine 12083', hex: '#D2BEA9' },
   { id: 'chalk', name: 'Chalk white', hex: '#E9E4D8' },
   { id: 'linen', name: 'Linen', hex: '#D8CDBB' },
   { id: 'stone', name: 'Warm stone', hex: '#B9B3A7' },
-];
-
-/** the herringbone parquet in three tones */
-export const FLOORS: Swatch[] = [
-  FLOOR,
-  { id: 'natural', name: 'Natural oak', hex: '#B08A5E' },
-  { id: 'light', name: 'Light oak', hex: '#CDB08A' },
 ];
 
 export interface RoomInfo {

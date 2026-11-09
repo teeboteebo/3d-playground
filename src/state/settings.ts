@@ -1,5 +1,5 @@
 import {
-  ACCENT_DEFAULT, ARTS, FLOORS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, ROOM_LIST, RUGS, WARDROBES,
+  ACCENT_DEFAULT, ARTS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, ROOM_LIST, RUGS, WARDROBES,
   type RoomId, type RoomSelection,
 } from '../data/catalog';
 import { isHex } from '../lib/color';
@@ -25,8 +25,6 @@ export interface Settings {
   room: RoomSelection;
   /** paint id per room */
   walls: Record<RoomId, string>;
-  /** floor id per room */
-  floors: Record<RoomId, string>;
   /** furniture ids switched off */
   hidden: string[];
 }
@@ -49,8 +47,7 @@ export const DEFAULTS: Settings = {
   frame: 'brass',
   time: 'day',
   room: 'all',
-  walls: { bedroom: 'antique', hall: 'antique', living: 'greige', end: 'bluegrey' },
-  floors: { bedroom: 'smoked', hall: 'smoked', living: 'smoked', end: 'smoked' },
+  walls: { bedroom: 'antique', hall: 'frostrok', living: 'frostrok', end: 'devine' },
   hidden: [],
 };
 
@@ -106,7 +103,6 @@ export function sanitizeSettings(raw: unknown): Settings {
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
     room: oneOf(s.room, ['all', ...ROOM_IDS] as const, 'all'),
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
-    floors: perRoom(s.floors, ids(FLOORS), DEFAULTS.floors),
     hidden: Array.isArray(s.hidden) ? [...new Set(s.hidden.filter((h) => ids(FURNITURE).includes(h as string)) as string[])] : [],
   };
 }
