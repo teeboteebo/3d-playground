@@ -6,7 +6,7 @@ export { getRugCanvases, rugThumbnail } from './canvas';
 
 export function canvasTexture(c: HTMLCanvasElement, repeat = false): THREE.CanvasTexture {
   const t = new THREE.CanvasTexture(c);
-  t.encoding = THREE.sRGBEncoding;
+  t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   if (repeat) t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
