@@ -13,6 +13,7 @@ import { isClick, pickRoom } from './pickRoom';
 import { addRoomLights } from './roomLights';
 import { bedWallLayout } from './layout';
 import { pillowColours } from './palette';
+import { quebecRug } from './quebecRug';
 import {
   artTexture, canvasTexture, floorTexture, getRugCanvases, mirrorTexture, weaveTexture, woodTexture,
 } from './textures';
@@ -188,8 +189,10 @@ export function createBedroomScene(
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
   const pickRooms = [{ id: 'bedroom' as const, poly: BEDROOM_POLY }, ...ROOMS];
-  const furniture = loadFurniture(scene, (url) =>
-    new GLTFLoader().loadAsync(import.meta.env.BASE_URL + url).then((g) => g.scene),
+  const furniture = loadFurniture(scene, (piece) =>
+    piece.file
+      ? new GLTFLoader().loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene)
+      : Promise.resolve(quebecRug()),
   );
   const roomLights = addRoomLights(scene);
   scene.add(apartment.group);

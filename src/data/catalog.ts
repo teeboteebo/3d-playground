@@ -170,21 +170,28 @@ export const ROOM_LIST: RoomInfo[] = [
 export interface FurniturePiece {
   id: string;
   name: string;
-  /** .glb path, relative to the app's base URL */
-  file: string;
+  /** .glb path, relative to the app's base URL; absent for pieces built in code */
+  file?: string;
 }
 
-/** living-room furniture exported from the SketchUp model, in its model positions */
+/**
+ * Living-room furniture: pieces exported from the SketchUp model, in its model positions, plus the
+ * ILVA Quebec rug (250 × 350 cm), which is drawn in code.
+ */
 export const FURNITURE: FurniturePiece[] = [
-  ['sofa', 'Sofa'],
-  ['armchairs', 'Armchairs'],
-  ['side-table', 'Side table'],
-  ['tv', 'Frame TV'],
-  ['tv-bench', 'TV bench'],
-  ['rug', 'Rug'],
-  ['shelving', 'String shelving'],
-  ['plant', 'Plant'],
-].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` }));
+  ...[
+    ['sofa', 'Sofa'],
+    ['armchairs', 'Armchairs'],
+    ['side-table', 'Side table'],
+    ['tv', 'Frame TV'],
+    ['tv-bench', 'TV bench'],
+  ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
+  { id: 'rug', name: 'Quebec rug' },
+  ...[
+    ['shelving', 'String shelving'],
+    ['plant', 'Plant'],
+  ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
+];
 
 const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;
 

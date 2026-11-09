@@ -177,6 +177,26 @@ describe('App', () => {
     expect(lastApplied().room).toBe('all');
   });
 
+  it('keeps the camera where it is when a room is picked in 3D', async () => {
+    render(<App />);
+    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    scene.setView.mockClear();
+    await act(async () => onPick('hall'));
+    await act(async () => onPick('living'));
+    await act(async () => onPick(null));
+    expect(lastApplied().room).toBe('all');
+    expect(scene.setView).not.toHaveBeenCalled();
+  });
+
+  it('still flies from the sidebar after a 3D pick that changed nothing', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const onPick = createBedroomScene.mock.calls[0][3] as (room: string | null) => void;
+    await act(async () => onPick(null)); // already at all rooms
+    await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
+  });
+
   it('hides living-room furniture and repaints a room', async () => {
     const user = userEvent.setup();
     renderIn('living');

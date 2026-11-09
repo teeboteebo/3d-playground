@@ -15,6 +15,8 @@ export function Stage({ settings, update }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<BedroomScene | null>(null);
   const settingsRef = useRef(settings);
+  /** set when a 3D click changes the room, so that change keeps the camera where the user put it */
+  const pickedRef = useRef(false);
   const updateRef = useRef(update);
   useEffect(() => {
     updateRef.current = update;
@@ -25,9 +27,12 @@ export function Stage({ settings, update }: Props) {
   useEffect(() => {
     let scene: BedroomScene;
     try {
-      scene = createBedroomScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) =>
-        updateRef.current({ room: room ?? 'all' }),
-      );
+      scene = createBedroomScene(canvasRef.current!, wrapRef.current!, settingsRef.current, (room) => {
+        const next = room ?? 'all';
+        if (next === settingsRef.current.room) return;
+        pickedRef.current = true;
+        updateRef.current({ room: next });
+      });
     } catch (e) {
       console.warn(e);
       setWebgl(false); // eslint-disable-line react-hooks/set-state-in-effect -- one-off capability probe
@@ -45,8 +50,12 @@ export function Stage({ settings, update }: Props) {
     sceneRef.current?.apply(settings);
   }, [settings]);
 
-  /* selecting a room (from the panel or by clicking it) flies the camera to it */
+  /* selecting a room from the panel flies the camera to it; picking it in 3D keeps the current view */
   useEffect(() => {
+    if (pickedRef.current) {
+      pickedRef.current = false;
+      return;
+    }
     sceneRef.current?.setView(mainView(settings.room).pose);
   }, [settings.room]);
 

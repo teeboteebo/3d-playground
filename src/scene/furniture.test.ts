@@ -7,10 +7,20 @@ afterEach(() => vi.restoreAllMocks());
 const byFile = (scene: THREE.Object3D, id: string) => scene.children.find((c) => c.name === id)!;
 
 describe('loadFurniture', () => {
+  it('hands the loader each piece, the rug without a model file', async () => {
+    const seen: (string | undefined)[] = [];
+    await loadFurniture(new THREE.Scene(), (piece) => {
+      seen.push(piece.file);
+      return Promise.resolve(new THREE.Group());
+    }).ready;
+    expect(seen).toContain('models/living/sofa.glb');
+    expect(seen).toContain(undefined);
+  });
+
   it('adds every piece that loads and carries on past one that fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const scene = new THREE.Scene();
-    const f = loadFurniture(scene, (url) => (url.endsWith('/tv.glb') ? Promise.reject(new Error('404')) : Promise.resolve(new THREE.Group())));
+    const f = loadFurniture(scene, (piece) => (piece.id === 'tv' ? Promise.reject(new Error('404')) : Promise.resolve(new THREE.Group())));
     await f.ready;
     expect(scene.children).toHaveLength(7);
     expect(warn).toHaveBeenCalledTimes(1);
@@ -31,7 +41,7 @@ describe('loadFurniture', () => {
     const scene = new THREE.Scene();
     let release!: (o: THREE.Object3D) => void;
     const late = new Promise<THREE.Object3D>((r) => (release = r));
-    const f = loadFurniture(scene, (url) => (url.endsWith('/sofa.glb') ? late : Promise.resolve(new THREE.Group())));
+    const f = loadFurniture(scene, (piece) => (piece.id === 'sofa' ? late : Promise.resolve(new THREE.Group())));
     f.setHidden(['sofa']);
     release(new THREE.Group());
     await f.ready;

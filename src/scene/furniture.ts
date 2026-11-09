@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FURNITURE } from '../data/catalog';
+import { FURNITURE, type FurniturePiece } from '../data/catalog';
 
 export interface Furniture {
   /** hide these furniture ids, show the rest (also applies to pieces still loading) */
@@ -12,15 +12,16 @@ export interface Furniture {
  * Loads the living-room furniture into `parent`. Each piece is already in scene coordinates and appears as soon
  * as it loads. A piece that fails to load is skipped with one warning; the rest of the room still works.
  */
-export function loadFurniture(parent: THREE.Object3D, load: (url: string) => Promise<THREE.Object3D>): Furniture {
+export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePiece) => Promise<THREE.Object3D>): Furniture {
   let hidden: readonly string[] = [];
   const loaded = new Map<string, THREE.Object3D>();
   let warned = false;
 
   const ready = Promise.all(
-    FURNITURE.map(({ id, file }) =>
-      load(file).then(
+    FURNITURE.map((piece) =>
+      load(piece).then(
         (obj) => {
+          const { id } = piece;
           obj.name = id;
           obj.visible = !hidden.includes(id);
           obj.traverse((o) => {

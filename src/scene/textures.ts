@@ -377,3 +377,46 @@ export function artTexture(id: string, accent: string): THREE.CanvasTexture {
   speckle(g, 410, 260, 3000, 0.04);
   return canvasTexture(c, false);
 }
+
+/**
+ * ILVA Quebec kilim: plain light-greige wool in chunky braided ribs that run the rug's length, with a tighter
+ * woven band at each short end. Drawn at 4 px per cm for the 350 × 250 cm size (u along the length).
+ */
+export function quebecRugTexture(): THREE.CanvasTexture {
+  const W = 1400;
+  const H = 1000;
+  const c = makeCanvas(W, H);
+  const g = c.getContext('2d')!;
+  reseed(41);
+  g.fillStyle = '#B7AE9F';
+  g.fillRect(0, 0, W, H);
+  const ROW = 10; // a 2.5 cm braid
+  const END = 16; // 4 cm woven band at each end
+  for (let r = 0; r * ROW < H; r++) {
+    const y = r * ROW;
+    const dir = r % 2 ? 1 : -1;
+    /* each braid is a run of slanted loops; alternate rows lean the other way, like a herringbone braid */
+    for (let x = END - 6; x < W - END + 6; x += 7) {
+      const t = 0.9 + R() * 0.2;
+      g.fillStyle = `rgb(${Math.round(196 * t)},${Math.round(188 * t)},${Math.round(174 * t)})`;
+      g.beginPath();
+      g.moveTo(x, y + 1);
+      g.lineTo(x + 6, y + 1);
+      g.lineTo(x + 6 + dir * 3, y + ROW - 1);
+      g.lineTo(x + dir * 3, y + ROW - 1);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(70,60,45,.28)';
+    g.fillRect(0, y + ROW - 1, W, 1.2);
+  }
+  for (const x0 of [0, W - END]) {
+    g.fillStyle = '#A9A091';
+    g.fillRect(x0, 0, END, H);
+    for (let y = 0; y < H; y += 3) {
+      g.fillStyle = y % 6 ? 'rgba(255,250,240,.12)' : 'rgba(60,50,35,.15)';
+      g.fillRect(x0, y, END, 1.5);
+    }
+  }
+  speckle(g, W, H, 9000, 0.06);
+  return canvasTexture(c, false);
+}
