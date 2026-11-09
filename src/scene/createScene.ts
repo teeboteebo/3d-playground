@@ -102,6 +102,8 @@ export function createApartmentScene(
 
   const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => onPick?.(pickRoom(ndc, camera, scene.children, ROOMS)));
 
+  /* the pending animation frame; 0 until the first frame */
+  let raf = 0;
   function fit() {
     const r = container.getBoundingClientRect();
     const w = Math.max(1, r.width);
@@ -110,6 +112,9 @@ export function createApartmentScene(
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    /* resizing clears the canvas, so draw again now rather than show a blank frame, and once more next frame,
+       when the camera has stepped back or in for the new shape */
+    if (raf) draw();
     invalidate();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
@@ -117,14 +122,16 @@ export function createApartmentScene(
   window.addEventListener('resize', fit);
   fit();
 
-  let raf = 0;
+  function draw() {
+    bedroom.showFrom(camera.position);
+    renderer.render(scene, camera);
+    dirty = false;
+  }
+  /* a restored WebGL context starts blank */
+  canvas.addEventListener('webglcontextrestored', invalidate);
   function frame() {
     const { moved, arrived } = orbit.update();
-    if (moved || dirty) {
-      bedroom.showFrom(camera.position);
-      renderer.render(scene, camera);
-      dirty = false;
-    }
+    if (moved || dirty) draw();
     /* lets screenshot tests wait for a still frame: the camera has arrived and the furniture has loaded */
     const settled = String(arrived && furnitureReady);
     if (canvas.dataset.settled !== settled) canvas.dataset.settled = settled;
@@ -144,6 +151,7 @@ export function createApartmentScene(
       cancelAnimationFrame(raf);
       ro?.disconnect();
       window.removeEventListener('resize', fit);
+      canvas.removeEventListener('webglcontextrestored', invalidate);
       orbit.dispose();
       furniture.dispose();
       disposeTree(scene);
