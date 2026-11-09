@@ -1,10 +1,16 @@
 import * as THREE from 'three';
 import {
-  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById,
+  BRASS, CREAM, FLOOR, FRAMES, INK, OAK, OAT, PAINTS, RUG_SIZE, RUGS, TRIM, VIEWS, WALL, findById, type RoomId,
   type CameraPose,
 } from '../data/catalog';
 import { mixHex } from '../lib/color';
 import type { Settings } from '../state/settings';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { BEDROOM_POLY, CEILING, ROOMS, apartmentBounds } from './apartment';
+import { buildApartment } from './buildApartment';
+import { loadFurniture } from './furniture';
+import { isClick, pickRoom } from './pickRoom';
+import { addRoomLights } from './roomLights';
 import { bedWallLayout } from './layout';
 import { pillowColours } from './palette';
 import {
@@ -44,7 +50,13 @@ const std = (hex: string, rough = 0.9, metal = 0) =>
   new THREE.MeshStandardMaterial({ color: lin(hex), roughness: rough, metalness: metal });
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
-export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLElement, initial: Settings): BedroomScene {
+export function createBedroomScene(
+  canvas: HTMLCanvasElement,
+  container: HTMLElement,
+  initial: Settings,
+  /** called with the room under a click (not a drag), or null for a click outside the apartment */
+  onPick?: (room: RoomId | null) => void,
+): BedroomScene {
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -166,6 +178,22 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   ceil.position.set(0, H, 0);
   ceil.castShadow = true;
   scene.add(ceil);
+
+  /* ---------- the rest of the apartment: hall, living room and end room (structure only) ---------- */
+  const apartment = buildApartment({
+    trim: trimMat,
+    glass: glassMat,
+    floor: () => new THREE.MeshStandardMaterial({ roughness: 0.42 }),
+  });
+  /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
+  for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
+  const pickRooms = [{ id: 'bedroom' as const, poly: BEDROOM_POLY }, ...ROOMS];
+  const furniture = loadFurniture(scene, (url) =>
+    new GLTFLoader().loadAsync(import.meta.env.BASE_URL + url).then((g) => g.scene),
+  );
+  const roomLights = addRoomLights(scene);
+  scene.add(apartment.group);
+  for (const l of apartment.windowLights) scene.add(l, l.target);
 
   /* skirting */
   box(W - 0.58, 0.18, 0.02, trimMat, -0.29, 0.09, -L / 2 + 0.01);
@@ -453,9 +481,25 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   sun.target.position.set(0, 0, 0);
   scene.add(sun, sun.target);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.radius = 1;
-  Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 22 });
+  /* the sun's shadow box has to cover the whole apartment (every room's ceiling and walls block it),
+     otherwise anything outside the box is treated as sunlit. Fit it to the apartment as the sun sees it. */
+  {
+    const b = apartmentBounds();
+    const view = new THREE.Matrix4().lookAt(sun.position, sun.target.position, new THREE.Vector3(0, 1, 0));
+    view.setPosition(sun.position).invert();
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    for (const x of [b.minX, b.maxX]) for (const y of [0, CEILING]) for (const z of [b.minZ, b.maxZ]) {
+      const p = new THREE.Vector3(x, y, z).applyMatrix4(view);
+      lo.min(p);
+      hi.max(p);
+    }
+    const m = 0.5;
+    Object.assign(sun.shadow.camera, { left: lo.x - m, right: hi.x + m, bottom: lo.y - m, top: hi.y + m, near: 0.5, far: -lo.z + m });
+    sun.shadow.camera.updateProjectionMatrix();
+    sun.shadow.mapSize.set(2048, 2048);
+  }
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.02;
   /* daylight spilling in through each window: soft, shadow-casting and falling off across the room,
@@ -555,13 +599,19 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   let artKey = '';
   function apply(s: Settings) {
     current = s;
-    const mouldHex = s.mould === 'tone' ? WALL.hex : TRIM.hex;
+    const wallHex = findById(PAINTS, s.walls.bedroom).hex;
+    wallMat.color.copy(lin(wallHex));
+    const mouldHex = s.mould === 'tone' ? wallHex : TRIM.hex;
     for (const m of [mouldMat, mouldFMat]) {
       m.color.copy(lin(mouldHex));
       if (s.mould === 'tone') m.color.multiplyScalar(0.82);
     }
     layoutBedWall(s);
-    wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : WALL.hex));
+    wardMat.color.copy(lin(s.ward === 'trim' ? TRIM.hex : s.ward === 'ink' ? INK : wallHex));
+    for (const [id, r] of Object.entries(apartment.rooms) as [Exclude<RoomId, 'bedroom'>, (typeof apartment.rooms)['hall']][]) {
+      r.wall.color.copy(lin(findById(PAINTS, s.walls[id]).hex));
+    }
+    furniture.setHidden(s.hidden);
 
     vaseMat.color.copy(lin(s.accent));
     const pl = pillowColours(s.pillows, s.accent);
@@ -588,11 +638,12 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     }
 
     const eve = s.time === 'eve';
+    roomLights.setEvening(eve);
     /* daylight: a strong low sun through the windows does most of the work, with a dim sky fill so
        corners, the far side of furniture and the floor under the bed fall into real shade */
     sun.intensity = eve ? 0 : 1.6;
     /* evening: the window lights become faint, cool moonlight */
-    for (const l of windowLights) {
+    for (const l of [...windowLights, ...apartment.windowLights]) {
       l.intensity = eve ? 0.18 : 1.6;
       l.color.set(eve ? 0x8ea6d6 : 0xeef3ff);
     }
@@ -633,14 +684,28 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
     const [a, b] = Array.from(pts.values());
     return Math.hypot(a.x - b.x, a.y - b.y);
   };
+  /* where the current press started and how many pointers it has used, to tell a click from an orbit or pinch */
+  let pressAt = { x: 0, y: 0 };
+  let pressTravel = 0;
+  let pressPointers = 0;
+  const travel = (e: PointerEvent) => {
+    pressTravel = Math.max(pressTravel, Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y));
+  };
   const onDown = (e: PointerEvent) => {
     canvas.setPointerCapture(e.pointerId);
+    if (pts.size === 0) {
+      pressAt = { x: e.clientX, y: e.clientY };
+      pressTravel = 0;
+      pressPointers = 0;
+    }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    pressPointers = Math.max(pressPointers, pts.size);
     if (pts.size === 2) lastPinch = pinchDistance();
   };
   const onMove = (e: PointerEvent) => {
     const p = pts.get(e.pointerId);
     if (!p) return;
+    travel(e);
     const dx = e.clientX - p.x;
     const dy = e.clientY - p.y;
     p.x = e.clientX;
@@ -650,17 +715,24 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       goal.phi = clamp(goal.phi - dy * 0.005, 0.15, 1.5);
     } else if (pts.size === 2) {
       const d = pinchDistance();
-      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, 3, 14);
+      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, 3, 32);
       lastPinch = d;
     }
   };
   const onUp = (e: PointerEvent) => {
+    const last = pts.size === 1 && pts.has(e.pointerId);
     pts.delete(e.pointerId);
+    if (last) travel(e);
+    if (last && e.type === 'pointerup' && onPick && isClick(pressTravel, pressPointers)) {
+      const r = canvas.getBoundingClientRect();
+      const ndc = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+      onPick(pickRoom(ndc, camera, scene.children, pickRooms));
+    }
     lastPinch = 0;
   };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
-    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), 3, 14);
+    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), 3, 32);
   };
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);

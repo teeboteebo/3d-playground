@@ -91,3 +91,17 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .nowebgl.show{display:flex}
 .rug-empty{width:48px;height:64px;border:1px dashed var(--line);border-radius:3px}
 .chips.mt8{margin-top:8px}.chips.mt6{margin-top:6px}
+/* back to all rooms, apartment room list, furniture checklist */
+.back{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--muted);background:none;border:0;border-radius:6px;padding:4px 8px 4px 0;margin:0 0 10px;cursor:pointer}
+.back:hover{color:var(--fg)}
+.back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel .daynight{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:4px 10px 4px 4px;cursor:pointer}
+.panel .daynight:hover{border-color:var(--line)}
+.roomlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.roomlist button{width:100%;display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:10px;font:500 13px var(--body);color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:8px 10px;cursor:pointer;text-align:left}
+.roomlist button:hover{border-color:var(--accent)}
+.roomlist i{width:22px;height:22px;border-radius:4px;border:1px solid rgba(0,0,0,.25)}
+.roomlist small{font:500 11px var(--mono);color:var(--muted)}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.checks label{display:flex;align-items:center;gap:8px;font:500 12.5px var(--body);background:var(--chip);border-radius:6px;padding:7px 10px;cursor:pointer}
+.checks input{accent-color:var(--accent);margin:0}

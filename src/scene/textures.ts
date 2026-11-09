@@ -181,9 +181,14 @@ export function woodTexture(hex: string): THREE.CanvasTexture {
 }
 
 /** Herringbone with a straight-plank border (stavparkett), for a roomWidth-metre wide floor. */
-export function floorTexture(hex: string, roomWidth: number): THREE.CanvasTexture {
-  const cw = 2048;
-  const ch = 1880;
+/**
+ * Parquet for a room `roomWidth` metres wide. Without `roomDepth` the canvas is the bedroom's 2048 × 1880;
+ * with it, the canvas takes the room's proportions at the bedroom's plank density (max 2048 px a side).
+ */
+export function floorTexture(hex: string, roomWidth: number, roomDepth?: number): THREE.CanvasTexture {
+  const ppm = roomDepth === undefined ? 2048 / roomWidth : Math.min(2048 / 4.3, 2048 / Math.max(roomWidth, roomDepth));
+  const cw = Math.round(roomWidth * ppm);
+  const ch = roomDepth === undefined ? 1880 : Math.round(roomDepth * ppm);
   const c = makeCanvas(cw, ch);
   const g = c.getContext('2d')!;
   reseed(23);
@@ -191,7 +196,7 @@ export function floorTexture(hex: string, roomWidth: number): THREE.CanvasTextur
   const br = (n >> 16) & 255;
   const bg = (n >> 8) & 255;
   const bb = n & 255;
-  const pw = 0.09 * (cw / roomWidth);
+  const pw = 0.09 * ppm;
   const k = 5;
   g.fillStyle = '#3A2C1E';
   g.fillRect(0, 0, cw, ch);

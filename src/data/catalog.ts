@@ -113,21 +113,90 @@ export interface CameraPose {
 }
 
 export type IconName =
-  | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus';
+  | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus'
+  | 'plan' | 'hall' | 'sofa' | 'room';
+
+export type RoomId = 'bedroom' | 'hall' | 'living' | 'end';
+export type RoomSelection = RoomId | 'all';
 
 export interface CameraView {
   name: string;
   icon: IconName;
+  /** the room this view looks into; 'all' for the whole apartment */
+  room: RoomSelection;
   pose: CameraPose;
 }
 
 export const VIEWS: CameraView[] = [
-  { name: 'Overview', icon: 'overview', pose: { theta: -0.15, phi: 1.02, dist: 9.6, tx: 0, ty: 1.15, tz: -0.2 } },
-  { name: 'Foot of bed', icon: 'bed', pose: { theta: 0.0, phi: 1.34, dist: 6.8, tx: -0.29, ty: 1.2, tz: -0.6 } },
-  { name: 'Wardrobe wall', icon: 'wardrobe', pose: { theta: -1.3, phi: 1.2, dist: 8.0, tx: 1.0, ty: 1.5, tz: -0.5 } },
-  { name: 'Dresser wall', icon: 'dresser', pose: { theta: 3.14159, phi: 0.95, dist: 8.0, tx: -0.5, ty: 1.4, tz: 1.2 } },
-  { name: 'Top down', icon: 'top', pose: { theta: 0.0, phi: 0.28, dist: 10.5, tx: 0, ty: 0.4, tz: 0.0 } },
+  { name: 'Overview', icon: 'overview', room: 'bedroom', pose: { theta: -0.15, phi: 1.02, dist: 9.6, tx: 0, ty: 1.15, tz: -0.2 } },
+  { name: 'Foot of bed', icon: 'bed', room: 'bedroom', pose: { theta: 0.0, phi: 1.34, dist: 6.8, tx: -0.29, ty: 1.2, tz: -0.6 } },
+  { name: 'Wardrobe wall', icon: 'wardrobe', room: 'bedroom', pose: { theta: -1.3, phi: 1.2, dist: 8.0, tx: 1.0, ty: 1.5, tz: -0.5 } },
+  { name: 'Dresser wall', icon: 'dresser', room: 'bedroom', pose: { theta: 3.14159, phi: 0.95, dist: 8.0, tx: -0.5, ty: 1.4, tz: 1.2 } },
+  { name: 'Top down', icon: 'top', room: 'bedroom', pose: { theta: 0.0, phi: 0.28, dist: 10.5, tx: 0, ty: 0.4, tz: 0.0 } },
+  /* the rest of the apartment lies along +x. The rooms are seen from outside their outer walls, which (like the
+     bedroom's) are single-sided and drop out: living and end room from the south, the hall from its open north end */
+  { name: 'Hall', icon: 'hall', room: 'hall', pose: { theta: 0.0, phi: 1.22, dist: 7.5, tx: 2.92, ty: 1.2, tz: 1.0 } },
+  { name: 'Living room', icon: 'sofa', room: 'living', pose: { theta: 3.06, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
+  { name: 'End room', icon: 'room', room: 'end', pose: { theta: 3.2, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
+  { name: 'Apartment', icon: 'plan', room: 'all', pose: { theta: 0.0, phi: 0.36, dist: 29, tx: 4.87, ty: 0, tz: 0.4 } },
 ];
+
+/** wall paints offered for every room */
+export const PAINTS: Swatch[] = [
+  WALL,
+  /* Jotun hex values are screen approximations from colour databases */
+  { id: 'frostrok', name: 'Froströk 1376', hex: '#E4E0D3' },
+  { id: 'devine', name: 'Devine 12083', hex: '#D2BEA9' },
+  { id: 'chalk', name: 'Chalk white', hex: '#E9E4D8' },
+  { id: 'linen', name: 'Linen', hex: '#D8CDBB' },
+  { id: 'stone', name: 'Warm stone', hex: '#B9B3A7' },
+];
+
+export interface RoomInfo {
+  id: RoomId;
+  name: string;
+  size: string;
+  /** name of the view the camera flies to when the room is selected */
+  view: string;
+}
+
+export const ROOM_LIST: RoomInfo[] = [
+  { id: 'bedroom', name: 'Bedroom', size: '430 × 395 cm', view: 'Foot of bed' },
+  { id: 'hall', name: 'Hall', size: '114 × 310 cm', view: 'Hall' },
+  { id: 'living', name: 'Living room', size: '500 × 465 cm', view: 'Living room' },
+  { id: 'end', name: 'End room', size: '300 × 400 cm', view: 'End room' },
+];
+
+export interface FurniturePiece {
+  id: string;
+  name: string;
+  /** .glb path, relative to the app's base URL */
+  file: string;
+}
+
+/** living-room furniture exported from the SketchUp model, in its model positions */
+export const FURNITURE: FurniturePiece[] = [
+  ['sofa', 'Sofa'],
+  ['armchairs', 'Armchairs'],
+  ['side-table', 'Side table'],
+  ['tv', 'Frame TV'],
+  ['tv-bench', 'TV bench'],
+  ['rug', 'Rug'],
+  ['shelving', 'String shelving'],
+  ['plant', 'Plant'],
+].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` }));
+
+const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;
+
+/** the camera view a selection flies to */
+export function mainView(sel: RoomSelection): CameraView {
+  return sel === 'all' ? viewNamed('Apartment') : viewNamed(ROOM_LIST.find((r) => r.id === sel)!.view);
+}
+
+/** the view buttons shown for a selection */
+export function viewsFor(sel: RoomSelection): CameraView[] {
+  return sel === 'all' ? [mainView('all'), ...ROOM_LIST.map((r) => mainView(r.id))] : VIEWS.filter((v) => v.room === sel);
+}
 
 export function findById<T extends { id: string }>(list: readonly T[], id: string): T {
   return list.find((o) => o.id === id) ?? list[0];
