@@ -113,7 +113,8 @@ export interface CameraPose {
 }
 
 export type IconName =
-  | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus';
+  | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus'
+  | 'plan' | 'hall' | 'sofa' | 'room';
 
 export interface CameraView {
   name: string;
@@ -127,6 +128,12 @@ export const VIEWS: CameraView[] = [
   { name: 'Wardrobe wall', icon: 'wardrobe', pose: { theta: -1.3, phi: 1.2, dist: 8.0, tx: 1.0, ty: 1.5, tz: -0.5 } },
   { name: 'Dresser wall', icon: 'dresser', pose: { theta: 3.14159, phi: 0.95, dist: 8.0, tx: -0.5, ty: 1.4, tz: 1.2 } },
   { name: 'Top down', icon: 'top', pose: { theta: 0.0, phi: 0.28, dist: 10.5, tx: 0, ty: 0.4, tz: 0.0 } },
+  /* the rest of the apartment lies along +x. The rooms are seen from outside their outer walls, which (like the
+     bedroom's) are single-sided and drop out: living and end room from the south, the hall from its open north end */
+  { name: 'Hall', icon: 'hall', pose: { theta: 0.0, phi: 1.22, dist: 7.5, tx: 2.92, ty: 1.2, tz: 1.0 } },
+  { name: 'Living room', icon: 'sofa', pose: { theta: 3.06, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
+  { name: 'End room', icon: 'room', pose: { theta: 3.2, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
+  { name: 'Apartment', icon: 'plan', pose: { theta: 0.0, phi: 0.36, dist: 29, tx: 4.87, ty: 0, tz: 0.4 } },
 ];
 
 export function findById<T extends { id: string }>(list: readonly T[], id: string): T {

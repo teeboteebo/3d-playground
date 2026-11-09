@@ -46,6 +46,30 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M8 11h8" />
     </>
   ),
+  plan: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="1" />
+      <path d="M9 6v12M14 6v5M14 14v4" />
+    </>
+  ),
+  hall: (
+    <>
+      <path d="M6 21V3h12v18" />
+      <path d="M9 21l1.5-9h3L15 21" />
+    </>
+  ),
+  sofa: (
+    <>
+      <path d="M5 11V8.5A2.5 2.5 0 0 1 7.5 6h9A2.5 2.5 0 0 1 19 8.5V11" />
+      <path d="M3 17v-4.5a1.5 1.5 0 0 1 3 0V14h12v-1.5a1.5 1.5 0 0 1 3 0V17zM5 17v2M19 17v2" />
+    </>
+  ),
+  room: (
+    <>
+      <path d="M4 20V9l3-5h10l3 5v11z" />
+      <path d="M10 4v4h4V4" />
+    </>
+  ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   plus: <path d="M12 5v14M5 12h14" />,
 };

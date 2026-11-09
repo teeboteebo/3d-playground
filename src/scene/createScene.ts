@@ -5,6 +5,8 @@ import {
 } from '../data/catalog';
 import { mixHex } from '../lib/color';
 import type { Settings } from '../state/settings';
+import { CEILING, apartmentBounds } from './apartment';
+import { buildApartment } from './buildApartment';
 import { bedWallLayout } from './layout';
 import { pillowColours } from './palette';
 import {
@@ -166,6 +168,15 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   ceil.position.set(0, H, 0);
   ceil.castShadow = true;
   scene.add(ceil);
+
+  /* ---------- the rest of the apartment: hall, living room and end room (structure only) ---------- */
+  const apartment = buildApartment({
+    trim: trimMat,
+    glass: glassMat,
+    floor: (_room, w, d) => new THREE.MeshStandardMaterial({ roughness: 0.42, map: floorTexture(FLOOR.hex, w, d) }),
+  });
+  scene.add(apartment.group);
+  for (const l of apartment.windowLights) scene.add(l, l.target);
 
   /* skirting */
   box(W - 0.58, 0.18, 0.02, trimMat, -0.29, 0.09, -L / 2 + 0.01);
@@ -453,9 +464,25 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   sun.target.position.set(0, 0, 0);
   scene.add(sun, sun.target);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.radius = 1;
-  Object.assign(sun.shadow.camera, { left: -5, right: 5, top: 5, bottom: -5, near: 1, far: 22 });
+  /* the sun's shadow box has to cover the whole apartment (every room's ceiling and walls block it),
+     otherwise anything outside the box is treated as sunlit. Fit it to the apartment as the sun sees it. */
+  {
+    const b = apartmentBounds();
+    const view = new THREE.Matrix4().lookAt(sun.position, sun.target.position, new THREE.Vector3(0, 1, 0));
+    view.setPosition(sun.position).invert();
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    for (const x of [b.minX, b.maxX]) for (const y of [0, CEILING]) for (const z of [b.minZ, b.maxZ]) {
+      const p = new THREE.Vector3(x, y, z).applyMatrix4(view);
+      lo.min(p);
+      hi.max(p);
+    }
+    const m = 0.5;
+    Object.assign(sun.shadow.camera, { left: lo.x - m, right: hi.x + m, bottom: lo.y - m, top: hi.y + m, near: 0.5, far: -lo.z + m });
+    sun.shadow.camera.updateProjectionMatrix();
+    sun.shadow.mapSize.set(2048, 2048);
+  }
   sun.shadow.bias = -0.0006;
   sun.shadow.normalBias = 0.02;
   /* daylight spilling in through each window: soft, shadow-casting and falling off across the room,
@@ -592,7 +619,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
        corners, the far side of furniture and the floor under the bed fall into real shade */
     sun.intensity = eve ? 0 : 1.6;
     /* evening: the window lights become faint, cool moonlight */
-    for (const l of windowLights) {
+    for (const l of [...windowLights, ...apartment.windowLights]) {
       l.intensity = eve ? 0.18 : 1.6;
       l.color.set(eve ? 0x8ea6d6 : 0xeef3ff);
     }
@@ -650,7 +677,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
       goal.phi = clamp(goal.phi - dy * 0.005, 0.15, 1.5);
     } else if (pts.size === 2) {
       const d = pinchDistance();
-      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, 3, 14);
+      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, 3, 32);
       lastPinch = d;
     }
   };
@@ -660,7 +687,7 @@ export function createBedroomScene(canvas: HTMLCanvasElement, container: HTMLEle
   };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
-    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), 3, 14);
+    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), 3, 32);
   };
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
