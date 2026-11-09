@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { BedroomSettings } from '../../state/settings';
 import { bedWallLayout } from '../layout';
+import { mergeMeshes } from '../merge';
 import type { Kit } from './kit';
 import { BEDX, FRAME_T, FRONT_DOOR_X0, FRONT_DOOR_X1, L, LOW_Y0, LOW_Y1, MIRROR_HALF, MIRROR_X, RAIL_Y, W } from './dimensions';
 import type { BedroomMaterials } from './materials';
@@ -23,7 +24,7 @@ function frameOf(strip: Strip, x0: number, x1: number, y0: number, y1: number) {
  * follows the moulding sliders, and the bedside tables ride in the side columns (`onTables` gets their x).
  */
 export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTables: (left: number, right: number) => void) {
-  let parts: THREE.Mesh[] = [];
+  let parts: THREE.Object3D[] = [];
   let lastLayout = '';
   const strip = (w: number, h: number, x: number, y: number, d = 0.014) => {
     parts.push(box(w, h, d, m.mouldBed, x, y, -L / 2 + d / 2, true));
@@ -39,7 +40,7 @@ export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTab
       lastLayout = key;
       for (const p of parts) {
         parent.remove(p);
-        p.geometry.dispose();
+        if (p instanceof THREE.Mesh) p.geometry.dispose();
       }
       parts = [];
       strip(W, 0.04, 0, RAIL_Y, 0.02);
@@ -47,6 +48,7 @@ export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTab
         frameOf(strip, BEDX + x0, BEDX + x1, LOW_Y0, LOW_Y1);
         frameOf(strip, BEDX + x0, BEDX + x1, RAIL_Y + 0.08, 3.0);
       }
+      parts = mergeMeshes(parts);
       onTables(BEDX - layout.tableOffset, BEDX + layout.tableOffset);
     },
   };

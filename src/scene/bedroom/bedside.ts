@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BRASS } from '../../data/catalog';
 import { std } from '../materials';
+import { mergeMeshes } from '../merge';
 import type { Kit } from './kit';
 import { ADINA_SHADE_Y, ADINA_STEM_OUT, BEDX, L, LOW_Y0, LOW_Y1 } from './dimensions';
 import { bulb, glowShade, type Bulb } from './lamps';
@@ -25,7 +26,7 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
   lampShade.side = THREE.DoubleSide;
   const lampBulb = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
   const parts = tableX.map((x) =>
-    collect(() => {
+    mergeMeshes(collect(() => {
       const zc = -L / 2 + 0.175;
       /* 24 cm tall, centred inside the lower panel's frame so it sits clear of the rail and the frame strips */
       const TOP = (LOW_Y0 + LOW_Y1) / 2 + 0.12;
@@ -56,7 +57,7 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
       const cordTop = armY - 0.05;
       add(new THREE.CylinderGeometry(0.0025, 0.0025, cordTop - TOP, 6), lampCord, cordX, (cordTop + TOP) / 2, wz + 0.004, true);
       box(0.022, 0.06, 0.016, lampCord, cordX, cordTop - 0.22, wz + 0.01, true);
-    }),
+    })),
   );
   const lamps = tableX.map((x) => bulb(parent, x, ADINA_SHADE_Y - 0.015, -L / 2 + ADINA_STEM_OUT, 7, 0.35, 0.35));
   return {

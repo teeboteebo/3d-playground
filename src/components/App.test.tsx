@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VIEWS, mainView } from '../data/catalog';
@@ -12,7 +12,8 @@ vi.mock('../scene/createScene', () => ({
   createApartmentScene: (...args: unknown[]) => createApartmentScene(...args),
 }));
 
-const lastApplied = (): Settings => scene.apply.mock.calls.at(-1)![0];
+/** the settings the scene last received: from apply, or the ones it was created with */
+const lastApplied = (): Settings => scene.apply.mock.calls.at(-1)?.[0] ?? (createApartmentScene.mock.calls.at(-1)![2] as Settings);
 const stored = (): Settings => JSON.parse(localStorage.getItem(STORAGE_KEY)!);
 
 beforeEach(() => {
@@ -21,19 +22,25 @@ beforeEach(() => {
   createApartmentScene.mockImplementation(() => scene);
 });
 
+/** render the app and wait for the (lazily loaded) scene to be created */
+const renderApp = async () => {
+  const r = render(<App />);
+  await waitFor(() => expect(createApartmentScene).toHaveBeenCalled());
+  return r;
+};
 /** render with a room already selected, as a returning visitor would have it */
 const renderIn = (room: Settings['room']) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, room }));
-  return render(<App />);
+  return renderApp();
 };
 const roomList = () => screen.getByRole('list', { name: 'Rooms' });
 const back = () => screen.getByRole('button', { name: 'Back to all rooms' });
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
-  it('creates the scene with the saved settings and disposes it on unmount', () => {
+  it('creates the scene with the saved settings and disposes it on unmount', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, time: 'eve', bedroom: { rug: 'rista' } }));
-    const { unmount } = render(<App />);
+    const { unmount } = await renderApp();
     expect(createApartmentScene).toHaveBeenCalledTimes(1);
     expect(createApartmentScene.mock.calls[0][2]).toMatchObject({ time: 'eve', bedroom: { rug: 'rista' } });
     unmount();
@@ -42,7 +49,7 @@ describe('App', () => {
 
   it('applies and persists chip selections', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     const painting = screen.getByRole('group', { name: 'Painting' });
     await user.click(within(painting).getByRole('button', { name: 'Hills' }));
     expect(within(painting).getByRole('button', { name: 'Hills' })).toHaveAttribute('aria-pressed', 'true');
@@ -53,7 +60,7 @@ describe('App', () => {
 
   it('toggles lighting and the pendant', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     const daynight = screen.getByRole('switch', { name: 'Evening lighting' });
     expect(daynight).toHaveAttribute('aria-checked', 'false');
     await user.click(daynight);
@@ -68,14 +75,14 @@ describe('App', () => {
 
   it('moves the camera to a preset view', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     await user.click(screen.getByRole('button', { name: 'Top down' }));
     expect(scene.setView).toHaveBeenCalledWith(VIEWS.find((v) => v.name === 'Top down')!.pose);
   });
 
   it('accepts valid accent hex input and rejects invalid input', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     const hex = screen.getByRole('textbox', { name: 'Accent hex' });
     await user.clear(hex);
     await user.type(hex, '2f5d62{Enter}');
@@ -91,7 +98,7 @@ describe('App', () => {
 
   it('pillow "Accent" swatch follows the accent colour', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     await user.click(screen.getByRole('button', { name: 'Mustard' }));
     const accentPillow = within(screen.getByRole('group', { name: 'Pillows and throw' })).getByRole('button', { name: 'Accent' });
     expect(accentPillow.querySelector('.dot')).toHaveStyle({ background: '#C49A3A' });
@@ -99,7 +106,7 @@ describe('App', () => {
 
   it('disables the bed-wall layout sliders when bed-wall moulding is hidden', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     const slider = screen.getByRole('slider', { name: /Column spacing/ });
     expect(slider).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Bed wall' }));
@@ -110,7 +117,7 @@ describe('App', () => {
 
   it('selects a rug by click or keyboard, but not via its shop link', async () => {
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     const rug = screen.getByText('Palma, green vines').closest('.rug') as HTMLElement;
     await user.click(within(rug).getByRole('link'));
     expect(lastApplied().bedroom.rug).toBe(DEFAULTS.bedroom.rug);
@@ -130,28 +137,28 @@ describe('App', () => {
       throw new Error('no webgl');
     });
     const user = userEvent.setup();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     expect(screen.getByRole('alert')).toHaveTextContent('needs WebGL');
     await user.click(screen.getByRole('button', { name: 'Arches' }));
     expect(stored().bedroom.art).toBe('arches');
   });
 
-  it('shows the apartment controls when no room is selected', () => {
-    render(<App />);
+  it('shows the apartment controls when no room is selected', async () => {
+    await renderApp();
     expect(screen.getByRole('heading', { name: 'Apartment' })).toBeInTheDocument();
     expect(within(roomList()).getAllByRole('button')).toHaveLength(4);
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('all').pose);
   });
 
-  it('has no room switcher and no way back when already at all rooms', () => {
-    render(<App />);
+  it('has no room switcher and no way back when already at all rooms', async () => {
+    await renderApp();
     expect(screen.queryByRole('group', { name: 'Room' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Back to all rooms' })).toBeNull();
   });
 
   it('goes back to all rooms from a room', async () => {
     const user = userEvent.setup();
-    renderIn('living');
+    await renderIn('living');
     await user.click(back());
     expect(lastApplied().room).toBe('all');
     expect(screen.getByRole('heading', { name: 'Apartment' })).toBeInTheDocument();
@@ -160,7 +167,7 @@ describe('App', () => {
 
   it("selects a room from the room list and shows that room's controls", async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
     expect(screen.getByRole('group', { name: 'Furniture' })).toBeInTheDocument();
     expect(lastApplied().room).toBe('living');
@@ -168,7 +175,7 @@ describe('App', () => {
   });
 
   it('selects the room clicked in 3D, and deselects on a click outside', async () => {
-    render(<App />);
+    await renderApp();
     const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     await act(async () => onPick('hall'));
     expect(lastApplied().room).toBe('hall');
@@ -178,7 +185,7 @@ describe('App', () => {
   });
 
   it('moves only the pivot, not the rotation or zoom, when a room is picked in 3D', async () => {
-    render(<App />);
+    await renderApp();
     const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     const pivot = (sel: 'hall' | 'all') => {
       const { tx, ty, tz } = mainView(sel).pose;
@@ -192,7 +199,7 @@ describe('App', () => {
   });
 
   it('leaves the camera alone when a 3D pick changes nothing', async () => {
-    render(<App />);
+    await renderApp();
     const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     scene.setView.mockClear();
     await act(async () => onPick(null)); // already at all rooms
@@ -201,7 +208,7 @@ describe('App', () => {
 
   it('still flies from the sidebar after a 3D pick that changed nothing', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     await act(async () => onPick(null)); // already at all rooms
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
@@ -210,7 +217,7 @@ describe('App', () => {
 
   it('hides living-room furniture and repaints a room', async () => {
     const user = userEvent.setup();
-    renderIn('living');
+    await renderIn('living');
     await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('checkbox', { name: 'Sofa' }));
     expect(lastApplied().living.hidden).toEqual(['sofa']);
     await user.click(back());
@@ -221,7 +228,7 @@ describe('App', () => {
 
   it('offers no floor choice in any room', async () => {
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     for (const name of ['Bedroom', 'Hall', 'Living room', 'Office']) {
       await user.click(within(roomList()).getByRole('button', { name: new RegExp(name) }));
       expect(screen.queryByRole('group', { name: 'Floor' })).toBeNull();
@@ -231,26 +238,26 @@ describe('App', () => {
 
   it('offers the Jotun wall colours', async () => {
     const user = userEvent.setup();
-    renderIn('office');
+    await renderIn('office');
     const walls = screen.getByRole('group', { name: 'Wall colour' });
     expect(within(walls).getByRole('button', { name: 'Devine 12083' })).toHaveAttribute('aria-pressed', 'true');
     await user.click(within(walls).getByRole('button', { name: 'Froströk 1376' }));
     expect(lastApplied().walls.office).toBe('frostrok');
   });
 
-  it('shows the camera views for the selection', () => {
-    const { unmount } = render(<App />);
+  it('shows the camera views for the selection', async () => {
+    const { unmount } = await renderApp();
     expect(viewNames()).toEqual(['Apartment', 'Foot of bed', 'Hall', 'Living room', 'Office']);
     unmount();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     expect(viewNames()).toEqual(['Overview', 'Foot of bed', 'Wardrobe wall', 'Dresser wall', 'Top down']);
   });
 
-  it('only offers the pendant in the bedroom', () => {
-    const { unmount } = render(<App />);
+  it('only offers the pendant in the bedroom', async () => {
+    const { unmount } = await renderApp();
     expect(screen.queryByRole('button', { name: /Pendant/ })).toBeNull();
     unmount();
-    renderIn('bedroom');
+    await renderIn('bedroom');
     expect(screen.getByRole('button', { name: 'Pendant on' })).toBeInTheDocument();
   });
 });

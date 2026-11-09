@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
 import { roomWalls, type Wall } from './apartment';
 import { windowSpot } from './daylight';
+import { mergeMeshes } from './merge';
 
 /** the rooms built here from their outlines; the bedroom has its own, hand-built shell */
 export type ShellRoomId = Exclude<RoomId, 'bedroom'>;
@@ -145,6 +146,8 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     piece(len / 2, o.y1 - 0.01, len, 0.02);
   }
 
+  /* walls, trim and frames never move: draw them as one mesh per material (floors keep their own) */
+  mergeMeshes([...group.children]);
   return { group, windowLights, rooms };
 }
 

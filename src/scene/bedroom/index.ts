@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { INK, PAINTS, TRIM, findById } from '../../data/catalog';
 import type { BedroomSettings, Settings } from '../../state/settings';
 import { lin } from '../materials';
+import { mergeMeshes } from '../merge';
 import { pillowColours } from '../palette';
 import { buildBed } from './bed';
 import { buildBedside } from './bedside';
@@ -34,22 +35,25 @@ export interface Bedroom {
 export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const k = kit(parent);
   const m = bedroomMaterials(accent);
-  buildShell(k, m);
-  buildSkirting(k, m);
-  const windowParts = buildWindows(k, m);
-  const doorParts = buildHallDoorway(k, m);
-  buildBed(k, m);
-  const frontParts = buildFrontDoor(k, m);
-  buildDresser(k, m);
+  /* each group of parts that is shown, hidden or moved together is merged into one mesh per material */
+  mergeMeshes(k.collect(() => {
+    buildShell(k, m);
+    buildSkirting(k, m);
+  }));
+  const windowParts = mergeMeshes(buildWindows(k, m));
+  const doorParts = mergeMeshes(buildHallDoorway(k, m));
+  mergeMeshes(buildBed(k, m));
+  const frontParts = mergeMeshes(buildFrontDoor(k, m));
+  mergeMeshes(k.collect(() => buildDresser(k, m)));
   const mirror = buildMirror(k, m);
   const bedside = buildBedside(k, m);
   const pendant = buildPendant(k, m);
-  buildWardrobes(k, m);
-  const paintParts = buildPainting(k, m);
+  mergeMeshes(k.collect(() => buildWardrobes(k, m)));
+  const paintParts = mergeMeshes(buildPainting(k, m));
   const rug = buildRug(k, m);
   const windows = windowLights(parent);
   const lamp = dresserLamp(parent);
-  const dresserMould = dresserWallMoulding(k, m);
+  const dresserMould = mergeMeshes(dresserWallMoulding(k, m));
   const bedMould = bedWallMoulding(k, m, (left, right) => {
     bedside.moveTo(0, left);
     bedside.moveTo(1, right);

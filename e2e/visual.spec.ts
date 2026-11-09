@@ -42,3 +42,12 @@ for (const time of ['day', 'eve'] as const) {
     });
   }
 }
+
+test('selects the room clicked in the 3D view', async ({ page }) => {
+  await openWith(page, { room: 'all' });
+  await settled(page);
+  /* the apartment view looks straight down on the living room's middle */
+  const box = (await page.locator('canvas.stage-canvas').boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.getByRole('heading', { name: 'Living room' })).toBeVisible();
+});

@@ -6,8 +6,8 @@ import { isClick } from './pickRoom';
 export interface OrbitCamera {
   /** ease towards a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
-  /** step the easing and place the camera; true once it has come to rest on its goal */
-  update(): boolean;
+  /** step the easing and place the camera: whether it moved this step, and whether it has come to rest */
+  update(): { moved: boolean; arrived: boolean };
   dispose(): void;
 }
 
@@ -91,6 +91,7 @@ export function orbitCamera(
     },
     update() {
       /* ease towards the goal, and snap onto it once close, so the camera comes to rest exactly there */
+      const moved = keys.some((k) => cur[k] !== goal[k]);
       const arriving = keys.every((k) => Math.abs(goal[k] - cur[k]) < 1e-3);
       for (const k of keys) cur[k] = arriving ? goal[k] : cur[k] + (goal[k] - cur[k]) * 0.14;
       /* pull back on narrow (portrait) screens so the room still fits across */
@@ -101,7 +102,7 @@ export function orbitCamera(
         cur.tz + d * Math.sin(cur.phi) * Math.cos(cur.theta),
       );
       camera.lookAt(cur.tx, cur.ty, cur.tz);
-      return arriving;
+      return { moved, arrived: arriving };
     },
     dispose() {
       canvas.removeEventListener('pointerdown', onDown);

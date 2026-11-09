@@ -15,7 +15,12 @@ export interface Furniture {
  * Loads the living-room furniture into `parent`. Each piece is already in scene coordinates and appears as soon
  * as it loads. A piece that fails to load is skipped with one warning; the rest of the room still works.
  */
-export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePiece) => Promise<THREE.Object3D>): Furniture {
+export function loadFurniture(
+  parent: THREE.Object3D,
+  load: (piece: FurniturePiece) => Promise<THREE.Object3D>,
+  /** called after each piece is added */
+  onAdded: () => void = () => {},
+): Furniture {
   let hidden: readonly string[] = [];
   const loaded = new Map<string, THREE.Object3D>();
   let warned = false;
@@ -38,6 +43,7 @@ export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePie
           });
           loaded.set(id, obj);
           parent.add(obj);
+          onAdded();
         },
         (err: unknown) => {
           if (!warned) console.warn('Some living-room furniture could not be loaded', err);
@@ -51,6 +57,7 @@ export function loadFurniture(parent: THREE.Object3D, load: (piece: FurniturePie
     setHidden(ids) {
       hidden = ids;
       for (const [id, obj] of loaded) obj.visible = !hidden.includes(id);
+      onAdded();
     },
     ready,
     dispose() {
