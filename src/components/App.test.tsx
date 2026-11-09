@@ -26,7 +26,8 @@ const renderIn = (room: Settings['room']) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ room }));
   return render(<App />);
 };
-const switcher = () => screen.getByRole('group', { name: 'Room' });
+const roomList = () => screen.getByRole('list', { name: 'Rooms' });
+const back = () => screen.getByRole('button', { name: 'Back to all rooms' });
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
@@ -138,27 +139,32 @@ describe('App', () => {
   it('shows the apartment controls when no room is selected', () => {
     render(<App />);
     expect(screen.getByRole('heading', { name: 'Apartment' })).toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Rooms' })).getAllByRole('button')).toHaveLength(4);
-    expect(within(switcher()).getByRole('button', { name: 'All rooms' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(roomList()).getAllByRole('button')).toHaveLength(4);
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('all').pose);
   });
 
-  it("selects a room from the switcher and shows that room's controls", async () => {
+  it('has no room switcher and no way back when already at all rooms', () => {
+    render(<App />);
+    expect(screen.queryByRole('group', { name: 'Room' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back to all rooms' })).toBeNull();
+  });
+
+  it('goes back to all rooms from a room', async () => {
+    const user = userEvent.setup();
+    renderIn('living');
+    await user.click(back());
+    expect(lastApplied().room).toBe('all');
+    expect(screen.getByRole('heading', { name: 'Apartment' })).toBeInTheDocument();
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('all').pose);
+  });
+
+  it("selects a room from the room list and shows that room's controls", async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(within(switcher()).getByRole('button', { name: 'Living room' }));
+    await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
     expect(screen.getByRole('group', { name: 'Furniture' })).toBeInTheDocument();
     expect(lastApplied().room).toBe('living');
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
-  });
-
-  it('selecting from the room list ends where the switcher does', async () => {
-    const user = userEvent.setup();
-    render(<App />);
-    await user.click(within(screen.getByRole('list', { name: 'Rooms' })).getByRole('button', { name: /End room/ }));
-    expect(within(switcher()).getByRole('button', { name: 'End room' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('heading', { name: 'End room' })).toBeInTheDocument();
-    expect(scene.setView).toHaveBeenLastCalledWith(mainView('end').pose);
   });
 
   it('selects the room clicked in 3D, and deselects on a click outside', async () => {
@@ -176,7 +182,8 @@ describe('App', () => {
     renderIn('living');
     await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('checkbox', { name: 'Sofa' }));
     expect(lastApplied().hidden).toEqual(['sofa']);
-    await user.click(within(switcher()).getByRole('button', { name: 'Hall' }));
+    await user.click(back());
+    await user.click(within(roomList()).getByRole('button', { name: /Hall/ }));
     await user.click(within(screen.getByRole('group', { name: 'Wall colour' })).getByRole('button', { name: 'Chalk white' }));
     expect(lastApplied().walls.hall).toBe('chalk');
   });
@@ -185,8 +192,9 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     for (const name of ['Bedroom', 'Hall', 'Living room', 'End room']) {
-      await user.click(within(switcher()).getByRole('button', { name }));
+      await user.click(within(roomList()).getByRole('button', { name: new RegExp(name) }));
       expect(screen.queryByRole('group', { name: 'Floor' })).toBeNull();
+      await user.click(back());
     }
   });
 

@@ -91,8 +91,10 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .nowebgl.show{display:flex}
 .rug-empty{width:48px;height:64px;border:1px dashed var(--line);border-radius:3px}
 .chips.mt8{margin-top:8px}.chips.mt6{margin-top:6px}
-/* room switcher, apartment room list, furniture checklist */
-.switcher{margin:0 0 18px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+/* back to all rooms, apartment room list, furniture checklist */
+.back{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--muted);background:none;border:0;border-radius:6px;padding:4px 8px 4px 0;margin:0 0 10px;cursor:pointer}
+.back:hover{color:var(--fg)}
+.back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .panel .daynight{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:4px 10px 4px 4px;cursor:pointer}
 .panel .daynight:hover{border-color:var(--line)}
 .roomlist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
