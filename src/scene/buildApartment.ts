@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
+import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, outset, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
 import { roomWalls, type Wall } from './apartment';
 import { windowSpot } from './daylight';
 import { mergeMeshes } from './merge';
@@ -72,8 +72,9 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     floor.name = `${room.id}-floor`;
     group.add(floor);
     rooms[room.id] = { wall: wallMat, floor, width: maxX - minX, depth: maxZ - minZ };
+    /* the ceiling overhangs the walls by 10 cm, so no daylight slips in where they meet */
     const ceil = mesh(
-      flatShape(room.poly, CEILING),
+      flatShape(outset(room.poly, 0.1), CEILING),
       new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }),
     );
     ceil.receiveShadow = false;

@@ -148,6 +148,33 @@ export function centroid(poly: readonly XZ[]): XZ {
   return [x / poly.length, z / poly.length];
 }
 
+/** The outline grown by d on every side (each edge moved outwards by d, corners where neighbours meet). */
+export function outset(poly: readonly XZ[], d: number): XZ[] {
+  /* which way round the outline runs (the sign of its area), so (s·dz, −s·dx) points out of the room */
+  let area = 0;
+  poly.forEach((p, i) => {
+    const q = poly[(i + 1) % poly.length];
+    area += p[0] * q[1] - q[0] * p[1];
+  });
+  const s = area > 0 ? 1 : -1;
+  const n = poly.length;
+  const line = (i: number) => {
+    const a = poly[i];
+    const b = poly[(i + 1) % n];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const nx = (s * (b[1] - a[1])) / len;
+    const nz = (-s * (b[0] - a[0])) / len;
+    return { p: [a[0] + nx * d, a[1] + nz * d] as XZ, dir: [b[0] - a[0], b[1] - a[1]] as XZ };
+  };
+  return poly.map((_, i) => {
+    const l1 = line((i - 1 + n) % n);
+    const l2 = line(i);
+    const det = l1.dir[0] * l2.dir[1] - l1.dir[1] * l2.dir[0];
+    const t = ((l2.p[0] - l1.p[0]) * l2.dir[1] - (l2.p[1] - l1.p[1]) * l2.dir[0]) / det;
+    return [l1.p[0] + l1.dir[0] * t, l1.p[1] + l1.dir[1] * t] as XZ;
+  });
+}
+
 /** "430 × 395 cm": the room's outer width (x) by depth (z) */
 export function roomSize(room: Room): string {
   const e = extent(room.poly);

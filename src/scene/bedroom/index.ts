@@ -29,7 +29,8 @@ export interface Bedroom {
 }
 
 /**
- * The bedroom, built by hand into `parent`: shell, windows and curtains, bed and bench, dresser, mirror, painting,
+ * The bedroom's fittings and furniture, built by hand into `parent` (its walls, floor and ceiling come from
+ * buildApartment): doors, windows and curtains, bed and bench, dresser, mirror, painting,
  * bedside tables and lamps, pendant, wardrobes, rug and wall moulding. Its settings recolour and rearrange it.
  */
 export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
