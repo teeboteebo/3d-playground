@@ -44,7 +44,7 @@ const grid17 = (() => {
 
 let applied = false;
 
-export function useLegacyLook(): void {
+export function applyLegacyLook(): void {
   if (applied) return;
   applied = true;
   THREE.ColorManagement.enabled = false;

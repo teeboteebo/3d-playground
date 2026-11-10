@@ -6,7 +6,7 @@ export default defineConfig({
   base: '/3d-playground/',
   plugins: [react()],
   build: {
-    // the UI is one small bundle; three.js and the scene (~610 kB minified, ~160 kB gzip) load in a chunk of their own
+    // the UI is one small bundle; three.js and the scene (~710 kB minified, ~185 kB gzip) load in a chunk of their own
     chunkSizeWarningLimit: 900,
   },
   test: {

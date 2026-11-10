@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { useLegacyLook } from './legacyLook';
+import { applyLegacyLook } from './legacyLook';
 
-describe('useLegacyLook', () => {
+describe('applyLegacyLook', () => {
   it('patches every shader it needs in this three.js version', () => {
-    expect(() => useLegacyLook()).not.toThrow();
+    expect(() => applyLegacyLook()).not.toThrow();
     expect(THREE.ColorManagement.enabled).toBe(false);
     expect(THREE.ShaderChunk.lights_pars_begin).toContain('pow( saturate( - lightDistance / cutoffDistance + 1.0 ), decayExponent )');
     expect(THREE.ShaderChunk.lights_pars_begin).toContain('directionalLight.color * PI');

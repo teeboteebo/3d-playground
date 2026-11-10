@@ -14,7 +14,8 @@ test('loads the apartment and draws the scene without errors', async ({ page }) 
   await openWith(page, {});
   await expect(page.getByRole('heading', { name: 'Apartment' })).toBeVisible();
   const canvas = page.locator('canvas.stage-canvas');
-  await expect(canvas).toHaveAttribute('data-settled', /true|false/);
+  /* the first frame: compiling the shaders takes a while in software */
+  await expect(canvas).toHaveAttribute('data-settled', /true|false/, { timeout: 30_000 });
   /* a blank canvas compresses to almost nothing; a drawn room does not */
   await expect.poll(async () => (await canvas.screenshot()).length, { timeout: 30_000 }).toBeGreaterThan(20_000);
   expect(errors).toEqual([]);

@@ -9,7 +9,7 @@ import { SHELL_ROOMS, buildApartment } from './buildApartment';
 import { addSkyAndSun, setWindowSpot } from './daylight';
 import { disposeTree } from './dispose';
 import { loadFurniture } from './furniture';
-import { useLegacyLook } from './legacyLook';
+import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { orbitCamera } from './orbitCamera';
 import { pickRoom } from './pickRoom';
@@ -43,7 +43,7 @@ export function createApartmentScene(
   /** called with the room under a click (not a drag), or null for a click outside the apartment */
   onPick?: (room: RoomId | null) => void,
 ): ApartmentScene {
-  useLegacyLook();
+  applyLegacyLook();
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
