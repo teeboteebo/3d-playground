@@ -5,7 +5,7 @@ import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog
 import { ROOMS, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
-import { SHELL_ROOMS, buildApartment } from './buildApartment';
+import { buildApartment } from './buildApartment';
 import { addSkyAndSun, setWindowSpot } from './daylight';
 import { disposeTree } from './dispose';
 import { loadFurniture } from './furniture';
@@ -60,7 +60,7 @@ export function createApartmentScene(
 
   const bedroom = buildBedroom(scene, initial.bedroom.accent);
 
-  /* the rest of the apartment: hall, living room and office (structure only), with the bedroom's trim and glass */
+  /* every room's walls, floor and ceiling, and the other rooms' doors and windows, in the bedroom's trim and glass */
   const apartment = buildApartment({
     trim: bedroom.shared.trim,
     glass: bedroom.shared.glass,
@@ -94,7 +94,7 @@ export function createApartmentScene(
     invalidate();
     const evening = s.time === 'eve';
     bedroom.apply(s);
-    for (const r of SHELL_ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
+    for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
     furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
@@ -125,6 +125,7 @@ export function createApartmentScene(
 
   function draw() {
     bedroom.showFrom(camera.position);
+    apartment.showFrom(camera.position);
     renderer.render(scene, camera);
     dirty = false;
   }

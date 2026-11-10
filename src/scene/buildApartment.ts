@@ -1,12 +1,8 @@
 import * as THREE from 'three';
-import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
+import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, outset, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
 import { roomWalls, type Wall } from './apartment';
 import { windowSpot } from './daylight';
 import { mergeMeshes } from './merge';
-
-/** the rooms built here from their outlines; the bedroom has its own, hand-built shell */
-export type ShellRoomId = Exclude<RoomId, 'bedroom'>;
-export const SHELL_ROOMS = ROOMS.filter((r): r is Room & { id: ShellRoomId } => r.id !== 'bedroom');
 
 export interface ApartmentMaterials {
   trim: THREE.Material;
@@ -20,7 +16,9 @@ export interface Apartment {
   /** one soft daylight per window, pointed into its room; intensities are set by the scene */
   windowLights: THREE.SpotLight[];
   /** per room: its wall material (recoloured by the scene) and its floor, with the outline's width and depth */
-  rooms: Record<ShellRoomId, ApartmentRoom>;
+  rooms: Record<RoomId, ApartmentRoom>;
+  /** hides the skirting and frames on any wall the camera is looking through from outside */
+  showFrom(camera: THREE.Vector3): void;
 }
 
 export interface ApartmentRoom {
@@ -32,12 +30,18 @@ export interface ApartmentRoom {
 
 const FRAME_W = 0.07;
 
-/** Builds every room in SHELL_ROOMS into one group. Walls are single-sided and face into their room, like the bedroom's. */
+/**
+ * Builds every room in ROOMS into one group: floor, single-sided walls facing into the room with their openings cut
+ * out, skirting, and an invisible ceiling that casts shadows. Rooms that are not hand-built also get their window,
+ * door and doorway fittings and window daylight.
+ */
 export function buildApartment(mats: ApartmentMaterials): Apartment {
   const group = new THREE.Group();
   group.name = 'apartment';
-  const rooms = {} as Record<ShellRoomId, ApartmentRoom>;
+  const rooms = {} as Record<RoomId, ApartmentRoom>;
   const windowLights: THREE.SpotLight[] = [];
+  /** each wall with the parts mounted on its face */
+  const wallParts: { wall: Wall; parts: THREE.Object3D[] }[] = [];
 
   const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, cast = true) => {
     const m = new THREE.Mesh(geo, mat);
@@ -50,7 +54,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
   const wallBox = (wall: Wall, u: number, v: number, w: number, su: number, sv: number, sw: number, mat: THREE.Material) =>
     place(mesh(new THREE.BoxGeometry(su, sv, sw), mat), wall, u, v, w);
 
-  for (const room of SHELL_ROOMS) {
+  for (const room of ROOMS) {
     /* coloured by the scene from the room's paint setting */
     const wallMat = new THREE.MeshStandardMaterial({ roughness: 0.95 });
     wallMat.shadowSide = THREE.DoubleSide;
@@ -68,8 +72,9 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     floor.name = `${room.id}-floor`;
     group.add(floor);
     rooms[room.id] = { wall: wallMat, floor, width: maxX - minX, depth: maxZ - minZ };
+    /* the ceiling overhangs the walls by 10 cm, so no daylight slips in where they meet */
     const ceil = mesh(
-      flatShape(room.poly, CEILING),
+      flatShape(outset(room.poly, 0.1), CEILING),
       new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide }),
     );
     ceil.receiveShadow = false;
@@ -77,13 +82,14 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     for (const wall of roomWalls(room)) {
       const m = mesh(wallGeometry(wall), wallMat);
       m.name = `${room.id}-wall`;
+      const n0 = group.children.length;
       /* skirting along the wall, broken by doorways */
       let u = 0;
       for (const h of [...wall.holes.filter((h) => h.opening.y0 < 0.01), { u0: wall.length, u1: wall.length }]) {
         if (h.u0 - u > 0.02) wallBox(wall, (u + h.u0) / 2, SKIRTING / 2, 0.01, h.u0 - u, SKIRTING, 0.02, mats.trim);
         u = h.u1;
       }
-      for (const h of wall.holes) {
+      for (const h of room.handBuilt ? [] : wall.holes) {
         const o = h.opening;
         if (o.kind === 'window') {
           windowLights.push(windowLight(wall, h.u0, h.u1, o));
@@ -94,6 +100,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
           architrave(wall, h.u0, h.u1, o.y1, 0.01);
         }
       }
+      wallParts.push({ wall, parts: group.children.slice(n0) });
     }
   }
   /* linings across the wall thickness of each passage, built once per passage */
@@ -146,9 +153,25 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     piece(len / 2, o.y1 - 0.01, len, 0.02);
   }
 
-  /* walls, trim and frames never move: draw them as one mesh per material (floors keep their own) */
-  mergeMeshes([...group.children]);
-  return { group, windowLights, rooms };
+  /* nothing here moves: draw each wall's parts, and everything else, as one mesh per material (floors keep their own) */
+  for (const w of wallParts) w.parts = mergeMeshes(w.parts);
+  const mounted = new Set(wallParts.flatMap((w) => w.parts));
+  mergeMeshes(group.children.filter((o) => !mounted.has(o)));
+
+  return {
+    group,
+    windowLights,
+    rooms,
+    showFrom(camera) {
+      for (const { wall, parts } of wallParts) {
+        /* the camera is outside the room when it is behind the wall's face (its +w side faces in) */
+        const ux = (wall.b[0] - wall.a[0]) / wall.length;
+        const uz = (wall.b[1] - wall.a[1]) / wall.length;
+        const inFront = -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
+        for (const p of parts) p.visible = inFront;
+      }
+    },
+  };
 }
 
 /* ---------- geometry ---------- */
@@ -198,16 +221,30 @@ function wallGeometry(wall: Wall): THREE.ShapeGeometry {
     .filter((h) => h.opening.y0 > 0.01)
     .map((h) => {
       const p = new THREE.Path();
-      p.moveTo(h.u0, h.opening.y0);
-      p.lineTo(h.u1, h.opening.y0);
-      p.lineTo(h.u1, h.opening.y1);
-      p.lineTo(h.u0, h.opening.y1);
-      p.lineTo(h.u0, h.opening.y0);
+      const o = h.opening;
+      if (o.arch) return archPath(p, (h.u0 + h.u1) / 2, h.u1 - h.u0, o.y0, o.y1);
+      p.moveTo(h.u0, o.y0);
+      p.lineTo(h.u1, o.y0);
+      p.lineTo(h.u1, o.y1);
+      p.lineTo(h.u0, o.y1);
+      p.lineTo(h.u0, o.y0);
       return p;
     });
-  const g = new THREE.ShapeGeometry(s);
+  /* finer arcs where a wall has arched windows */
+  const g = new THREE.ShapeGeometry(s, wall.holes.some((h) => h.opening.arch) ? 24 : 12);
   g.applyMatrix4(wallFrame(wall));
   return g;
+}
+
+/** an arched opening's outline in a wall's plane: centred on u = cu, w wide, from y0 up to its crown at y1 */
+export function archPath<P extends THREE.Path>(p: P, cu: number, w: number, y0: number, y1: number): P {
+  const spring = y1 - w / 2;
+  p.moveTo(cu - w / 2, y0);
+  p.lineTo(cu + w / 2, y0);
+  p.lineTo(cu + w / 2, spring);
+  p.absarc(cu, spring, w / 2, 0, Math.PI, false);
+  p.lineTo(cu - w / 2, y0);
+  return p;
 }
 
 /** soft daylight from just inside a window, aimed down and into the room */
