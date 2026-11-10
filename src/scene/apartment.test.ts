@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING, OPENINGS, ROOMS, apartmentBounds, centroid, roomSize } from '../data/rooms';
 import { roomWalls } from './apartment';
-import { SHELL_ROOMS } from './buildApartment';
 
 const room = (id: string) => ROOMS.find((r) => r.id === id)!;
 
@@ -41,14 +40,19 @@ describe('apartment rooms', () => {
   });
 
   it('cuts each opening into the walls on both sides of it', () => {
-    const walls = SHELL_ROOMS.flatMap((r) => roomWalls(r));
-    const cuts = (i: number) => walls.filter((w) => w.holes.some((h) => h.opening === OPENINGS[i])).map((w) => w.room.id);
-    expect(cuts(0)).toEqual(['hall']); // the bedroom side is built by the bedroom itself
-    expect(cuts(1).sort()).toEqual(['hall', 'living']);
-    expect(cuts(2).sort()).toEqual(['living', 'office']);
-    expect(cuts(3)).toEqual(['living']);
-    expect(cuts(4)).toEqual(['office']);
-    expect(cuts(5)).toEqual(['office']);
+    const walls = ROOMS.flatMap((r) => roomWalls(r));
+    const cuts = (o: (typeof OPENINGS)[number]) => walls.filter((w) => w.holes.some((h) => h.opening === o)).map((w) => w.room.id).sort();
+    expect(OPENINGS.map(cuts)).toEqual([
+      ['bedroom', 'hall'], // doorway between them
+      ['bedroom'], // arched windows
+      ['bedroom'],
+      ['bedroom'], // front door
+      ['hall', 'living'],
+      ['living', 'office'],
+      ['living'], // bay window
+      ['office'], // window
+      ['office'], // outer door
+    ]);
   });
 
   it('keeps openings inside their wall and under the ceiling', () => {

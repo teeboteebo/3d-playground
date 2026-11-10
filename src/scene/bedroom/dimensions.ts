@@ -1,4 +1,4 @@
-import { BEDROOM_DOOR, BEDROOM_HALF, CEILING } from '../../data/rooms';
+import { BEDROOM_DOOR, BEDROOM_FRONT_DOOR, BEDROOM_HALF, BEDROOM_WINDOWS, CEILING } from '../../data/rooms';
 
 /* Bedroom dimensions (metres): width along x, length along z, ceiling height. The room is centred on the origin. */
 export const W = BEDROOM_HALF.x * 2;
@@ -13,11 +13,16 @@ export const DOOR_Z0 = BEDROOM_DOOR.a[1];
 export const DOOR_Z1 = BEDROOM_DOOR.b[1];
 export const DOOR_H = BEDROOM_DOOR.y1;
 
-/* the two arched windows in the west wall */
-export const WIN_W = 1.15;
-export const WIN_Y0 = 0.8;
-export const WIN_SPRING = 2.375;
-export const WIN_Z = [0.95, -1.05];
+/* the two arched windows in the west wall (see rooms.ts): width, sill, springing height and centres along z */
+export const WIN_W = Math.abs(BEDROOM_WINDOWS[0].b[1] - BEDROOM_WINDOWS[0].a[1]);
+export const WIN_Y0 = BEDROOM_WINDOWS[0].y0;
+export const WIN_SPRING = BEDROOM_WINDOWS[0].y1 - WIN_W / 2;
+export const WIN_Z = BEDROOM_WINDOWS.map((o) => (o.a[1] + o.b[1]) / 2);
+
+/* the door in the south wall: centre x, width and height */
+export const FRONT_DOOR_X = (BEDROOM_FRONT_DOOR.a[0] + BEDROOM_FRONT_DOOR.b[0]) / 2;
+export const FRONT_DOOR_W = Math.abs(BEDROOM_FRONT_DOOR.b[0] - BEDROOM_FRONT_DOOR.a[0]);
+export const FRONT_DOOR_H = BEDROOM_FRONT_DOOR.y1;
 
 /* wall moulding: the rail, and the lower panels from just above the skirting to just under the rail */
 export const RAIL_Y = 0.75;
@@ -38,8 +43,8 @@ export const MIRROR_X = -0.2675;
 export const MIRROR_HALF = 0.295;
 
 /* the door in the front wall: its frame's inner edges */
-export const FRONT_DOOR_X0 = 0.415;
-export const FRONT_DOOR_X1 = 1.385;
+export const FRONT_DOOR_X0 = FRONT_DOOR_X - (FRONT_DOOR_W / 2 + 0.035);
+export const FRONT_DOOR_X1 = FRONT_DOOR_X + (FRONT_DOOR_W / 2 + 0.035);
 
 /** where the two built-in wardrobes along the east wall end */
 export const WARD_END = -L / 2 + 2;

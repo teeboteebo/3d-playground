@@ -25,6 +25,11 @@ export interface Room {
   view: string;
   /** indices of outline edges (poly[i] → poly[i+1]) that have no wall: the model stops there */
   open?: number[];
+  /**
+   * The room builds its own window, door and doorway fittings (frames, glass, curtains, daylight). Its walls,
+   * floor, ceiling and skirting are still built from the outline, with every opening cut out.
+   */
+  handBuilt?: boolean;
 }
 
 /**
@@ -41,6 +46,8 @@ export interface Opening {
   y1: number;
   /** wall thickness the lining spans (passages only) */
   depth: number;
+  /** the top is a half circle spanning the width, its crown at y1 (windows only) */
+  arch?: boolean;
 }
 
 export const ROOMS: Room[] = [
@@ -50,6 +57,7 @@ export const ROOMS: Room[] = [
     poly: [[-2.15, -1.975], [2.15, -1.975], [2.15, 1.975], [-2.15, 1.975]],
     paint: 'antique',
     view: 'Foot of bed',
+    handBuilt: true,
   },
   {
     id: 'hall',
@@ -84,8 +92,18 @@ export function roomById(id: RoomId): Room {
 /* the doorway between the bedroom and the hall: z 0.55–1.75 on the bedroom's east wall, 2.58 high */
 export const BEDROOM_DOOR: Opening = { kind: 'passage', a: [2.25, 0.55], b: [2.25, 1.75], y0: 0, y1: 2.58, depth: 0.2 };
 
+/* the bedroom's two arched windows in its west wall: 115 cm wide, sill at 80 cm, springing at 237.5 cm */
+const bedroomWindow = (cz: number): Opening => ({
+  kind: 'window', a: [-2.15, cz - 0.575], b: [-2.15, cz + 0.575], y0: 0.8, y1: 2.375 + 0.575, depth: 0, arch: true,
+});
+export const BEDROOM_WINDOWS: Opening[] = [bedroomWindow(0.95), bedroomWindow(-1.05)];
+/* the bedroom's door in its south wall, left of the dresser seen from inside */
+export const BEDROOM_FRONT_DOOR: Opening = { kind: 'door', a: [0.45, 1.975], b: [1.35, 1.975], y0: 0, y1: 2.58, depth: 0 };
+
 export const OPENINGS: Opening[] = [
   BEDROOM_DOOR,
+  ...BEDROOM_WINDOWS,
+  BEDROOM_FRONT_DOOR,
   /* hall ↔ living room */
   { kind: 'passage', a: [3.59, 0.885], b: [3.59, 1.755], y0: 0, y1: 2.378, depth: 0.2 },
   /* living room ↔ office */

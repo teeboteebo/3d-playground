@@ -42,9 +42,12 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   saved under the old `bedroom-viz` key are read and migrated)
 - `src/scene/`: the imperative three.js scene
   - `createScene.ts`: wires the pieces together: renderer, rooms, furniture, lighting, camera and the frame loop
-  - `bedroom/`: the hand-built bedroom, one module per part (shell, windows, bed, dresser, bedside lamps, pendant,
-    wardrobes, rug, moulding), each owning what its settings change; `dimensions.ts` holds its measurements
-  - `buildApartment.ts` / `apartment.ts`: the other rooms' walls, floors, windows and doors, built from their outlines
+  - `buildApartment.ts` / `apartment.ts`: every room's walls, floor, ceiling and skirting, built from its outline and
+    openings in `rooms.ts`, plus the doors and windows of rooms that are not hand-built. Parts mounted on a wall are
+    hidden while the camera looks through that wall from outside
+  - `bedroom/`: the bedroom's fittings and furniture, one module per part (doors, arched windows and curtains, bed,
+    dresser, bedside lamps, pendant, wardrobes, rug, moulding), each owning what its settings change;
+    `dimensions.ts` holds its measurements, derived from `rooms.ts` where the room data has them
   - `daylight.ts`, `roomLights.ts`: sun, sky and window light; evening ceiling lights in the other rooms
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`

@@ -13,7 +13,7 @@ import { bedroomMaterials } from './materials';
 import { bedWallMoulding, dresserWallMoulding } from './moulding';
 import { buildPendant } from './pendant';
 import { buildRug } from './rug';
-import { buildFrontDoor, buildHallDoorway, buildShell, buildSkirting } from './shell';
+import { buildFrontDoor, buildHallDoorway } from './doors';
 import { buildWardrobes } from './wardrobes';
 import { buildWindows, windowLights } from './windows';
 
@@ -36,10 +36,6 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const k = kit(parent);
   const m = bedroomMaterials(accent);
   /* each group of parts that is shown, hidden or moved together is merged into one mesh per material */
-  mergeMeshes(k.collect(() => {
-    buildShell(k, m);
-    buildSkirting(k, m);
-  }));
   const windowParts = mergeMeshes(buildWindows(k, m));
   const doorParts = mergeMeshes(buildHallDoorway(k, m));
   mergeMeshes(buildBed(k, m));
@@ -69,7 +65,6 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       current = s;
       const evening = settings.time === 'eve';
       const wallHex = findById(PAINTS, settings.walls.bedroom).hex;
-      m.wall.color.copy(lin(wallHex));
       const mouldHex = s.mouldColour === 'tone' ? wallHex : TRIM.hex;
       for (const mat of [m.mouldBed, m.mouldDresser]) {
         mat.color.copy(lin(mouldHex));

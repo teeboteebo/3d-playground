@@ -3,7 +3,7 @@ import { windowSpot } from '../daylight';
 import type { Kit } from './kit';
 import { L, W, WIN_SPRING, WIN_W, WIN_Y0, WIN_Z } from './dimensions';
 import type { BedroomMaterials } from './materials';
-import { archPath } from './shell';
+import { archPath } from '../buildApartment';
 
 /** The two arched windows in the west wall, with glass, and one curtain rod with four panels to the floor. */
 export function buildWindows({ add, box, collect, parent }: Kit, m: BedroomMaterials): THREE.Object3D[] {
@@ -24,7 +24,7 @@ export function buildWindows({ add, box, collect, parent }: Kit, m: BedroomMater
       add(ag, m.trim, -W / 2, WIN_SPRING, cz);
       box(0.04, WIN_SPRING + r - WIN_Y0, 0.03, m.trim, -W / 2 + 0.02, (WIN_Y0 + WIN_SPRING + r) / 2, cz);
       box(0.04, 0.03, WIN_W, m.trim, -W / 2 + 0.02, WIN_SPRING, cz);
-      const gl = new THREE.Mesh(new THREE.ShapeGeometry(archPath(new THREE.Shape(), -cz), 28), m.glass);
+      const gl = new THREE.Mesh(new THREE.ShapeGeometry(archPath(new THREE.Shape(), -cz, WIN_W, WIN_Y0, WIN_SPRING + WIN_W / 2), 28), m.glass);
       gl.rotation.y = Math.PI / 2;
       gl.position.set(-W / 2 - 0.03, 0, 0);
       parent.add(gl);
