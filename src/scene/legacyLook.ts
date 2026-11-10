@@ -42,12 +42,12 @@ const grid17 = (() => {
 				shadow = ( ${taps.join(' + ')} ) * ( 1.0 / 17.0 );`;
 })();
 
-let applied = false;
+/** left in the patched chunk, so the patches run once per page even if this module is evaluated again (HMR) */
+const MARKER = '// legacyLook';
 
 export function applyLegacyLook(): void {
-  if (applied) return;
-  applied = true;
   THREE.ColorManagement.enabled = false;
+  if (THREE.ShaderChunk.shadowmap_pars_fragment.includes(MARKER)) return;
 
   patch(
     'lights_pars_begin',
@@ -71,13 +71,18 @@ export function applyLegacyLook(): void {
   patch(
     'shadowmap_pars_fragment',
     /float texelSize = shadowRadius \/ shadowMapSize\.x;[\s\S]*?shadow \*= 0\.2;/,
-    `vec2 offset = vec2( - 1.0, 1.0 ) * shadowRadius / ( shadowMapSize.y * 2.0 );
+    `${MARKER}
+			vec2 offset = vec2( - 1.0, 1.0 ) * shadowRadius / ( shadowMapSize.y * 2.0 );
 			vec3 offsets[ 9 ] = vec3[ 9 ]( offset.xyy, offset.yyy, offset.xxy, offset.yxy, offset.xxx, offset.yxx, offset.xyx, offset.yyx, vec3( 0.0 ) );
 			shadow = 0.0;
 			for ( int i = 0; i < 9; i ++ ) {
 				vec3 direction = bd3D + offsets[ i ];
 				vec3 absDirection = abs( direction );
-				float dp = depthA + depthB / max( max( absDirection.x, absDirection.y ), absDirection.z );
+				// r128 added shadow.bias to the light distance as a fraction of near..far; r187 adds it to the
+				// perspective depth, where the same bias grows with the square of the distance. Apply it as r128
+				// did, then convert to the cube face's depth (this scene does not use a reversed depth buffer).
+				float z = lightDistance * max( max( absDirection.x, absDirection.y ), absDirection.z ) + shadowBias * depthRange;
+				float dp = shadowCameraFar / depthRange - shadowCameraNear * shadowCameraFar / ( depthRange * z );
 				shadow += texture( shadowMap, vec4( direction, dp ) );
 			}
 			shadow /= 9.0;`,
