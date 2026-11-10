@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
 import { ROOMS, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
@@ -9,6 +9,7 @@ import { SHELL_ROOMS, buildApartment } from './buildApartment';
 import { addSkyAndSun, setWindowSpot } from './daylight';
 import { disposeTree } from './dispose';
 import { loadFurniture } from './furniture';
+import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { orbitCamera } from './orbitCamera';
 import { pickRoom } from './pickRoom';
@@ -42,16 +43,16 @@ export function createApartmentScene(
   /** called with the room under a click (not a drag), or null for a click outside the apartment */
   onPick?: (room: RoomId | null) => void,
 ): ApartmentScene {
+  applyLegacyLook();
   let renderer: THREE.WebGLRenderer;
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   } catch (e) {
     throw new WebGLUnavailableError(e);
   }
-  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.shadowMap.enabled = true;
-  /* plain PCF filters over each light's shadow.radius, so shadow edges come out soft
-     (PCFSoftShadowMap ignores radius in this three.js version and gives razor-sharp edges) */
+  /* PCF filters over each light's shadow.radius (as r128 did, see legacyLook), so shadow edges come out soft */
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.setClearColor(0x000000, 0);
   const scene = new THREE.Scene();

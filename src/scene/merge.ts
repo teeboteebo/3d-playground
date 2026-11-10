@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BufferGeometryUtils } from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /**
  * Replaces many small meshes with one mesh per material (and shadow setting), baking each mesh's transform into
@@ -33,7 +33,7 @@ export function mergeMeshes(objects: readonly THREE.Object3D[]): THREE.Object3D[
       return g;
     });
     const first = meshes[0];
-    const merged = new THREE.Mesh(BufferGeometryUtils.mergeBufferGeometries(geos), first.material);
+    const merged = new THREE.Mesh(mergeGeometries(geos), first.material);
     merged.castShadow = first.castShadow;
     merged.receiveShadow = first.receiveShadow;
     merged.visible = first.visible;

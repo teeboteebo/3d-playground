@@ -64,8 +64,15 @@ not in CI. When a change is meant to alter the look, check the new images, then 
 - The models in `public/models/` are meshopt-compressed. To add one, compress it the same way:
   `npx @gltf-transform/cli meshopt in.glb public/models/living/out.glb --level medium`.
 
-three.js is pinned to r128, the version the original single-file app used. Newer releases change colour management
-and light units, which would visibly change the scene.
+### three.js version
+
+The scene was lit and tuned under three.js r128 and now runs on r187. Newer releases manage colour, measure light in
+physical units and filter soft shadows differently, so `src/scene/legacyLook.ts` keeps the r128 look: colour
+management off, light colours scaled by π, r128's distance falloff and its grid-filtered soft shadows, patched into
+three's shaders, and point-light shadow bias applied in distance as r128 did. The result is close but not
+pixel-exact: r187 filters each shadow tap bilinearly, its standard material differs slightly, and it shadows the
+living-room models where r128 let sunlight leak onto them through walls. Each patch throws if it no longer finds its target (and `legacyLook.test.ts` checks them), so an
+upgrade that changes those shaders fails loudly; run the screenshot tests after any three.js upgrade.
 
 ## CI/CD
 
