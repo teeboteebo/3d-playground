@@ -11,6 +11,7 @@ import { disposeTree } from './dispose';
 import { loadFurniture } from './furniture';
 import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
+import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
 import { pickRoom } from './pickRoom';
 import { quebecRug } from './quebecRug';
@@ -69,6 +70,7 @@ export function createApartmentScene(
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
   scene.add(apartment.group);
+  const office = buildOffice(scene);
   for (const l of apartment.windowLights) scene.add(l, l.target);
 
   /* the scene is drawn only when something changes: a setting, the camera, the canvas size or a piece loading */
@@ -94,6 +96,7 @@ export function createApartmentScene(
     invalidate();
     const evening = s.time === 'eve';
     bedroom.apply(s);
+    office.apply(s);
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
     furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
@@ -158,6 +161,7 @@ export function createApartmentScene(
       furniture.dispose();
       disposeTree(scene);
       bedroom.dispose();
+      office.dispose();
       renderer.dispose();
     },
   };
