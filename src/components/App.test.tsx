@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { VIEWS, mainView } from '../data/catalog';
+import { FLOOR_LAMPS, PENDANTS, RUGS, VIEWS, mainView } from '../data/catalog';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
@@ -269,4 +269,32 @@ describe('App', () => {
     await renderIn('bedroom');
     expect(screen.getByRole('button', { name: 'Pendant on' })).toBeInTheDocument();
   });
+});
+
+const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+describe.each(['living', 'office'] as const)('lighting in the %s', (room) => {
+  it('offers pendants and floor lamps and applies the choice', async () => {
+    await renderIn(room);
+    const pendants = screen.getByRole('group', { name: 'Pendant' });
+    await userEvent.click(within(pendants).getByRole('button', { name: new RegExp(esc(PENDANTS[1].name)) }));
+    expect(lastApplied()[room].pendant).toBe(PENDANTS[1].id);
+    expect(stored()[room].pendant).toBe(PENDANTS[1].id);
+    const floor = screen.getByRole('group', { name: 'Floor lamp' });
+    await userEvent.click(within(floor).getByRole('button', { name: new RegExp(esc(FLOOR_LAMPS[1].name)) }));
+    expect(lastApplied()[room].floorLamp).toBe(FLOOR_LAMPS[1].id);
+    expect(lastApplied()[room].pendant).toBe(PENDANTS[1].id);
+  });
+  it('does not select a lamp when its shop link is clicked', async () => {
+    await renderIn(room);
+    const link = within(screen.getByRole('group', { name: 'Pendant' })).getAllByRole('link')[0];
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(lastApplied()[room].pendant).toBe('none');
+  });
+});
+
+it('still lists the bedroom rugs', async () => {
+  await renderIn('bedroom');
+  expect(within(screen.getByRole('group', { name: 'Rug' })).getAllByRole('button')).toHaveLength(RUGS.length);
 });
