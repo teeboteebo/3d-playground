@@ -16,7 +16,9 @@ export function LightingSection({ room, settings, update }: Props) {
   return (
     <section>
       <h2>Lighting</h2>
+      <h3>Pendant</h3>
       <ProductList label="Pendant" items={PENDANTS} value={pendant} onChange={(id) => update({ [room]: { pendant: id } })} meta={meta} />
+      <h3>Floor lamp</h3>
       <ProductList label="Floor lamp" items={FLOOR_LAMPS} value={floorLamp} onChange={(id) => update({ [room]: { floorLamp: id } })} meta={meta} />
       <p className="note">The lamps are simplified shapes. Prices and stock were checked on {LAMPS_CHECKED} and change often.</p>
     </section>

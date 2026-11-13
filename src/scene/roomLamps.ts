@@ -1,11 +1,11 @@
-import * as THREE from "three";
-import { FLOOR_LAMPS, PENDANTS, findById } from "../data/catalog";
-import { CEILING, centroid, roomById } from "../data/rooms";
-import type { Settings } from "../state/settings";
-import { buildLamp, type BuiltLamp } from "./lamps";
+import * as THREE from 'three';
+import { FLOOR_LAMPS, PENDANTS, findById } from '../data/catalog';
+import { CEILING, centroid, roomById } from '../data/rooms';
+import type { Settings } from '../state/settings';
+import { buildLamp, type BuiltLamp } from './lamps';
 
-type LampRoom = "living" | "office";
-const LAMP_ROOMS: LampRoom[] = ["living", "office"];
+type LampRoom = 'living' | 'office';
+const LAMP_ROOMS: LampRoom[] = ['living', 'office'];
 
 /** Where each room's floor lamp stands, and the turn about y that points an arc lamp's reach (along +x at 0). */
 export const FLOOR_LAMP_SPOT: Record<
@@ -13,8 +13,9 @@ export const FLOOR_LAMP_SPOT: Record<
   { x: number; z: number; rotY: number }
 > = {
   /* at the sofa's west end, between the sofa (x 4.47-7.24, z -1.87...-0.08) and the String shelving (x 3.69-3.98);
-     the east end is taken by a large plant. With rotY 0 the arc's reach points along +x, over the sofa. */
-  living: { x: 4.22, z: -1.2, rotY: 0 },
+     the east end is taken by a large plant. 4.25 keeps the widest shade (51 cm) clear of the shelving; its base and legs
+     stay clear of the sofa. With rotY 0 the arc's reach points along +x, over the sofa. */
+  living: { x: 4.25, z: -1.2, rotY: 0 },
   /* past the desk's free end (the desk covers x 11.14-11.84, z -1.405...-0.205), against the back wall;
      the arc's reach points -x, towards the chair */
   office: { x: 11.55, z: 0.1, rotY: Math.PI },
@@ -83,7 +84,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
 
   return {
     apply(s) {
-      const evening = s.time === "eve";
+      const evening = s.time === 'eve';
       for (const room of LAMP_ROOMS) {
         const pendantName = `${room}-pendant`;
         const pendant = place(

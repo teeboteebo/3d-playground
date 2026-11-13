@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { VIEWS } from '../src/data/catalog';
+import { FLOOR_LAMPS, PENDANTS, VIEWS } from '../src/data/catalog';
 import { openWith, settled } from './helpers';
 
 /* the buttons and hint drawn over the canvas: their text antialiasing varies between runs, and they are not the scene */
@@ -39,6 +39,17 @@ for (const time of ['day', 'eve'] as const) {
       await page.getByRole('group', { name: 'Camera views' }).getByRole('button', { name: view, exact: true }).click();
       await settled(page);
       await expect(page.locator('canvas.stage-canvas')).toHaveScreenshot(`${view}-custom-${time}.png`.replace(/ /g, '-').toLowerCase(), overlays(page));
+    });
+  }
+}
+
+/* each lamp room with a pendant and a floor lamp chosen, by day and lit by them in the evening */
+for (const time of ['day', 'eve'] as const) {
+  for (const [room, view] of [['living', 'Living room'], ['office', 'Office']] as const) {
+    test(`${view}, with lamps, ${time}`, async ({ page }) => {
+      await openWith(page, { room, time, [room]: { pendant: PENDANTS[1].id, floorLamp: FLOOR_LAMPS[1].id } });
+      await settled(page);
+      await expect(page.locator('canvas.stage-canvas')).toHaveScreenshot(`${view}-lamps-${time}.png`.replace(/ /g, '-').toLowerCase(), overlays(page));
     });
   }
 }
