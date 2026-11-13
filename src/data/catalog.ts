@@ -107,11 +107,17 @@ export const RUGS: Rug[] = [
 
 // Lamp shade sizes are the product's listed dimensions, in metres.
 export type LampShape =
+  /** sphere shade of diameter d */
   | { type: 'globe'; d: number; colour: string }
+  /** open dome shade: diameter d, the shade's own height h */
   | { type: 'dome'; d: number; h: number; colour: string }
+  /** open drum shade: diameter d, the shade's own height h */
   | { type: 'drum'; d: number; h: number; colour: string }
+  /** h is the lamp's total height; reach is the distance from the base's centre to the shade's centre; shadeD is the shade diameter */
   | { type: 'arc'; h: number; reach: number; shadeD: number; colour: string }
+  /** h is the total height to the top of the shade; shadeD and shadeH are the shade's diameter and height */
   | { type: 'tripod'; h: number; shadeD: number; shadeH: number; colour: string }
+  /** h is the total height to the bowl's rim; bowlD is the bowl diameter */
   | { type: 'uplight'; h: number; bowlD: number; colour: string };
 
 export interface Lamp {
