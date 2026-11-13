@@ -1,7 +1,8 @@
 /** Sizes and positions (metres) of the office's furniture. The left wall is z = −1.925, the back wall x = 11.89. */
 export const LEFT_WALL_Z = -1.925;
 export const BACK_WALL_X = 11.89;
-export const WALL_GAP = 0.02;
+/** clear of the walls by more than the sun's shadow normalBias (0.02): closer, and a face beside a wall is striped with shadow */
+export const WALL_GAP = 0.05;
 /** floor-standing parts sit this far up, so float32 rounding never puts them below y = 0 */
 export const LIFT = 0.0001;
 

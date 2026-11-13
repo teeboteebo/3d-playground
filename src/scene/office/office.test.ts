@@ -53,19 +53,19 @@ describe('buildOffice', () => {
   });
   it('stands the cabinets against the entrance wall, beside the opening', () => {
     const b = boxOf(build().g, 'office-cabinets');
-    expect(b.min.x).toBeCloseTo(8.91, 2);
-    expect(b.max.x).toBeCloseTo(9.51, 2);
-    expect(b.min.z).toBeCloseTo(-1.905, 2);
-    expect(b.max.z).toBeCloseTo(-0.705, 2);
+    expect(b.min.x).toBeCloseTo(8.94, 2);
+    expect(b.max.x).toBeCloseTo(9.54, 2);
+    expect(b.min.z).toBeCloseTo(-1.875, 2);
+    expect(b.max.z).toBeCloseTo(-0.675, 2);
   });
   it('stands the drawer unit between the desk and the left wall', () => {
     const { g } = build();
     const drawers = boxOf(g, 'office-drawers');
     const desk = boxOf(g, 'office-desk');
-    expect(drawers.min.z).toBeCloseTo(-1.905, 2);
+    expect(drawers.min.z).toBeCloseTo(-1.875, 2);
     expect(drawers.max.z).toBeLessThanOrEqual(desk.min.z);
-    expect(drawers.max.x).toBeCloseTo(11.87, 2);
-    expect(desk.max.z).toBeCloseTo(-0.265, 2);
+    expect(drawers.max.x).toBeCloseTo(11.84, 2);
+    expect(desk.max.z).toBeCloseTo(-0.205, 2);
   });
   it('keeps the pieces from standing inside each other', () => {
     const { g } = build();
