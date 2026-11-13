@@ -7,16 +7,27 @@ export const LIFT = 0.0001;
 
 /** METOD high cabinet 60 × 60 × 200 with two METOD top cabinets 60 × 60 × 40 stacked on it, on a plinth */
 export const CABINET = { w: 0.6, d: 0.6, h: 2.0, plinth: 0.08, topH: 0.4, tops: 2 } as const;
-export const CABINET_X = [9.27, 9.87] as const;
-export const CABINET_Z = LEFT_WALL_Z + WALL_GAP + CABINET.d / 2;
+/** the two stacks stand against the entrance wall (x = 8.89), in the corner with the left wall, fronts facing +x */
+export const ENTRANCE_WALL_X = 8.89;
+export const CABINET_X = ENTRANCE_WALL_X + WALL_GAP + CABINET.d / 2;
+export const CABINET_Z = [LEFT_WALL_Z + WALL_GAP + CABINET.w / 2, LEFT_WALL_Z + WALL_GAP + CABINET.w * 1.5] as const;
 
-/** IDÅSEN desk 120 × 70, its long side along z */
+/** IDÅSEN drawer unit, on the floor between the desk and the left wall, fronts facing −x */
+export const DRAWERS = {
+  w: 0.42,
+  d: 0.47,
+  h: 0.61,
+  x: BACK_WALL_X - WALL_GAP - 0.47 / 2,
+  z: LEFT_WALL_Z + WALL_GAP + 0.42 / 2,
+} as const;
+
+/** IDÅSEN desk 120 × 70, its long side along z, against the back wall with the drawer unit at its left end */
 export const DESK = { w: 1.2, d: 0.7, h: 0.75, top: 0.02 } as const;
 export const DESK_X = BACK_WALL_X - WALL_GAP - DESK.d / 2;
-export const DESK_Z = LEFT_WALL_Z + WALL_GAP + DESK.w / 2;
+export const DESK_Z = LEFT_WALL_Z + WALL_GAP + DRAWERS.w + WALL_GAP + DESK.w / 2;
 
-/** IDÅSEN drawer unit under the desk's free end, fronts facing −x */
-export const DRAWERS = { w: 0.42, d: 0.47, h: 0.61, x: 11.57, z: -0.955 } as const;
-
-/** desk chair, facing +x towards the desk (ÖRFJÄLL-sized: IKEA's pages gave no assembled sizes to check) */
-export const CHAIR = { x: 10.95, z: -1.5, seat: 0.46, seatW: 0.46, seatD: 0.46, baseR: 0.3, backH: 0.5 } as const;
+/**
+ * IKEA ALEFJÄLL chair, facing +x towards the desk's middle. IKEA's page could not be read, so these are the
+ * published sizes as given: footprint 64 × 64, seat 51 wide × 42 deep at 50 high, 100 high in all.
+ */
+export const CHAIR = { x: 10.95, z: DESK_Z, seat: 0.5, seatW: 0.51, seatD: 0.42, baseR: 0.32, height: 1.0 } as const;

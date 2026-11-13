@@ -11,6 +11,7 @@ const build = () => {
   return { g, office };
 };
 const box = (g: THREE.Object3D) => new THREE.Box3().setFromObject(g);
+const boxOf = (g: THREE.Object3D, name: string) => new THREE.Box3().setFromObject(g.getObjectByName(name)!);
 
 describe('buildOffice', () => {
   it('stands inside the office outline, on the floor, under the ceiling', () => {
@@ -49,5 +50,30 @@ describe('buildOffice', () => {
       if (o instanceof THREE.Mesh) n++;
     });
     expect(n).toBeLessThanOrEqual(12);
+  });
+  it('stands the cabinets against the entrance wall, beside the opening', () => {
+    const b = boxOf(build().g, 'office-cabinets');
+    expect(b.min.x).toBeCloseTo(8.91, 2);
+    expect(b.max.x).toBeCloseTo(9.51, 2);
+    expect(b.min.z).toBeCloseTo(-1.905, 2);
+    expect(b.max.z).toBeCloseTo(-0.705, 2);
+  });
+  it('stands the drawer unit between the desk and the left wall', () => {
+    const { g } = build();
+    const drawers = boxOf(g, 'office-drawers');
+    const desk = boxOf(g, 'office-desk');
+    expect(drawers.min.z).toBeCloseTo(-1.905, 2);
+    expect(drawers.max.z).toBeLessThanOrEqual(desk.min.z);
+    expect(drawers.max.x).toBeCloseTo(11.87, 2);
+    expect(desk.max.z).toBeCloseTo(-0.265, 2);
+  });
+  it('keeps the pieces from standing inside each other', () => {
+    const { g } = build();
+    const names = ['office-cabinets', 'office-desk', 'office-drawers', 'office-chair'];
+    const boxes = names.map((n) => boxOf(g, n));
+    /* the chair's seat may slide under the desk top, so compare footprints at floor level only for the others */
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) expect(boxes[i].intersectsBox(boxes[j])).toBe(false);
+    expect(boxes[3].intersectsBox(boxes[0])).toBe(false);
+    expect(boxes[3].intersectsBox(boxes[2])).toBe(false);
   });
 });

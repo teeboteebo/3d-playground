@@ -13,7 +13,7 @@ export function buildDesk({ box }: Kit, m: DeskMaterials): void {
   const { w, d, h, top } = DESK;
   box(d, top, w, m.top, DESK_X, h - top / 2, DESK_Z);
   const legH = h - top;
-  for (const dz of [-w / 2 + 0.045, w / 2 - 0.035]) {
+  for (const dz of [-w / 2 + 0.04, w / 2 - 0.04]) {
     box(d - 0.1, 0.04, 0.04, m.steel, DESK_X, 0.02 + LIFT, DESK_Z + dz);
     box(0.04, legH - 0.04, 0.04, m.steel, DESK_X, 0.04 + (legH - 0.04) / 2, DESK_Z + dz);
   }
