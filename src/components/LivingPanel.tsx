@@ -2,6 +2,7 @@ import { FURNITURE } from '../data/catalog';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
+import { LightingSection } from './LightingSection';
 
 interface Props {
   settings: Settings;
@@ -16,6 +17,7 @@ export function LivingPanel({ settings, update }: Props) {
       <h1>Living room</h1>
       <p className="sub">500 × 465 cm with an angled bay window. The furniture comes from the SketchUp model, in its places.</p>
       <FinishSection room="living" settings={settings} update={update} />
+      <LightingSection room="living" settings={settings} update={update} />
       <section>
         <h2>Furniture</h2>
         <div className="checks" role="group" aria-label="Furniture">

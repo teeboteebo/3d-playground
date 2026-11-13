@@ -1,5 +1,5 @@
 import {
-  ACCENT_DEFAULT, ARTS, FRAMES, FURNITURE, PAINTS, PILLOW_SETS, RUGS, WARDROBES,
+  ACCENT_DEFAULT, ARTS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, RUGS, WARDROBES,
 } from '../data/catalog';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
@@ -25,8 +25,14 @@ export interface BedroomSettings {
   frame: string;
 }
 
+/** The lamps chosen for a room (catalog ids, 'none' for no lamp). */
+export interface LampSettings {
+  pendant: string;
+  floorLamp: string;
+}
+
 /** What can be changed in the living room. */
-export interface LivingSettings {
+export interface LivingSettings extends LampSettings {
   /** furniture ids switched off */
   hidden: string[];
 }
@@ -41,16 +47,18 @@ export interface Settings {
   walls: Record<RoomId, string>;
   bedroom: BedroomSettings;
   living: LivingSettings;
+  office: LampSettings;
 }
 
 /** a change to the settings: top-level fields, and any fields of a room's own settings */
-export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living'>> & {
+export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living' | 'office'>> & {
   bedroom?: Partial<BedroomSettings>;
   living?: Partial<LivingSettings>;
+  office?: Partial<LampSettings>;
 };
 
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
-  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living } };
+  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living }, office: { ...s.office, ...p.office } };
 }
 
 export const STORAGE_KEY = 'apartment-playground';
@@ -77,7 +85,8 @@ export const DEFAULTS: Settings = {
     art: 'sun',
     frame: 'brass',
   },
-  living: { hidden: [] },
+  living: { hidden: [], pendant: 'none', floorLamp: 'none' },
+  office: { pendant: 'none', floorLamp: 'none' },
 };
 
 export const SLIDERS = {
@@ -137,6 +146,14 @@ function fromVersion1(s: Raw): Raw {
   };
 }
 
+function sanitizeLamps(raw: unknown): LampSettings {
+  const l = obj(raw);
+  return {
+    pendant: oneOf(l.pendant, ids(PENDANTS), 'none'),
+    floorLamp: oneOf(l.floorLamp, ids(FLOOR_LAMPS), 'none'),
+  };
+}
+
 function sanitizeBedroom(raw: unknown): BedroomSettings {
   const b = obj(raw);
   const d = DEFAULTS.bedroom;
@@ -172,8 +189,10 @@ export function sanitizeSettings(raw: unknown): Settings {
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
     bedroom: sanitizeBedroom(s.bedroom),
     living: {
+      ...sanitizeLamps(s.living),
       hidden: Array.isArray(hidden) ? [...new Set(hidden.filter((h): h is string => ids(FURNITURE).includes(h as string)))] : [],
     },
+    office: sanitizeLamps(s.office),
   };
 }
 

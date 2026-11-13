@@ -50,7 +50,10 @@ not in CI. When a change is meant to alter the look, check the new images, then 
     `dimensions.ts` holds its measurements, derived from `rooms.ts` where the room data has them
   - `office/`: the office's furniture, drawn by hand like the bedroom's (METOD cabinets in the wall colour, IDÅSEN
     desk and drawer unit, ALEFJÄLL chair); `dimensions.ts` holds its sizes and positions
-  - `daylight.ts`, `roomLights.ts`: sun, sky and window light; evening ceiling lights in the other rooms
+  - `lamps.ts`, `roomLamps.ts`: the pendant and floor lamp chosen for the living room and office, drawn from their
+    catalog shape (`PENDANTS`, `FLOOR_LAMPS` in `catalog.ts`), each with its own evening light
+  - `daylight.ts`, `roomLights.ts`: sun, sky and window light; an evening fill light in the other rooms, dimmed in
+    the living room or office once a lamp is chosen there
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`
   - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down

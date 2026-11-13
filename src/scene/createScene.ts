@@ -15,6 +15,7 @@ import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
 import { pickRoom } from './pickRoom';
 import { quebecRug } from './quebecRug';
+import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { floorTexture } from './textures';
 
@@ -71,6 +72,7 @@ export function createApartmentScene(
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
   scene.add(apartment.group);
   const office = buildOffice(scene);
+  const roomLamps = addRoomLamps(scene);
   for (const l of apartment.windowLights) scene.add(l, l.target);
 
   /* the scene is drawn only when something changes: a setting, the camera, the canvas size or a piece loading */
@@ -101,7 +103,8 @@ export function createApartmentScene(
     furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
-    roomLights.setEvening(evening);
+    roomLamps.apply(s);
+    roomLights.apply(s);
   }
 
   const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => onPick?.(pickRoom(ndc, camera, scene.children, ROOMS)));
@@ -162,6 +165,7 @@ export function createApartmentScene(
       disposeTree(scene);
       bedroom.dispose();
       office.dispose();
+      roomLamps.dispose();
       renderer.dispose();
     },
   };

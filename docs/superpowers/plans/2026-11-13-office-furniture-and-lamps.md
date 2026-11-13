@@ -528,3 +528,13 @@ for (const time of ['day', 'eve'] as const) {
 - [ ] **Step 3:** Record the four new baselines, then look at each one: the pendant hangs clear of the furniture, the floor lamp stands on the floor beside the sofa/desk and not inside anything, and the evening shots are visibly lit by the lamps. Try every product once in the running app in both rooms and fix any that intersects furniture or a wall.
 - [ ] **Step 4:** Update `README.md` (lamps in the catalog, `scene/lamps.ts`, `scene/roomLamps.ts`), run the full check list from Global Constraints, commit — "Add screenshots of the living room and office with lamps".
 - [ ] **Step 5:** File the PR with day and evening renders, wait for CI and an independent review, and merge only on the owner's yes. After the merge, confirm the Pages deploy and that the live site shows the lamp lists.
+
+### As built (lamps)
+
+- `Lamp.shape` is `LampShape | null` (null for 'none').
+- Floor-lamp spots live in `src/scene/roomLamps.ts` (`FLOOR_LAMP_SPOT`): living `{ x: 4.25, z: -1.2, rotY: 0 }` at the
+  sofa's west end between sofa and shelving (the east end is taken by the plant); office
+  `{ x: 11.55, z: 0.1, rotY: Math.PI }`.
+- The arc is a straight stem with a horizontal arm, not a curve.
+- The catalog has four pendants and three floor lamps plus 'none', one of them discontinued and shown as such.
+- Lamp lights are on (and visible) only in the evening.

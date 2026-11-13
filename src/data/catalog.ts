@@ -105,6 +105,67 @@ export const RUGS: Rug[] = [
   { id: 'none', name: 'No rug', vendor: '', price: '', sizes: '', stock: '', st: 'un', url: '', edge: OAT },
 ];
 
+// Lamp shade sizes are the product's listed dimensions, in metres.
+export type LampShape =
+  /** sphere shade of diameter d */
+  | { type: 'globe'; d: number; colour: string }
+  /** open dome shade: diameter d, the shade's own height h */
+  | { type: 'dome'; d: number; h: number; colour: string }
+  /** open drum shade: diameter d, the shade's own height h */
+  | { type: 'drum'; d: number; h: number; colour: string }
+  /** h is the lamp's total height; reach is the distance from the base's centre to the shade's centre; shadeD is the shade diameter */
+  | { type: 'arc'; h: number; reach: number; shadeD: number; colour: string }
+  /** h is the total height to the top of the shade; shadeD and shadeH are the shade's diameter and height */
+  | { type: 'tripod'; h: number; shadeD: number; shadeH: number; colour: string }
+  /** h is the total height to the bowl's rim; bowlD is the bowl diameter */
+  | { type: 'uplight'; h: number; bowlD: number; colour: string };
+
+export interface Lamp {
+  id: string;
+  kind: 'pendant' | 'floor';
+  name: string;
+  vendor: string;
+  price: string;
+  stock: string;
+  st: StockState;
+  url: string;
+  shape: LampShape | null;
+}
+
+export const LAMPS_CHECKED = '13 Nov 2026';
+
+export const PENDANTS: Lamp[] = [
+  { id: 'none', kind: 'pendant', name: 'No pendant', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
+  { id: 'blasverk', kind: 'pendant', name: 'BLÅSVERK, beige 37 cm', vendor: 'IKEA', price: '299 kr', stock: 'Stock unconfirmed', st: 'un',
+    url: 'https://www.ikea.com/se/en/p/blasverk-pendant-lamp-beige-60520903',
+    shape: { type: 'drum', d: 0.37, h: 0.18, colour: '#D9CBB0' } },
+  { id: 'volang', kind: 'pendant', name: 'Volang, white metal Ø50', vendor: 'Nordic Nest', price: '1 889 kr', stock: 'Discontinued', st: 'no',
+    url: 'https://www.nordicnest.se/varumarken/globen-lighting/volang-pendel-o50-1/',
+    shape: { type: 'dome', d: 0.5, h: 0.21, colour: '#F2F0EA' } },
+  { id: 'pavot', kind: 'pendant', name: 'Pavot, grey linen Ø45', vendor: 'Nordic Nest', price: '1 885 kr (sale)', stock: 'Made to order, ships from 6 Dec', st: 'un',
+    url: 'https://www.nordicnest.se/varumarken/globen-lighting/pavot-pendel-o45-cm/',
+    shape: { type: 'drum', d: 0.45, h: 0.5, colour: '#A6A39D' } },
+  { id: 'mirrorball', kind: 'pendant', name: 'Mirror Ball, gold Ø50', vendor: 'Nordic Nest', price: '11 175 kr (sale)', stock: 'Few left', st: 'ok',
+    url: 'https://www.nordicnest.se/varumarken/tom-dixon/mirror-ball-pendel-led-o50-cm/',
+    shape: { type: 'globe', d: 0.5, colour: '#C9A24B' } },
+];
+
+export const FLOOR_LAMPS: Lamp[] = [
+  { id: 'none', kind: 'floor', name: 'No floor lamp', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
+  { id: 'up2', kind: 'floor', name: 'EGLO UP 2, nickel and white', vendor: 'Hornbach', price: '722 kr', stock: 'Online, ships in about 3 days', st: 'ok',
+    url: 'https://www.hornbach.se/p/golvlampa-eglo-up2-e27-e14/5065355/',
+    shape: { type: 'uplight', h: 1.78, bowlD: 0.275, colour: '#EDEDEA' } },
+  { id: 'kona', kind: 'floor', name: 'Kona, wood and beige linen', vendor: 'Bygghemma', price: '1 685 kr', stock: 'In stock', st: 'ok',
+    url: 'https://www.bygghemma.se/inredning-och-belysning/belysning/lampor/golvlampa/golvlampa-venture-home-kona/p-1517804',
+    // Shade height is not listed; 0.3 m is an estimate.
+    shape: { type: 'tripod', h: 1.6, shadeD: 0.51, shadeH: 0.3, colour: '#D8C9AE' } },
+  { id: 'brok', kind: 'floor', name: 'Brok, grey arc lamp', vendor: 'Hornbach', price: '1 995 kr', stock: 'Online, ships in about 6 days', st: 'ok',
+    url: 'https://www.hornbach.se/p/golvlampa-brilliant-brok-60w-e27-1960x500mm-gra/10209870/',
+    // Listed 1960 × 500 mm; what 500 measures is not stated (the page calls it length; reach 1205 mm is listed).
+    // Shade diameter is not listed; 0.3 m is an estimate.
+    shape: { type: 'arc', h: 1.96, reach: 1.205, shadeD: 0.3, colour: '#8A8782' } },
+];
+
 export interface CameraPose {
   theta: number;
   phi: number;

@@ -135,6 +135,16 @@ export interface Settings { /* … */ office: LampSettings }
   today's level when both are `none`, so the default evening look does not change.
 - Per-wall hiding does not apply to lamps; they stand inside the room.
 
+### As built (lamps)
+
+- `Lamp.shape` is `LampShape | null` (null for 'none').
+- Floor-lamp spots live in `src/scene/roomLamps.ts` (`FLOOR_LAMP_SPOT`): living `{ x: 4.25, z: -1.2, rotY: 0 }` at the
+  sofa's west end between sofa and shelving (the east end is taken by the plant); office
+  `{ x: 11.55, z: 0.1, rotY: Math.PI }`.
+- The arc is a straight stem with a horizontal arm, not a curve.
+- The catalog has four pendants and three floor lamps plus 'none', one of them discontinued and shown as such.
+- Lamp lights are on (and visible) only in the evening.
+
 ## Testing
 
 - Unit: settings sanitising for the new fields (valid id kept, unknown id falls back, missing `office` gets
