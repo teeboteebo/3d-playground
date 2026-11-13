@@ -134,10 +134,11 @@ export const VIEWS: CameraView[] = [
   { name: 'Dresser wall', icon: 'dresser', room: 'bedroom', pose: { theta: 3.14159, phi: 0.95, dist: 8.0, tx: -0.5, ty: 1.4, tz: 1.2 } },
   { name: 'Top down', icon: 'top', room: 'bedroom', pose: { theta: 0.0, phi: 0.28, dist: 10.5, tx: 0, ty: 0.4, tz: 0.0 } },
   /* the rest of the apartment lies along +x. The rooms are seen from outside their outer walls, which (like the
-     bedroom's) are single-sided and drop out: living room and office from the south, the hall from its open north end */
+     bedroom's) are single-sided and drop out: the living room from the south, the hall from its open north end, and the
+     office from the east, through its back wall, towards the entrance wall */
   { name: 'Hall', icon: 'hall', room: 'hall', pose: { theta: 0.0, phi: 1.22, dist: 7.5, tx: 2.92, ty: 1.2, tz: 1.0 } },
   { name: 'Living room', icon: 'sofa', room: 'living', pose: { theta: 3.06, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
-  { name: 'Office', icon: 'room', room: 'office', pose: { theta: 3.2, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
+  { name: 'Office', icon: 'room', room: 'office', pose: { theta: 1.85, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
   { name: 'Apartment', icon: 'plan', room: 'all', pose: { theta: 0.0, phi: 0.36, dist: 29, tx: 4.87, ty: 0, tz: 0.4 } },
 ];
 

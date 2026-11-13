@@ -3,6 +3,7 @@ import type { Update } from '../state/useSettings';
 import { AllRoomsPanel } from './AllRoomsPanel';
 import { BedroomPanel } from './BedroomPanel';
 import { LivingPanel } from './LivingPanel';
+import { OfficePanel } from './OfficePanel';
 import { SimpleRoomPanel } from './SimpleRoomPanel';
 
 interface Props {
@@ -29,6 +30,8 @@ export function Panel({ settings, update }: Props) {
             <BedroomPanel settings={settings} update={update} />
           ) : room === 'living' ? (
             <LivingPanel settings={settings} update={update} />
+          ) : room === 'office' ? (
+            <OfficePanel settings={settings} update={update} />
           ) : (
             <SimpleRoomPanel room={room} settings={settings} update={update} />
           )}

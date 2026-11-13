@@ -48,6 +48,8 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `bedroom/`: the bedroom's fittings and furniture, one module per part (doors, arched windows and curtains, bed,
     dresser, bedside lamps, pendant, wardrobes, rug, moulding), each owning what its settings change;
     `dimensions.ts` holds its measurements, derived from `rooms.ts` where the room data has them
+  - `office/`: the office's furniture, drawn by hand like the bedroom's (METOD cabinets in the wall colour, IDÅSEN
+    desk and drawer unit, ALEFJÄLL chair); `dimensions.ts` holds its sizes and positions
   - `daylight.ts`, `roomLights.ts`: sun, sky and window light; evening ceiling lights in the other rooms
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`

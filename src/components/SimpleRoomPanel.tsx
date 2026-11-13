@@ -5,7 +5,6 @@ import { FinishSection } from './FinishSection';
 
 const BLURB: Partial<Record<RoomId, string>> = {
   hall: 'The corridor between the bedroom and the living room.',
-  office: 'Two angled corners, a north window and a door out.',
 };
 
 interface Props {

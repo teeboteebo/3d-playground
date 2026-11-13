@@ -226,6 +226,15 @@ describe('App', () => {
     expect(lastApplied().walls.hall).toBe('chalk');
   });
 
+  it('shows the office with its furniture note', async () => {
+    await renderIn('office');
+    expect(screen.getByRole('heading', { name: 'Office' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Furniture' })).toBeVisible();
+    expect(screen.getByText(/METOD/)).toBeVisible();
+    expect(screen.getByText(/IDÅSEN/)).toBeVisible();
+    expect(screen.getByRole('group', { name: 'Wall colour' })).toBeVisible();
+  });
+
   it('offers no floor choice in any room', async () => {
     const user = userEvent.setup();
     await renderApp();
