@@ -28,6 +28,6 @@ export const DESK_Z = LEFT_WALL_Z + WALL_GAP + DRAWERS.w + WALL_GAP + DESK.w / 2
 
 /**
  * IKEA ALEFJÄLL chair, facing +x towards the desk's middle. IKEA's page could not be read, so these are the
- * published sizes as given: footprint 64 × 64, seat 51 wide × 42 deep at 50 high, 100 high in all.
+ * brief's fallback sizes: footprint 64 × 64, seat 51 wide × 42 deep at 50 high, 100 high in all.
  */
 export const CHAIR = { x: 10.95, z: DESK_Z, seat: 0.5, seatW: 0.51, seatD: 0.42, baseR: 0.32, height: 1.0 } as const;
