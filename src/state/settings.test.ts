@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FLOOR_LAMPS, PENDANTS } from '../data/catalog';
 import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
 
 const v2 = (patch: Record<string, unknown>) => ({ version: 2, ...patch });
@@ -112,5 +113,30 @@ describe('load/save', () => {
     const throwing = { getItem: () => { throw new Error('denied'); }, setItem: () => { throw new Error('quota'); } };
     expect(loadSettings(throwing)).toEqual(DEFAULTS);
     expect(() => saveSettings(DEFAULTS, throwing)).not.toThrow();
+  });
+});
+
+describe('lamp settings', () => {
+  const P = PENDANTS[1].id, F = FLOOR_LAMPS[1].id;
+  it('defaults every lamp to none', () => {
+    const s = sanitizeSettings(null);
+    expect(s.living).toMatchObject({ pendant: 'none', floorLamp: 'none' });
+    expect(s.office).toEqual({ pendant: 'none', floorLamp: 'none' });
+  });
+  it('loads a version 2 design saved before lamps existed unchanged', () => {
+    const old = { version: 2, room: 'living', time: 'eve', walls: DEFAULTS.walls, bedroom: DEFAULTS.bedroom, living: { hidden: ['sofa'] } };
+    expect(sanitizeSettings(old)).toEqual({ ...DEFAULTS, room: 'living', time: 'eve', living: { hidden: ['sofa'], pendant: 'none', floorLamp: 'none' } });
+  });
+  it('keeps valid lamp ids and drops unknown ones', () => {
+    const s = sanitizeSettings({ version: 2, living: { pendant: P, floorLamp: 'gone' }, office: { pendant: 'gone', floorLamp: F } });
+    expect(s.living).toMatchObject({ pendant: P, floorLamp: 'none' });
+    expect(s.office).toEqual({ pendant: 'none', floorLamp: F });
+  });
+  it('does not accept a floor lamp id as a pendant', () => {
+    expect(sanitizeSettings({ version: 2, office: { pendant: F } }).office.pendant).toBe('none');
+  });
+  it('patches one office lamp without touching the other', () => {
+    const s = applyPatch({ ...DEFAULTS, office: { pendant: P, floorLamp: F } }, { office: { pendant: 'none' } });
+    expect(s.office).toEqual({ pendant: 'none', floorLamp: F });
   });
 });
