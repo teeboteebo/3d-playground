@@ -21,7 +21,7 @@ export function OfficePanel({ settings, update }: Props) {
           each) on plinths, each with two METOD top cabinets (60 × 60 × 40 cm) stacked above. They are 288 cm tall in total
           and stop short of the 330 cm ceiling. The cabinets follow the wall colour. The IKEA IDÅSEN desk (120 × 70 cm) is
           against the back wall, with an IDÅSEN drawer unit (42 × 47 × 61 cm) between it and the left wall. In front of the
-          desk is an IKEA ALEFJÄLL chair in beige (64 × 64 cm footprint, 51 × 42 cm seat at 50 cm, 100 cm tall). All are
+          desk is an IKEA ALEFJÄLL chair in beige (64 × 64 cm footprint, 51 × 42 cm seat at 50 cm, 95 cm tall). All are
           simplified shapes.
         </p>
       </section>
