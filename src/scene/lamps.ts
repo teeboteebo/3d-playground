@@ -140,20 +140,17 @@ function tripod(s: Extract<LampShape, { type: 'tripod' }>): BuiltLamp {
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2;
     const leg = new THREE.Mesh(legGeo, metal);
-    leg.position.set((Math.cos(a) * spread) / 2, top / 2, (Math.sin(a) * spread) / 2);
-    leg.rotation.set(Math.sin(a) * Math.atan2(spread, top), 0, -Math.cos(a) * Math.atan2(spread, top));
+    /* from a foot out on the floor up to a point under the shade's centre */
+    const foot = new THREE.Vector3(Math.cos(a) * spread, 0, Math.sin(a) * spread);
+    const dir = new THREE.Vector3(0, top, 0).sub(foot).normalize();
+    leg.position.set(foot.x / 2, top / 2, foot.z / 2);
+    leg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     leg.castShadow = true;
     leg.receiveShadow = true;
     p.group.add(leg);
   }
   p.mesh(new THREE.CylinderGeometry(s.shadeD / 2, s.shadeD / 2, s.shadeH, 28, 1, true), shadeMat(p, s.colour, true, 0.9), 0, s.h - s.shadeH / 2, 0, true);
-  const built = p.build(new THREE.Vector3(0, s.h - s.shadeH / 2, 0));
-  const dispose = built.dispose;
-  built.dispose = () => {
-    legGeo.dispose();
-    dispose();
-  };
-  return built;
+  return p.build(new THREE.Vector3(0, s.h - s.shadeH / 2, 0));
 }
 
 function uplight(s: Extract<LampShape, { type: 'uplight' }>): BuiltLamp {

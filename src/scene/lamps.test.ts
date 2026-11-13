@@ -44,4 +44,27 @@ describe('buildLamp', () => {
     built.dispose();
     for (const s of spies) expect(s).toHaveBeenCalled();
   });
+
+  it('stands the tripod on wide feet that narrow under the shade', () => {
+    const shape = FLOOR_LAMPS.map((l) => l.shape).find((sh) => sh?.type === 'tripod');
+    if (shape?.type !== 'tripod') throw new Error('no tripod lamp in the catalog');
+    const built = buildLamp(shape);
+    built.group.updateMatrixWorld(true);
+    let foot = 0;
+    let top = 0;
+    const v = new THREE.Vector3();
+    built.group.traverse((o) => {
+      /* the legs are the meshes that cast shadows; the shade does not */
+      if (!(o instanceof THREE.Mesh) || !o.castShadow) return;
+      const pos = o.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        const r = Math.hypot(v.x, v.z);
+        if (v.y < 0.05) foot = Math.max(foot, r);
+        if (v.y > shape.h - shape.shadeH - 0.05) top = Math.max(top, r);
+      }
+    });
+    expect(foot).toBeGreaterThanOrEqual(0.15);
+    expect(top).toBeLessThanOrEqual(shape.shadeD / 2);
+  });
 });
