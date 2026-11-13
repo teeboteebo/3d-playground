@@ -22,7 +22,7 @@ export const DRAWERS = {
   z: LEFT_WALL_Z + WALL_GAP + 0.42 / 2,
 } as const;
 
-/** IDÅSEN desk 120 × 70, its long side along z, against the back wall with the drawer unit at its left end */
+/** IDÅSEN desk 120 × 70, its long side along z, against the back wall with the drawer unit at its left end (WALL_GAP also spaces the drawer unit from the desk) */
 export const DESK = { w: 1.2, d: 0.7, h: 0.75, top: 0.02 } as const;
 export const DESK_X = BACK_WALL_X - WALL_GAP - DESK.d / 2;
 export const DESK_Z = LEFT_WALL_Z + WALL_GAP + DRAWERS.w + WALL_GAP + DESK.w / 2;

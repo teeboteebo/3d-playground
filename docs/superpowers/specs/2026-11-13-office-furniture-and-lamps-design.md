@@ -56,6 +56,18 @@ are cheap to move.
   and their sizes. `SimpleRoomPanel` remains for the hall.
 - No new settings.
 
+### As built (owner's corrections, 13 Nov 2026)
+
+The owner corrected the layout after seeing renders. This replaces the Placement section and the chair and drawer rows of the Pieces table wherever they differ.
+
+- `WALL_GAP` is 0.05 m: more than the sun's shadow normalBias (0.02); at 0.02 a face beside a wall rendered striped.
+- Cabinets stand against the entrance wall (x = 8.89), in the corner with the left wall: x 8.94–9.54, z −1.875…−0.675, fronts facing +x.
+- The desk is against the back wall: x 11.14–11.84, z −1.405…−0.205.
+- The drawer unit is on the floor between the desk and the left wall: z −1.875…−1.455, fronts facing −x.
+- The chair is the IKEA ALEFJÄLL, beige `#C9B8A0`, 64 × 64 cm, seat 51 × 42 at 50 cm, 95 cm high, in front of the desk's middle.
+- The signature is `buildOffice(parent): { apply(s), dispose() }`: no materials argument, no `showFrom`.
+- The Living room baselines also changed, because the cabinets show at the edge of that view.
+
 ## Part 2: Lamps for the living room and office (second PR)
 
 ### Catalog

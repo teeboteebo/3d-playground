@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PAINTS, findById } from '../../data/catalog';
+import { roomById } from '../../data/rooms';
 import type { Settings } from '../../state/settings';
 import { kit, type Kit } from '../bedroom/kit';
 import { lin, std } from '../materials';
@@ -15,7 +16,7 @@ export interface Office {
 
 /** The office's furniture, built by hand into `parent`: two cabinet stacks, desk, drawer unit and chair. */
 export function buildOffice(parent: THREE.Object3D): Office {
-  const cabinet = std('#D8CDBB', 0.85);
+  const cabinet = std(findById(PAINTS, roomById('office').paint).hex, 0.85);
   cabinet.name = 'office-cabinet';
   const gap = std('#1E1E1E', 1);
   const desk = { top: std('#3B3A38', 0.6), steel: std('#2B2B2B', 0.5, 0.5), front: std('#333333', 0.5, 0.5) };

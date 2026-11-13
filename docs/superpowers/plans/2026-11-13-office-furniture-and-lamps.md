@@ -174,6 +174,8 @@ it('shows the office with its furniture note', async () => {
 - [ ] **Step 5:** Update `README.md`, run the full check list from Global Constraints, commit — "Refresh the office and apartment screenshots for the office furniture".
 - [ ] **Step 6:** File the PR with before/after renders, wait for CI and an independent review, and merge only on the owner's yes.
 
+**As built (owner's corrections, 13 Nov 2026).** The table in Task 1 was superseded. `WALL_GAP` is 0.05 (more than the sun's shadow normalBias of 0.02; at 0.02 a face beside a wall rendered striped). Cabinets stand against the entrance wall (x = 8.89) in the corner with the left wall: x 8.94–9.54, z −1.875…−0.675, fronts facing +x. The desk is against the back wall: x 11.14–11.84, z −1.405…−0.205. The drawer unit is on the floor between the desk and the left wall: z −1.875…−1.455, fronts facing −x. The chair is the IKEA ALEFJÄLL, beige `#C9B8A0`, 64 × 64 cm, seat 51 × 42 at 50 cm, 95 cm high, in front of the desk's middle. `buildOffice(parent)` returns `{ apply(s), dispose() }`, with no materials argument and no `showFrom`. Task 3's "Office and Apartment views only" turned out to include the Living room views too: the cabinets show at the edge of that view, so its baselines changed as well.
+
 ---
 
 # PR 2: Lamps
@@ -418,7 +420,7 @@ it('frees its geometry on dispose', () => {
   export function addRoomLights(scene: THREE.Scene): { apply(s: Settings): void }   // replaces setEvening
   ```
 - Pendant: at the room's `centroid`, group at y = `CEILING`, `drop` = `CEILING − 2.1` = 1.2. Group name `` `${room}-pendant` ``.
-- Floor lamp: at `FLOOR_LAMP_SPOT[room]`, group name `` `${room}-floor-lamp` ``. Office spot: `{ x: 11.55, z: -0.35, rotY: Math.PI }` (beside the desk's free end, against the back wall). Living room spot: read the sofa's bounding box from `public/models/living/sofa.glb` in the running app (`scene.getObjectByName('sofa')`) and put the lamp 0.35 m beyond the sofa's end that is farther from the hall, 0.3 m in front of its back; `rotY` turns an arc lamp's reach towards the sofa's centre. Write the resulting numbers as constants.
+- Floor lamp: at `FLOOR_LAMP_SPOT[room]`, group name `` `${room}-floor-lamp` ``. Office spot: `{ x: 11.55, z: 0.1, rotY: Math.PI }` (beside the desk's free end: past it (the desk ends at z −0.205) with room for a lamp base up to 25 cm in radius, against the back wall). The test must also check the spot is outside the desk's footprint (x 11.14–11.84, z −1.405…−0.205). Living room spot: read the sofa's bounding box from `public/models/living/sofa.glb` in the running app (`scene.getObjectByName('sofa')`) and put the lamp 0.35 m beyond the sofa's end that is farther from the hall, 0.3 m in front of its back; `rotY` turns an arc lamp's reach towards the sofa's centre. Write the resulting numbers as constants.
 - Lights: one `THREE.PointLight(0xffc890, 0, 7, 1.3)` per chosen lamp at its `bulb`, no shadows, name `` `${group name}-light` ``. Evening intensity 0.9 for a pendant, 0.6 for a floor lamp; 0 by day. `setGlow(evening)`.
 - `apply` rebuilds a lamp only when its id changed (dispose the old lamp and remove its light first).
 - `roomLights.apply`: hall fill is 0.6 in the evening as today. Living room and office fill is 0.6 in the evening when both of that room's lamps are `'none'`, 0.15 when at least one is chosen, 0 by day.

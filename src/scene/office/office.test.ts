@@ -71,9 +71,21 @@ describe('buildOffice', () => {
     const { g } = build();
     const names = ['office-cabinets', 'office-desk', 'office-drawers', 'office-chair'];
     const boxes = names.map((n) => boxOf(g, n));
-    /* the chair's seat may slide under the desk top, so compare footprints at floor level only for the others */
+    /* whole boxes are compared; the chair is not checked against the desk, because its seat slides under the desk top */
     for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) expect(boxes[i].intersectsBox(boxes[j])).toBe(false);
     expect(boxes[3].intersectsBox(boxes[0])).toBe(false);
     expect(boxes[3].intersectsBox(boxes[2])).toBe(false);
+  });
+  it('faces the fronts outwards and pins the desk', () => {
+    const { g } = build();
+    const cabinets = boxOf(g, 'office-cabinets');
+    const drawers = boxOf(g, 'office-drawers');
+    const desk = boxOf(g, 'office-desk');
+    /* the door gap lines stand proud of the cabinet fronts, which face +x */
+    expect(cabinets.max.x).toBeGreaterThan(9.54);
+    expect(cabinets.min.x).toBeCloseTo(8.94, 2);
+    /* the drawer fronts stand proud of the body on its −x face */
+    expect(drawers.min.x).toBeLessThan(11.84 - 0.47);
+    expect(desk.max.x).toBeCloseTo(11.84, 2);
   });
 });
