@@ -1,28 +1,32 @@
+import type { StockState } from '../data/catalog';
+
 export interface Product {
   id: string;
   name: string;
   vendor: string;
   price: string;
   stock: string;
-  st: string;
+  st: StockState;
   url: string;
 }
 
 interface Props<T extends Product> {
-  /** aria-label of the list's group */
-  label: string;
+  /** aria-label of the list's group, for a list with no heading of its own */
+  label?: string;
+  /** id of the heading that names the group */
+  labelledBy?: string;
   items: readonly T[];
   value: string;
   onChange: (id: string) => void;
   /** the line under the name */
   meta: (item: T) => string;
-  /** image src; '' or absent draws the empty tile */
+  /** image src; absent draws no thumbnail column; '' draws the empty tile */
   thumb?: (item: T) => string;
 }
 
-export function ProductList<T extends Product>({ label, items, value, onChange, meta, thumb }: Props<T>) {
+export function ProductList<T extends Product>({ label, labelledBy, items, value, onChange, meta, thumb }: Props<T>) {
   return (
-    <div className="rugs" role="group" aria-label={label}>
+    <div className="rugs" role="group" aria-label={labelledBy ? undefined : label} aria-labelledby={labelledBy}>
       {items.map((item) => {
         const src = thumb?.(item) ?? '';
         const pick = () => onChange(item.id);
@@ -45,7 +49,7 @@ export function ProductList<T extends Product>({ label, items, value, onChange, 
               }
             }}
           >
-            {src ? <img alt="" src={src} /> : <div className="rug-empty" />}
+            {!thumb ? null : src ? <img alt="" src={src} /> : <div className="rug-empty" />}
             <div>
               <strong>{item.name}</strong>
               <span className="meta">{meta(item)}</span>

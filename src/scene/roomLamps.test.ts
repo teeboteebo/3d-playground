@@ -77,12 +77,39 @@ describe('addRoomLamps', () => {
       withLamps({ time: 'day', office: { pendant: P, floorLamp: F } }),
     );
     expect(light(g, 'office-pendant-light').intensity).toBe(0);
+    expect(light(g, 'office-pendant-light').visible).toBe(false);
+    expect(light(g, 'office-floor-lamp-light').visible).toBe(false);
     lamps.apply(
       withLamps({ time: 'eve', office: { pendant: P, floorLamp: F } }),
     );
     expect(light(g, 'office-pendant-light').intensity).toBe(0.9);
     expect(light(g, 'office-floor-lamp-light').intensity).toBe(0.6);
+    expect(light(g, 'office-pendant-light').visible).toBe(true);
+    expect(light(g, 'office-floor-lamp-light').visible).toBe(true);
     expect(light(g, 'office-pendant-light').castShadow).toBe(false);
+  });
+  it('keeps the tripod lamp\'s feet clear of the sofa and the shelving', () => {
+    const g = new THREE.Group();
+    addRoomLamps(g).apply(
+      withLamps({ living: { ...DEFAULTS.living, floorLamp: 'kona' } }),
+    );
+    const lamp = g.getObjectByName('living-floor-lamp') as THREE.Object3D;
+    lamp.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let low = 0;
+    lamp.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || !m.castShadow) return;
+      const pos = m.geometry.getAttribute('position');
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
+        if (v.y >= 0.6) continue;
+        low++;
+        expect(v.x).toBeLessThan(4.47);
+        expect(v.x).toBeGreaterThan(3.98);
+      }
+    });
+    expect(low).toBeGreaterThan(0);
   });
   it('stands each floor lamp inside its room', () => {
     for (const room of ['living', 'office'] as const) {

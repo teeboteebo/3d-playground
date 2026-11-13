@@ -161,6 +161,7 @@ export const FLOOR_LAMPS: Lamp[] = [
     shape: { type: 'tripod', h: 1.6, shadeD: 0.51, shadeH: 0.3, colour: '#D8C9AE' } },
   { id: 'brok', kind: 'floor', name: 'Brok, grey arc lamp', vendor: 'Hornbach', price: '1 995 kr', stock: 'Online, ships in about 6 days', st: 'ok',
     url: 'https://www.hornbach.se/p/golvlampa-brilliant-brok-60w-e27-1960x500mm-gra/10209870/',
+    // Listed 1960 × 500 mm; what 500 measures is not stated (the page calls it length; reach 1205 mm is listed).
     // Shade diameter is not listed; 0.3 m is an estimate.
     shape: { type: 'arc', h: 1.96, reach: 1.205, shadeD: 0.3, colour: '#8A8782' } },
 ];

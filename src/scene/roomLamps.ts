@@ -13,11 +13,11 @@ export const FLOOR_LAMP_SPOT: Record<
   { x: number; z: number; rotY: number }
 > = {
   /* at the sofa's west end, between the sofa (x 4.47-7.24, z -1.87...-0.08) and the String shelving (x 3.69-3.98);
-     the east end is taken by a large plant. 4.25 keeps the widest shade (51 cm) clear of the shelving; its base and legs
-     stay clear of the sofa. With rotY 0 the arc's reach points along +x, over the sofa. */
+     the east end is taken by a large plant. The base and legs stand clear of both; the widest shade (51 cm) hangs over
+     the sofa arm, above it. With rotY 0 the arc's reach points along +x, over the sofa. */
   living: { x: 4.25, z: -1.2, rotY: 0 },
   /* past the desk's free end (the desk covers x 11.14-11.84, z -1.405...-0.205), against the back wall;
-     the arc's reach points -x, towards the chair */
+     the arc's reach points into the room */
   office: { x: 11.55, z: 0.1, rotY: Math.PI },
 };
 
@@ -114,6 +114,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
           p.lamp.group.updateMatrixWorld(true);
           p.light.position.copy(p.lamp.bulb).applyMatrix4(p.lamp.group.matrix);
           p.light.intensity = evening ? p.intensity : 0;
+          p.light.visible = evening;
           p.lamp.setGlow(evening);
         }
       }

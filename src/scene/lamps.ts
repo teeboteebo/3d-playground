@@ -138,7 +138,7 @@ function tripod(s: Extract<LampShape, { type: 'tripod' }>): BuiltLamp {
   const len = Math.hypot(top, spread);
   const legGeo = new THREE.CylinderGeometry(0.012, 0.012, len, 8);
   for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI * 2;
+    const a = Math.PI / 3 + (i / 3) * Math.PI * 2; // one foot points -x at rotY 0
     const leg = new THREE.Mesh(legGeo, metal);
     /* from a foot out on the floor up to a point under the shade's centre */
     const foot = new THREE.Vector3(Math.cos(a) * spread, 0, Math.sin(a) * spread);
