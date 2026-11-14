@@ -55,7 +55,10 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `daylight.ts`, `roomLights.ts`: sun, sky and window light; an evening fill light in the other rooms, dimmed in
     the living room or office once a lamp is chosen there
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
-  - `furniture.ts`: loads the living-room models from `public/models/`
+  - `furniture.ts`: loads the living-room models from `public/models/`; `trimGeometry.ts` cuts the String shelving's
+    two left columns to half height as it loads
+  - `livingMoulding.ts`: the living room's sofa-wall and TV-wall moulding, laid out like the bedroom's
+    (`layout.ts`) and hidden with its wall
   - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down
   - `canvas.ts` / `textures.ts`: procedural canvas drawing (no three.js, so the panel's rug thumbnails can use it)
     and the three.js textures made from it
