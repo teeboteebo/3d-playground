@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { MOULD_COLOURS } from '../data/catalog';
 import { SLIDERS, type OnOff, type Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
@@ -33,13 +34,14 @@ const SLIDER_LABELS: Record<SliderKey, string> = {
   mouldCentre: 'Centre width',
   mouldSide: 'Side width',
   mouldSofaColumns: 'Columns',
-  mouldSofaGap: 'Gap',
+  mouldSofaGap: 'Column gap',
 };
 
 /** the column count is a plain number, the rest are lengths */
 const unit = (key: SliderKey) => (key === 'mouldSofaColumns' ? '' : ' cm');
 
 export function MouldingSection({ room, walls, layouts, settings, update }: Props) {
+  const headingId = useId();
   const b: Fields = settings[room];
   const set = (patch: Fields) => update({ [room]: patch } as Parameters<Update>[0]);
   return (
@@ -70,9 +72,10 @@ export function MouldingSection({ room, walls, layouts, settings, update }: Prop
       </div>
       {layouts.map(({ label, testId, wall, sliders }) => {
         const on = b[wall] === 'on';
+        const id = `${headingId}-${testId}`;
         return (
-          <div className={on ? 'grp' : 'grp off'} data-testid={testId} key={testId}>
-            <h3>{label}</h3>
+          <div className={on ? 'grp' : 'grp off'} data-testid={testId} key={testId} role="group" aria-labelledby={id}>
+            <h3 id={id}>{label}</h3>
             {sliders.map((key) => (
               <label className="sl" key={key}>
                 {SLIDER_LABELS[key]} <b>{b[key]}{unit(key)}</b>

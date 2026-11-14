@@ -122,6 +122,9 @@ describe('App', () => {
     expect(lastApplied().living.mouldTvWall).toBe('off');
     fireEvent.change(screen.getByRole('slider', { name: /Centre width/ }), { target: { value: '160' } });
     expect(lastApplied().living.mouldCentre).toBe(160);
+    expect(
+      within(screen.getByRole('group', { name: 'TV wall layout' })).getByRole('slider', { name: /Column spacing/ }),
+    ).toBeInTheDocument();
   });
 
   it('sizes the sofa-wall grid', async () => {
@@ -130,7 +133,7 @@ describe('App', () => {
     expect(columns).toHaveValue('5');
     fireEvent.change(columns, { target: { value: '7' } });
     expect(lastApplied().living.mouldSofaColumns).toBe(7);
-    fireEvent.change(screen.getByRole('slider', { name: /^Gap/ }), { target: { value: '12' } });
+    fireEvent.change(screen.getByRole('slider', { name: /^Column gap/ }), { target: { value: '12' } });
     expect(lastApplied().living.mouldSofaGap).toBe(12);
     expect(within(screen.getByTestId('living-sofa-layout')).getByText('7')).toBeInTheDocument();
   });

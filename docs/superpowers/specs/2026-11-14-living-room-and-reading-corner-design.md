@@ -242,3 +242,6 @@ placement adjustments after the render check; the cut height within "just above 
   columns around the TV, and the existing column spacing, centre width and side width now apply to it only. The living
   panel shows two layout groups, "Sofa wall layout" and "TV wall layout", each greyed out with its wall.
 - The String shelving's leftmost column is cut below the glass cabinet's floor; the middle column is cut as before.
+- A shelving triangle counts as in a cut region when any of its corners is in it (with "all corners", boards ending
+  inside the shared ladder floated above the cut). A 2-3 cm stub of the leftmost column's board is left inside the
+  shared ladder; this is accepted.

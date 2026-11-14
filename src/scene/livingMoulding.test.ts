@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { PAINTS, TRIM } from '../data/catalog';
-import { ROOMS } from '../data/rooms';
 import { DEFAULTS, applyPatch, type SettingsPatch } from '../state/settings';
 import { buildApartment } from './buildApartment';
 import { buildLivingMoulding } from './livingMoulding';
@@ -189,6 +188,5 @@ describe('Apartment.attachToWall', () => {
 
   it('throws when no wall of the room passes through the point', () => {
     expect(() => apartment().attachToWall('living', [5, 0], [new THREE.Group()])).toThrow();
-    expect(ROOMS.some((r) => r.id === 'living')).toBe(true);
   });
 });

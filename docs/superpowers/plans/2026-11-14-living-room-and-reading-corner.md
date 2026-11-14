@@ -269,6 +269,20 @@ Existing bedroom moulding tests must pass unchanged.
 
 # PR B: Office reading corner
 
+## As built (living room, PR A)
+
+- A shelving triangle counts as in a cut region when ANY corner is in it. With "all corners", boards ending inside the
+  shared ladder floated above the cut.
+- `SHELVING_CUT` is a list of `{ zFrom, zTo, y }` regions. The middle column has `y` 1.053 and ends at the shared
+  ladder's +z face (-0.199). The leftmost column has `y` 1.02, below the old glass-cabinet floor. A 2-3 cm stub of that
+  board is left inside the shared ladder (accepted).
+- The sofa wall is a grid (`mouldSofaColumns` 2-10, default 5; `mouldSofaGap` 4-30 cm, default 8, also the end margin)
+  built with `gridLayout`. The three-column layout with the centre/side/gap sliders applies to the TV wall only.
+- `MouldingSection` takes `layouts` groups instead of `layoutLabel`.
+- The Sofa wall view's pose is `{ theta: 0, phi: 1.08, dist: 9.0, tx: 6.0, ty: 0.9, tz: -0.6 }` (looking over the TV).
+- The Hall, Wardrobe wall and Office screenshots were re-recorded too, because they look through doorways into the
+  living room.
+
 ### Task 7: Reading-corner products
 
 **Files:**

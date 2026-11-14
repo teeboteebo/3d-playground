@@ -2,7 +2,7 @@
 
 Interactive 3D model of an apartment, decoded from a SketchUp model. Pick a room and try wall colours; in the
 bedroom, try rugs, pillows, art, wall moulding and wardrobe colours; in the living room, switch furniture on and
-off. Day and evening lighting are shared by every room.
+off and try lamps and wall moulding. Day and evening lighting are shared by every room.
 
 Built with React, TypeScript, Vite and three.js.
 
