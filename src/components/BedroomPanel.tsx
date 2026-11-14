@@ -48,7 +48,23 @@ export function BedroomPanel({ settings, update }: Props) {
         </button>
       </section>
       <AccentPicker value={b.accent} onChange={(accent) => set({ accent })} />
-      <MouldingSection settings={settings} update={update} />
+      <MouldingSection
+        room="bedroom"
+        walls={[
+          { key: 'mouldBedWall', label: 'Bed wall' },
+          { key: 'mouldDresserWall', label: 'Dresser wall' },
+        ]}
+        layouts={[
+          {
+            label: 'Bed wall layout',
+            testId: 'bed-wall-layout',
+            wall: 'mouldBedWall',
+            sliders: ['mouldGap', 'mouldCentre', 'mouldSide'],
+          },
+        ]}
+        settings={settings}
+        update={update}
+      />
       <section>
         <h2>Wardrobes</h2>
         <ChipGroup label="Wardrobes" options={WARDROBES} value={b.wardrobes} onChange={(wardrobes) => set({ wardrobes })} />

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FLOOR_LAMPS, PENDANTS, RUGS, VIEWS, mainView } from '../data/catalog';
@@ -113,6 +113,54 @@ describe('App', () => {
     expect(slider).toBeDisabled();
     expect(screen.getByTestId('bed-wall-layout')).toHaveClass('off');
     expect(lastApplied().bedroom.mouldBedWall).toBe('off');
+  });
+
+  it('changes the living-room moulding', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    await user.click(within(screen.getByRole('group', { name: 'Show moulding on' })).getByRole('button', { name: /TV wall/ }));
+    expect(lastApplied().living.mouldTvWall).toBe('off');
+    fireEvent.change(screen.getByRole('slider', { name: /Centre width/ }), { target: { value: '160' } });
+    expect(lastApplied().living.mouldCentre).toBe(160);
+    expect(
+      within(screen.getByRole('group', { name: 'TV wall layout' })).getByRole('slider', { name: /Column spacing/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('sizes the sofa-wall grid', async () => {
+    await renderIn('living');
+    const columns = screen.getByRole('slider', { name: /Columns/ });
+    expect(columns).toHaveValue('5');
+    fireEvent.change(columns, { target: { value: '7' } });
+    expect(lastApplied().living.mouldSofaColumns).toBe(7);
+    fireEvent.change(screen.getByRole('slider', { name: /^Column gap/ }), { target: { value: '12' } });
+    expect(lastApplied().living.mouldSofaGap).toBe(12);
+    expect(within(screen.getByTestId('living-sofa-layout')).getByText('7')).toBeInTheDocument();
+  });
+
+  it('greys out each living layout group with its own wall', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    const walls = within(screen.getByRole('group', { name: 'Show moulding on' }));
+    const sofa = screen.getByTestId('living-sofa-layout');
+    const tv = screen.getByTestId('living-tv-layout');
+    expect(sofa).not.toHaveClass('off');
+    expect(tv).not.toHaveClass('off');
+    await user.click(walls.getByRole('button', { name: /Sofa wall/ }));
+    expect(sofa).toHaveClass('off');
+    expect(within(sofa).getByRole('slider', { name: /Columns/ })).toBeDisabled();
+    expect(tv).not.toHaveClass('off');
+    expect(within(tv).getByRole('slider', { name: /Column spacing/ })).toBeEnabled();
+    await user.click(walls.getByRole('button', { name: /Sofa wall/ }));
+    await user.click(walls.getByRole('button', { name: /TV wall/ }));
+    expect(sofa).not.toHaveClass('off');
+    expect(tv).toHaveClass('off');
+    expect(within(tv).getByRole('slider', { name: /Column spacing/ })).toBeDisabled();
+  });
+
+  it('offers the Sofa wall view in the living room', async () => {
+    await renderIn('living');
+    expect(viewNames()).toContain('Sofa wall');
   });
 
   it('selects a rug by click or keyboard, but not via its shop link', async () => {

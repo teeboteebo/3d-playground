@@ -199,6 +199,7 @@ export const VIEWS: CameraView[] = [
      office from the east, through its back wall, towards the entrance wall */
   { name: 'Hall', icon: 'hall', room: 'hall', pose: { theta: 0.0, phi: 1.22, dist: 7.5, tx: 2.92, ty: 1.2, tz: 1.0 } },
   { name: 'Living room', icon: 'sofa', room: 'living', pose: { theta: 3.06, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
+  { name: 'Sofa wall', icon: 'sofa', room: 'living', pose: { theta: 0, phi: 1.08, dist: 9.0, tx: 6.0, ty: 0.9, tz: -0.6 } },
   { name: 'Office', icon: 'room', room: 'office', pose: { theta: 1.85, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
   { name: 'Apartment', icon: 'plan', room: 'all', pose: { theta: 0.0, phi: 0.36, dist: 29, tx: 4.87, ty: 0, tz: 0.4 } },
 ];
@@ -228,8 +229,6 @@ export interface FurniturePiece {
 export const FURNITURE: FurniturePiece[] = [
   ...[
     ['sofa', 'Sofa'],
-    ['armchairs', 'Armchairs'],
-    ['side-table', 'Side table'],
     ['tv', 'Frame TV'],
     ['tv-bench', 'TV bench'],
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
@@ -238,6 +237,30 @@ export const FURNITURE: FurniturePiece[] = [
     ['shelving', 'String shelving'],
     ['plant', 'Plant'],
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
+];
+
+export interface ShelvingCutRegion {
+  /** the region is zFrom < z ≤ zTo (scene metres); a triangle with any corner in it is cut */
+  zFrom: number;
+  zTo: number;
+  /** cut height: nothing in the region stays above it */
+  y: number;
+}
+
+/**
+ * Where the String shelving's two left columns (towards the TV wall) are cut, in scene metres, applied in turn.
+ * Measured from shelving.glb (black ladders at z −1.808…−1.779, −1.018…−0.985, −0.235…−0.199 and 0.562…0.588):
+ * - Middle column: the region starts at the +z face of the ladder it shares with the full-height column (whose max
+ *   z is −0.98510), so that ladder stays whole. It runs to the +z face of the ladder it shares with the leftmost
+ *   column (max z −0.19943), so that ladder keeps this height. Cut at 1.053, as before.
+ * - Leftmost column: everything past that shared ladder, through its outer ladder (max z 0.5877). Its glass-door
+ *   cabinet's floor (wooden board 1.0235…1.0434 on aluminium plates whose lowest vertex is at y 1.02149) is cut
+ *   away with the glass, so the cut is just below it at 1.02; its top shelf is then the 0.728…0.746 board.
+ *   The floor's end (z −0.2196…−0.1991, y 1.0215…1.053) lies inside the shared ladder, so it keeps the middle cut.
+ */
+export const SHELVING_CUT: readonly ShelvingCutRegion[] = [
+  { zFrom: -0.985, zTo: -0.199, y: 1.053 },
+  { zFrom: -0.199, zTo: 0.6, y: 1.02 },
 ];
 
 const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;

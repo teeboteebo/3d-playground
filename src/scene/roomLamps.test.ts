@@ -39,10 +39,10 @@ describe('addRoomLamps', () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
     lamps.apply(
-      withLamps({ living: { hidden: [], pendant: P, floorLamp: F } }),
+      withLamps({ living: { ...DEFAULTS.living, pendant: P, floorLamp: F } }),
     );
     lamps.apply(
-      withLamps({ living: { hidden: [], pendant: P2, floorLamp: F } }),
+      withLamps({ living: { ...DEFAULTS.living, pendant: P2, floorLamp: F } }),
     );
     expect(names(g)).toEqual([
       'living-floor-lamp',
@@ -88,7 +88,7 @@ describe('addRoomLamps', () => {
     expect(light(g, 'office-floor-lamp-light').visible).toBe(true);
     expect(light(g, 'office-pendant-light').castShadow).toBe(false);
   });
-  it('keeps the tripod lamp\'s feet clear of the sofa and the shelving', () => {
+  it('stands the living floor lamp between the sofa and the plant pot', () => {
     const g = new THREE.Group();
     addRoomLamps(g).apply(
       withLamps({ living: { ...DEFAULTS.living, floorLamp: 'kona' } }),
@@ -97,6 +97,8 @@ describe('addRoomLamps', () => {
     lamp.updateMatrixWorld(true);
     const v = new THREE.Vector3();
     let low = 0;
+    let minX = Infinity;
+    let maxX = -Infinity;
     lamp.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh || !m.castShadow) return;
@@ -105,11 +107,13 @@ describe('addRoomLamps', () => {
         v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld);
         if (v.y >= 0.6) continue;
         low++;
-        expect(v.x).toBeLessThan(4.47);
-        expect(v.x).toBeGreaterThan(3.98);
+        minX = Math.min(minX, v.x);
+        maxX = Math.max(maxX, v.x);
       }
     });
     expect(low).toBeGreaterThan(0);
+    expect(minX).toBeGreaterThan(7.24);
+    expect(maxX).toBeLessThan(7.96);
   });
   it('stands each floor lamp inside its room', () => {
     for (const room of ['living', 'office'] as const) {

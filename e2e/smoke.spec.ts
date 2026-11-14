@@ -25,5 +25,5 @@ test('selects a room from the list', async ({ page }) => {
   await openWith(page, {});
   await page.getByRole('list', { name: 'Rooms' }).getByRole('button', { name: /Living room/ }).click();
   await expect(page.getByRole('heading', { name: 'Living room' })).toBeVisible();
-  await expect(page.getByRole('group', { name: 'Camera views' }).getByRole('button')).toHaveText(['Living room']);
+  await expect(page.getByRole('group', { name: 'Camera views' }).getByRole('button')).toHaveText(['Living room', 'Sofa wall']);
 });
