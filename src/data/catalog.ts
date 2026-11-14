@@ -238,7 +238,16 @@ export const FURNITURE: FurniturePiece[] = [
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
 ];
 
-const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;
+/**
+ * Where the String shelving's two left columns (z > zFrom, towards the TV wall) are cut, in scene metres.
+ * Measured from shelving.glb: wooden shelf tops in those columns at y 0.194, 0.342/0.346, 0.538, 0.746, 1.043, 1.444
+ * and 1.694; the one nearest 1 m (the glass-door cabinet's floor) tops out at 1.043, so the cut is 1 cm above it.
+ * The black ladder shared with the full-height column spans z −1.018…−0.985, so the region starts at its +z face
+ * and the ladder stays whole.
+ */
+export const SHELVING_CUT = { zFrom: -0.985, y: 1.053 };
+
+const viewNamed =(name: string) => VIEWS.find((v) => v.name === name)!;
 
 /** the camera view a selection flies to */
 export function mainView(sel: RoomSelection): CameraView {

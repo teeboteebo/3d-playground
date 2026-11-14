@@ -1,6 +1,19 @@
 import * as THREE from 'three';
-import { FURNITURE, type FurniturePiece } from '../data/catalog';
+import { FURNITURE, SHELVING_CUT, type FurniturePiece } from '../data/catalog';
 import { disposeTree } from './dispose';
+import { trimAbove } from './trimGeometry';
+
+/** cuts the String shelving's two left columns to half height (see `SHELVING_CUT`), in place */
+function trimShelving(shelving: THREE.Object3D): void {
+  shelving.updateMatrixWorld(true);
+  const inCutColumns = (world: THREE.Vector3) => world.z > SHELVING_CUT.zFrom;
+  shelving.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const old = o.geometry as THREE.BufferGeometry;
+    o.geometry = trimAbove(old, o.matrixWorld, SHELVING_CUT.y, inCutColumns);
+    old.dispose();
+  });
+}
 
 export interface Furniture {
   /** hide these furniture ids, show the rest (also applies to pieces still loading) */
@@ -35,6 +48,7 @@ export function loadFurniture(
             return;
           }
           const { id } = piece;
+          if (id === 'shelving') trimShelving(obj);
           obj.name = id;
           obj.visible = !hidden.includes(id);
           obj.traverse((o) => {
