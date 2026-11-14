@@ -199,7 +199,7 @@ export const VIEWS: CameraView[] = [
      office from the east, through its back wall, towards the entrance wall */
   { name: 'Hall', icon: 'hall', room: 'hall', pose: { theta: 0.0, phi: 1.22, dist: 7.5, tx: 2.92, ty: 1.2, tz: 1.0 } },
   { name: 'Living room', icon: 'sofa', room: 'living', pose: { theta: 3.06, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
-  { name: 'Sofa wall', icon: 'sofa', room: 'living', pose: { theta: 0, phi: 1.33, dist: 9.5, tx: 6.2, ty: 1.05, tz: 0.3 } },
+  { name: 'Sofa wall', icon: 'sofa', room: 'living', pose: { theta: 0, phi: 1.08, dist: 9.0, tx: 6.0, ty: 0.9, tz: -0.6 } },
   { name: 'Office', icon: 'room', room: 'office', pose: { theta: 1.85, phi: 1.33, dist: 8.2, tx: 10.4, ty: 1.05, tz: 0.05 } },
   { name: 'Apartment', icon: 'plan', room: 'all', pose: { theta: 0.0, phi: 0.36, dist: 29, tx: 4.87, ty: 0, tz: 0.4 } },
 ];
