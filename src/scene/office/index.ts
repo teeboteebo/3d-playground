@@ -7,6 +7,7 @@ import { lin, std } from '../materials';
 import { mergeMeshes } from '../merge';
 import { buildCabinets } from './cabinets';
 import { buildChair } from './chair';
+import { buildCorner } from './corner';
 import { buildDesk, buildDrawers } from './desk';
 
 export interface Office {
@@ -14,7 +15,10 @@ export interface Office {
   dispose(): void;
 }
 
-/** The office's furniture, built by hand into `parent`: two cabinet stacks, desk, drawer unit and chair. */
+/**
+ * The office's furniture, built by hand into `parent`: two cabinet stacks, desk, drawer unit and chair, and the
+ * reading corner's chosen armchair, dresser and round rug (placed on `apply`).
+ */
 export function buildOffice(parent: THREE.Object3D): Office {
   const cabinet = std(findById(PAINTS, roomById('office').paint).hex, 0.85);
   cabinet.name = 'office-cabinet';
@@ -33,10 +37,14 @@ export function buildOffice(parent: THREE.Object3D): Office {
   piece('office-desk', (k) => buildDesk(k, desk));
   piece('office-drawers', (k) => buildDrawers(k, desk));
   piece('office-chair', (k) => buildChair(k, fabric, desk.steel));
+  const corner = buildCorner(parent);
   return {
     apply(s) {
       cabinet.color.copy(lin(findById(PAINTS, s.walls.office).hex));
+      corner.apply(s);
     },
-    dispose() {},
+    dispose() {
+      corner.dispose();
+    },
   };
 }

@@ -166,6 +166,109 @@ export const FLOOR_LAMPS: Lamp[] = [
     shape: { type: 'arc', h: 1.96, reach: 1.205, shadeD: 0.3, colour: '#8A8782' } },
 ];
 
+/* ---------- office reading corner: armchair, dresser and round rug to choose from ---------- */
+
+/** Sizes are the product's listed dimensions, in metres. */
+export interface ArmchairShape {
+  /** overall width */
+  w: number;
+  /** overall depth */
+  d: number;
+  /** top of the back, from the floor */
+  h: number;
+  /** top of the seat cushion, from the floor */
+  seatH: number;
+  /** upholstery */
+  colour: string;
+  legColour: string;
+  /** adds wingback sides */
+  wings: boolean;
+}
+export interface DresserShape {
+  /** overall width */
+  w: number;
+  /** overall depth */
+  d: number;
+  /** overall height, including the legs */
+  h: number;
+  /** number of drawer fronts, stacked */
+  drawers: number;
+  /** body and fronts */
+  colour: string;
+  /** height of the legs or feet the carcass stands on; 0 means it stands on a plinth or base */
+  legH: number;
+}
+/** pattern is the key of a round rug drawing in canvas.ts; edge is the colour of the rug's cut edge in 3D */
+export interface RoundRugShape {
+  d: number;
+  pattern: string;
+  edge: string;
+}
+export interface ShopItem<S> {
+  id: string;
+  name: string;
+  vendor: string;
+  price: string;
+  stock: string;
+  st: StockState;
+  url: string;
+  shape: S | null;
+}
+
+export const CORNER_CHECKED = '14 Nov 2026';
+
+export const READING_CHAIRS: ShopItem<ArmchairShape>[] = [
+  { id: 'none', name: 'No reading chair', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
+  { id: 'strandmon', name: 'STRANDMON wing chair, Nordvalla dark grey', vendor: 'IKEA', price: '2 795 kr', stock: 'Stock unconfirmed', st: 'un',
+    url: 'https://www.ikea.com/se/en/p/strandmon-wing-chair-nordvalla-dark-grey-20343224/',
+    // Leg colour is not listed; dark stained wood is an estimate.
+    shape: { w: 0.82, d: 0.96, h: 1.01, seatH: 0.45, colour: '#5B5D60', legColour: '#4A3A2C', wings: true } },
+  { id: 'fagerbacken', name: 'FAGERBACKEN armchair, Knäbäck light beige', vendor: 'IKEA', price: '3 995 kr', stock: 'Stock unconfirmed', st: 'un',
+    url: 'https://www.ikea.com/se/en/p/fagerbacken-armchair-knaebaeck-light-beige-s49612678/',
+    // The Swedish page lists only package sizes; 74 × 84 × 97 cm, seat 43 cm, is from IKEA's other markets' pages
+    // for the same frame. Legs are solid oak (listed); the oak tone is an estimate.
+    shape: { w: 0.74, d: 0.84, h: 0.97, seatH: 0.43, colour: '#D8CDB8', legColour: '#C8A87A', wings: false } },
+  { id: 'cielo', name: 'Cielo armchair, beige bouclé', vendor: 'Bygghemma', price: '5 469 kr', stock: 'In stock, delivery 2-5 weekdays', st: 'ok',
+    url: 'https://www.bygghemma.se/inredning-och-belysning/mobler/fatoljer/tygfatolj/fatolj-venture-home-cielo/p-2002992',
+    // Listed 110 wide, 97 deep, 72 high; the page gives no seat height or leg colour, so 0.4 m and a pale wood are estimates.
+    shape: { w: 1.1, d: 0.97, h: 0.72, seatH: 0.4, colour: '#D9CDB6', legColour: '#C9B79C', wings: false } },
+];
+
+export const DRESSERS: ShopItem<DresserShape>[] = [
+  { id: 'none', name: 'No dresser', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
+  { id: 'ankarudden', name: 'ANKARUDDEN, 4 drawers, oak effect', vendor: 'IKEA', price: '1 995 kr', stock: 'Stock unconfirmed', st: 'un',
+    url: 'https://www.ikea.com/se/en/p/ankarudden-chest-of-4-drawers-oak-effect-80627149/',
+    // The page lists 4 plastic feet but not their height; 0.03 m is an estimate.
+    shape: { w: 0.8, d: 0.48, h: 1.07, drawers: 4, colour: '#C9AE82', legH: 0.03 } },
+  { id: 'piring', name: 'Piring, 4 drawers, beige steel', vendor: 'Bauhaus', price: '2 595 kr', stock: 'Online only, stock not shown', st: 'un',
+    url: 'https://www.bauhaus.se/byra-venture-home-piring-40x78x98cm-beige',
+    // The Bauhaus page gives 78 × 40 × 98 cm but not the drawer count (4 is from a retailer's description of the
+    // same size) or the leg height (0.08 m is an estimate).
+    shape: { w: 0.78, d: 0.4, h: 0.98, drawers: 4, colour: '#D8CBB0', legH: 0.08 } },
+  { id: 'aoko', name: 'Aoko, 4 drawers, white lacquer', vendor: 'Nordic Nest', price: '11 466 kr', stock: 'Made to order, ships from 13 Dec', st: 'un',
+    url: 'https://www.nordicnest.se/varumarken/mavis/aoko-byra-4-lador/',
+    // Leg height is not listed; 0.1 m is an estimate.
+    shape: { w: 0.8, d: 0.4, h: 1.0, drawers: 4, colour: '#F2F0EA', legH: 0.1 } },
+];
+
+export const ROUND_RUGS: ShopItem<RoundRugShape>[] = [
+  { id: 'none', name: 'No round rug', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
+  { id: 'jute160', name: 'Natural jute, plain, Ø160', vendor: 'Hornbach', price: '579 kr', stock: 'Not available to order online', st: 'no',
+    url: 'https://www.hornbach.se/p/matta-natur-rund-160cm/10447623/',
+    shape: { d: 1.6, pattern: 'jute', edge: '#B79A6B' } },
+  { id: 'jutering', name: 'Jute and cotton, natural and white, Ø180', vendor: 'Bauhaus', price: '899 kr', stock: 'Online, stock not shown', st: 'un',
+    url: 'https://www.bauhaus.se/jutematta-rund-o180cm-natur-vit',
+    // The page does not describe the pattern; concentric natural and white rings is an estimate from the colour name.
+    shape: { d: 1.8, pattern: 'rings', edge: '#CDBB98' } },
+  { id: 'jaipur', name: 'Jaipur, beige wool, Ø200', vendor: 'Bauhaus', price: '1 339 kr', stock: 'Online only, stock not shown', st: 'un',
+    url: 'https://www.bauhaus.se/ullmatta-venture-home-jaipur-o200-beige',
+    shape: { d: 2.0, pattern: 'wool', edge: '#D6C7A9' } },
+  { id: 'cube', name: 'Insignia Cube, wool, Ø200', vendor: 'Bygghemma', price: '4 229 kr', stock: 'Temporarily out of stock', st: 'no',
+    url: 'https://www.bygghemma.se/inredning-och-belysning/hemtextilier/mattor/handvavda-mattor/ullmatta-km-carpets-insignia-cube-rund/p-1832232',
+    // Sold as Ø160 and Ø200 at one listed price; 200 is used.
+    shape: { d: 2.0, pattern: 'cubes', edge: '#B9A58A' } },
+];
+
 export interface CameraPose {
   theta: number;
   phi: number;

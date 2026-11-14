@@ -377,3 +377,15 @@ it('shows nothing for none', () => { /* all three 'none' → none of the three g
 - [ ] **Step 2:** `npm run test:visual`: expected failures only in Office and Apartment views (and customised variants); add `Office, reading corner, day|eve` screenshots of the defaults if the Office view doesn't show the corner well.
 - [ ] **Step 3:** Re-record only those, update README, full check list, commit — "Refresh the office screenshots for the reading corner".
 - [ ] **Step 4:** Whole-branch review, fix wave, file the PR, merge on the owner's yes.
+
+## As built (office reading corner, PR B)
+
+- Three chairs (no premium one: none had a readable Swedish listing), three dressers and four rugs, plus 'none' in each list.
+- `ArmchairShape` has no `type` field.
+- The chair is placed by `placeReadingChair`: its facing is kept and it slides from the door wall until every corner is
+  inside the office and clear of the desk and the floor-lamp spot. That leaves the back about 5 cm (FAGERBACKEN),
+  8 cm (STRANDMON) and 20 cm (Cielo, stopped by the north wall) off the door wall.
+- The chair stands in the outer door's swing on purpose (the door is not used).
+- The dresser stands on the rug's rim for every rug.
+- No extra reading-corner screenshots were added, because the Office view shows the corner. The Office-with-lamps and
+  Apartment baselines were re-recorded too.

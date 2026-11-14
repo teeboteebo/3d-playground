@@ -1,5 +1,6 @@
 import {
-  ACCENT_DEFAULT, ARTS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, RUGS, WARDROBES,
+  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
+  WARDROBES,
 } from '../data/catalog';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
@@ -31,6 +32,13 @@ export interface LampSettings {
   floorLamp: string;
 }
 
+/** The office: lamps and the reading corner's pieces (catalog ids; 'none' for no piece). */
+export interface OfficeSettings extends LampSettings {
+  readingChair: string;
+  dresser: string;
+  roundRug: string;
+}
+
 /** Wall moulding layout, in cm: gap between columns, centre column width, side column width. */
 export interface MouldLayout {
   mouldGap: number;
@@ -60,14 +68,14 @@ export interface Settings {
   walls: Record<RoomId, string>;
   bedroom: BedroomSettings;
   living: LivingSettings;
-  office: LampSettings;
+  office: OfficeSettings;
 }
 
 /** a change to the settings: top-level fields, and any fields of a room's own settings */
 export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living' | 'office'>> & {
   bedroom?: Partial<BedroomSettings>;
   living?: Partial<LivingSettings>;
-  office?: Partial<LampSettings>;
+  office?: Partial<OfficeSettings>;
 };
 
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
@@ -111,7 +119,14 @@ export const DEFAULTS: Settings = {
     mouldSofaColumns: 5,
     mouldSofaGap: 8,
   },
-  office: { pendant: 'none', floorLamp: 'none' },
+  office: {
+    pendant: 'none',
+    floorLamp: 'none',
+    /* the first real product of each list (index 1, after 'none'): reordering the catalog changes these defaults */
+    readingChair: READING_CHAIRS[1].id,
+    dresser: DRESSERS[1].id,
+    roundRug: ROUND_RUGS[1].id,
+  },
 };
 
 export const SLIDERS = {
@@ -181,6 +196,18 @@ function sanitizeLamps(raw: unknown): LampSettings {
   };
 }
 
+/** Unlike the lamps, the corner's pieces default to the first product; only an explicit 'none' means no piece. */
+function sanitizeOffice(raw: unknown): OfficeSettings {
+  const o = obj(raw);
+  const d = DEFAULTS.office;
+  return {
+    ...sanitizeLamps(o),
+    readingChair: oneOf(o.readingChair, ids(READING_CHAIRS), d.readingChair),
+    dresser: oneOf(o.dresser, ids(DRESSERS), d.dresser),
+    roundRug: oneOf(o.roundRug, ids(ROUND_RUGS), d.roundRug),
+  };
+}
+
 function sanitizeMouldLayout(raw: Raw, d: MouldLayout): MouldLayout {
   return {
     mouldGap: num(raw.mouldGap, d.mouldGap, SLIDERS.mouldGap.min, SLIDERS.mouldGap.max),
@@ -238,7 +265,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
     bedroom: sanitizeBedroom(s.bedroom),
     living: sanitizeLiving(s.living),
-    office: sanitizeLamps(s.office),
+    office: sanitizeOffice(s.office),
   };
 }
 
