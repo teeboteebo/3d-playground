@@ -3,6 +3,7 @@ import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
+import { ReadingCornerSection } from './ReadingCornerSection';
 
 interface Props {
   settings: Settings;
@@ -16,6 +17,7 @@ export function OfficePanel({ settings, update }: Props) {
       <p className="sub">{roomSize(roomById('office'))}. Two angled corners, a north window and a door out.</p>
       <FinishSection room="office" settings={settings} update={update} />
       <LightingSection room="office" settings={settings} update={update} />
+      <ReadingCornerSection settings={settings} update={update} />
       <section>
         <h2>Furniture</h2>
         <p className="note">

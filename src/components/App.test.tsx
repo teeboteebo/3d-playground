@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FLOOR_LAMPS, PENDANTS, RUGS, VIEWS, mainView } from '../data/catalog';
+import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS, RUGS, VIEWS, mainView } from '../data/catalog';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
@@ -339,6 +339,29 @@ describe.each(['living', 'office'] as const)('lighting in the %s', (room) => {
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(lastApplied()[room].pendant).toBe('none');
+  });
+});
+
+describe('reading corner in the office', () => {
+  const lists = [
+    ['Reading chair', READING_CHAIRS, 'readingChair'],
+    ['Dresser', DRESSERS, 'dresser'],
+    ['Round rug', ROUND_RUGS, 'roundRug'],
+  ] as const;
+  it.each(lists)('offers the %s list and applies the choice', async (name, items, key) => {
+    await renderIn('office');
+    expect(screen.getByRole('heading', { name: 'Reading corner' })).toBeInTheDocument();
+    const group = screen.getByRole('group', { name });
+    await userEvent.click(within(group).getByRole('button', { name: new RegExp(esc(items[2].name)) }));
+    expect(lastApplied().office[key]).toBe(items[2].id);
+    expect(stored().office[key]).toBe(items[2].id);
+  });
+  it.each(lists)('does not select in the %s list when a shop link is clicked', async (name, _items, key) => {
+    await renderIn('office');
+    const link = within(screen.getByRole('group', { name })).getAllByRole('link')[0];
+    link.addEventListener('click', (e) => e.preventDefault());
+    await userEvent.click(link);
+    expect(lastApplied().office[key]).toBe(DEFAULTS.office[key]);
   });
 });
 
