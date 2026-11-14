@@ -170,21 +170,32 @@ export const FLOOR_LAMPS: Lamp[] = [
 
 /** Sizes are the product's listed dimensions, in metres. */
 export interface ArmchairShape {
+  /** overall width */
   w: number;
+  /** overall depth */
   d: number;
+  /** top of the back, from the floor */
   h: number;
+  /** top of the seat cushion, from the floor */
   seatH: number;
+  /** upholstery */
   colour: string;
   legColour: string;
+  /** adds wingback sides */
   wings: boolean;
 }
 export interface DresserShape {
+  /** overall width */
   w: number;
+  /** overall depth */
   d: number;
+  /** overall height, including the legs */
   h: number;
+  /** number of drawer fronts, stacked */
   drawers: number;
+  /** body and fronts */
   colour: string;
-  /** height of the legs or feet the carcass stands on */
+  /** height of the legs or feet the carcass stands on; 0 means it stands on a plinth or base */
   legH: number;
 }
 /** pattern is the key of a round rug drawing in canvas.ts; edge is the colour of the rug's cut edge in 3D */

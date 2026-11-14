@@ -149,7 +149,6 @@ export function rugThumbnail(id: string): string {
   return (thumbCache[id] = url);
 }
 
-
 /* ---------- round rugs ---------- */
 const RR = 512;
 
