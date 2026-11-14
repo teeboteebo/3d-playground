@@ -126,11 +126,27 @@ describe('living room moulding settings', () => {
     const s = sanitizeSettings({ version: 2, living: { hidden: [] } });
     expect(s.living).toMatchObject({
       mouldColour: 'white', mouldSofaWall: 'on', mouldTvWall: 'on', mouldGap: 8, mouldCentre: 180, mouldSide: 68,
+      mouldSofaColumns: 5, mouldSofaGap: 8,
     });
   });
   it('clamps living moulding sizes to the slider ranges', () => {
     expect(sanitizeSettings({ version: 2, living: { mouldCentre: 999, mouldGap: -3 } }).living)
       .toMatchObject({ mouldCentre: 200, mouldGap: 4 });
+  });
+});
+
+describe('living room sofa-wall grid settings', () => {
+  const l = (living: object) => sanitizeSettings({ version: 2, living }).living;
+  it('clamps the column count to 2-10 and rounds it to an integer', () => {
+    expect(l({ mouldSofaColumns: 99 }).mouldSofaColumns).toBe(10);
+    expect(l({ mouldSofaColumns: 1 }).mouldSofaColumns).toBe(2);
+    expect(l({ mouldSofaColumns: 6.6 }).mouldSofaColumns).toBe(7);
+    expect(l({ mouldSofaColumns: 'abc' }).mouldSofaColumns).toBe(5);
+  });
+  it('clamps the sofa-wall gap to 4-30', () => {
+    expect(l({ mouldSofaGap: 99 }).mouldSofaGap).toBe(30);
+    expect(l({ mouldSofaGap: 1 }).mouldSofaGap).toBe(4);
+    expect(l({ mouldSofaGap: 12 }).mouldSofaGap).toBe(12);
   });
 });
 

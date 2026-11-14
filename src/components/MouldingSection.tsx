@@ -1,30 +1,47 @@
 import { MOULD_COLOURS } from '../data/catalog';
-import { SLIDERS, type Settings } from '../state/settings';
+import { SLIDERS, type OnOff, type Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { ChipGroup } from './ChipGroup';
 import { Icon } from './Icon';
 
+type SliderKey = keyof typeof SLIDERS;
+type WallKey = 'mouldBedWall' | 'mouldDresserWall' | 'mouldSofaWall' | 'mouldTvWall';
+
+/** the moulding fields the two rooms have between them */
+type Fields = Partial<Record<WallKey, OnOff> & Record<SliderKey, number> & { mouldColour: 'white' | 'tone' }>;
+
+/** A group of layout sliders that is greyed out while its wall has no moulding. */
+export interface LayoutGroup {
+  label: string;
+  testId: string;
+  /** the wall whose moulding these sliders lay out */
+  wall: WallKey;
+  sliders: readonly SliderKey[];
+}
+
 interface Props {
   room: 'bedroom' | 'living';
-  /** The walls that can carry moulding: settings keys (mouldBedWall, mouldSofaWall, ...) and their chip labels. */
-  walls: readonly { key: string; label: string }[];
-  layoutLabel: string;
+  /** The walls that can carry moulding: their settings keys and chip labels. */
+  walls: readonly { key: WallKey; label: string }[];
+  layouts: readonly LayoutGroup[];
   settings: Settings;
   update: Update;
 }
 
-type Fields = Record<string, string | number>;
+const SLIDER_LABELS: Record<SliderKey, string> = {
+  mouldGap: 'Column spacing',
+  mouldCentre: 'Centre width',
+  mouldSide: 'Side width',
+  mouldSofaColumns: 'Columns',
+  mouldSofaGap: 'Gap',
+};
 
-const SLIDER_LABELS = [
-  { key: 'mouldGap', label: 'Column spacing' },
-  { key: 'mouldCentre', label: 'Centre width' },
-  { key: 'mouldSide', label: 'Side width' },
-] as const;
+/** the column count is a plain number, the rest are lengths */
+const unit = (key: SliderKey) => (key === 'mouldSofaColumns' ? '' : ' cm');
 
-export function MouldingSection({ room, walls, layoutLabel, settings, update }: Props) {
-  const b = settings[room] as unknown as Fields;
+export function MouldingSection({ room, walls, layouts, settings, update }: Props) {
+  const b: Fields = settings[room];
   const set = (patch: Fields) => update({ [room]: patch } as Parameters<Update>[0]);
-  const layoutOn = room === 'bedroom' ? b[walls[0].key] === 'on' : walls.some(({ key }) => b[key] === 'on');
   return (
     <section>
       <h2>Wall moulding</h2>
@@ -34,7 +51,7 @@ export function MouldingSection({ room, walls, layoutLabel, settings, update }: 
           label="Moulding colour"
           options={MOULD_COLOURS}
           value={b.mouldColour as string}
-          onChange={(id) => set({ mouldColour: id })}
+          onChange={(id) => set({ mouldColour: id as 'white' | 'tone' })}
         />
       </div>
       <div className="grp">
@@ -51,21 +68,26 @@ export function MouldingSection({ room, walls, layoutLabel, settings, update }: 
           })}
         </div>
       </div>
-      <div className={layoutOn ? 'grp' : 'grp off'} data-testid={room === 'bedroom' ? 'bed-wall-layout' : 'living-layout'}>
-        <h3>{layoutLabel}</h3>
-        {SLIDER_LABELS.map(({ key, label }) => (
-          <label className="sl" key={key}>
-            {label} <b>{b[key]} cm</b>
-            <input
-              type="range"
-              {...SLIDERS[key]}
-              value={b[key] as number}
-              disabled={!layoutOn}
-              onChange={(e) => set({ [key]: Number(e.target.value) })}
-            />
-          </label>
-        ))}
-      </div>
+      {layouts.map(({ label, testId, wall, sliders }) => {
+        const on = b[wall] === 'on';
+        return (
+          <div className={on ? 'grp' : 'grp off'} data-testid={testId} key={testId}>
+            <h3>{label}</h3>
+            {sliders.map((key) => (
+              <label className="sl" key={key}>
+                {SLIDER_LABELS[key]} <b>{b[key]}{unit(key)}</b>
+                <input
+                  type="range"
+                  {...SLIDERS[key]}
+                  value={b[key]}
+                  disabled={!on}
+                  onChange={(e) => set({ [key]: Number(e.target.value) })}
+                />
+              </label>
+            ))}
+          </div>
+        );
+      })}
     </section>
   );
 }

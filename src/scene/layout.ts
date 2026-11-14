@@ -44,6 +44,16 @@ export function wallLayout(mcenCm: number, mgapCm: number, mswCm: number, halfSp
   };
 }
 
+/** `count` equal columns filling x0..x1, with `gap` between neighbouring columns and at both ends; absolute x */
+export function gridLayout(x0: number, x1: number, count: number, gapCm: number): [number, number][] {
+  const gap = gapCm / 100;
+  const width = (x1 - x0 - (count + 1) * gap) / count;
+  return Array.from({ length: count }, (_, i) => {
+    const a = x0 + gap + i * (width + gap);
+    return [a, a + width];
+  });
+}
+
 /** Bed-wall layout: `wallLayout` over the bed wall's span, plus where the bedside tables go. */
 export function bedWallLayout(mcenCm: number, mgapCm: number, mswCm: number): BedWallLayout {
   const l = wallLayout(mcenCm, mgapCm, mswCm, HALF_SPAN);

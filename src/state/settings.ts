@@ -45,6 +45,9 @@ export interface LivingSettings extends LampSettings, MouldLayout {
   mouldColour: 'white' | 'tone';
   mouldSofaWall: OnOff;
   mouldTvWall: OnOff;
+  /** sofa-wall grid: number of equal columns, and the gap between them and at both wall ends (cm) */
+  mouldSofaColumns: number;
+  mouldSofaGap: number;
 }
 
 export interface Settings {
@@ -105,6 +108,8 @@ export const DEFAULTS: Settings = {
     mouldGap: 8,
     mouldCentre: 180,
     mouldSide: 68,
+    mouldSofaColumns: 5,
+    mouldSofaGap: 8,
   },
   office: { pendant: 'none', floorLamp: 'none' },
 };
@@ -113,6 +118,8 @@ export const SLIDERS = {
   mouldGap: { min: 4, max: 30, step: 1 },
   mouldCentre: { min: 150, max: 200, step: 2 },
   mouldSide: { min: 50, max: 90, step: 1 },
+  mouldSofaColumns: { min: 2, max: 10, step: 1 },
+  mouldSofaGap: { min: 4, max: 30, step: 1 },
 } as const;
 
 type Raw = Record<string, unknown>;
@@ -192,6 +199,10 @@ function sanitizeLiving(raw: unknown): LivingSettings {
     mouldSofaWall: onOff(l.mouldSofaWall),
     mouldTvWall: onOff(l.mouldTvWall),
     ...sanitizeMouldLayout(l, d),
+    mouldSofaColumns: Math.round(
+      num(l.mouldSofaColumns, d.mouldSofaColumns, SLIDERS.mouldSofaColumns.min, SLIDERS.mouldSofaColumns.max),
+    ),
+    mouldSofaGap: num(l.mouldSofaGap, d.mouldSofaGap, SLIDERS.mouldSofaGap.min, SLIDERS.mouldSofaGap.max),
   };
 }
 

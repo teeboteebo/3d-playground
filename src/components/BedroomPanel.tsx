@@ -54,7 +54,14 @@ export function BedroomPanel({ settings, update }: Props) {
           { key: 'mouldBedWall', label: 'Bed wall' },
           { key: 'mouldDresserWall', label: 'Dresser wall' },
         ]}
-        layoutLabel="Bed wall layout"
+        layouts={[
+          {
+            label: 'Bed wall layout',
+            testId: 'bed-wall-layout',
+            wall: 'mouldBedWall',
+            sliders: ['mouldGap', 'mouldCentre', 'mouldSide'],
+          },
+        ]}
         settings={settings}
         update={update}
       />

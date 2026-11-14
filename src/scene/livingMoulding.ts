@@ -4,7 +4,7 @@ import type { XZ } from '../data/rooms';
 import type { LivingSettings, Settings } from '../state/settings';
 import { FRAME_T, LOW_Y0, LOW_Y1, RAIL_Y } from './bedroom/dimensions';
 import { kit } from './bedroom/kit';
-import { wallLayout } from './layout';
+import { gridLayout, wallLayout } from './layout';
 import { lin } from './materials';
 import { mergeMeshes } from './merge';
 
@@ -13,24 +13,51 @@ export interface LivingMoulding {
   dispose(): void;
 }
 
+/** where a wall's columns go (absolute x), and what the wall is rebuilt on */
+interface Columns {
+  key: string;
+  columns: [number, number][];
+}
+
 interface WallSpec {
   name: string;
   /** z of the wall face, and the direction the strips stand out of it (+1 = towards +z) */
   z: number;
   face: 1 | -1;
-  /** the rail's x extent, and the centre line and half-span the columns are laid out on */
+  /** the rail's x extent, and the line the wall is attached to */
   x0: number;
   x1: number;
   centre: number;
-  halfSpan: number;
-  minCentre: number;
+  columns: (s: LivingSettings) => Columns;
   on: (s: LivingSettings) => boolean;
 }
 
+/** three columns centred on `centre`, laid out by `wallLayout` */
+function threeColumns(centre: number, halfSpan: number, minCentre: number) {
+  return (s: LivingSettings): Columns => {
+    const l = wallLayout(s.mouldCentre, s.mouldGap, s.mouldSide, halfSpan, minCentre);
+    return {
+      key: `${l.centreHalf}|${l.gap}|${l.sideWidth}`,
+      columns: l.columns.map(([a, b]): [number, number] => [centre + a, centre + b]),
+    };
+  };
+}
+
 const WALLS: WallSpec[] = [
-  { name: 'living-mould-sofa', z: -1.925, face: 1, x0: 3.69, x1: 8.69, centre: 5.855, halfSpan: 1.8, minCentre: 0, on: (s) => s.mouldSofaWall === 'on' },
+  {
+    name: 'living-mould-sofa', z: -1.925, face: 1, x0: 3.69, x1: 8.69, centre: 5.855,
+    columns: (s) => ({
+      key: `${s.mouldSofaColumns}|${s.mouldSofaGap}`,
+      columns: gridLayout(3.69, 8.69, s.mouldSofaColumns, s.mouldSofaGap),
+    }),
+    on: (s) => s.mouldSofaWall === 'on',
+  },
   /* the TV (x 4.85–6.31) stays clear: the centre column is never narrower than 1.66 m */
-  { name: 'living-mould-tv', z: 2.725, face: -1, x0: 3.69, x1: 7.376, centre: 5.58, halfSpan: 1.75, minCentre: 1.66, on: (s) => s.mouldTvWall === 'on' },
+  {
+    name: 'living-mould-tv', z: 2.725, face: -1, x0: 3.69, x1: 7.376, centre: 5.58,
+    columns: threeColumns(5.58, 1.75, 1.66),
+    on: (s) => s.mouldTvWall === 'on',
+  },
 ];
 
 type Strip = (w: number, h: number, x: number, y: number) => void;
@@ -69,8 +96,7 @@ export function buildLivingMoulding(
 
   function rebuild(w: (typeof walls)[number], s: LivingSettings) {
     const { spec, material, inner } = w;
-    const layout = wallLayout(s.mouldCentre, s.mouldGap, s.mouldSide, spec.halfSpan, spec.minCentre);
-    const key = `${layout.centreHalf}|${layout.gap}|${layout.sideWidth}`;
+    const { key, columns } = spec.columns(s);
     if (key === w.key) return;
     w.key = key;
     for (const p of [...inner.children]) {
@@ -82,9 +108,9 @@ export function buildLivingMoulding(
       box(sw, h, d, material, x, y, spec.z + (spec.face * d) / 2, true);
     };
     strip(spec.x1 - spec.x0, 0.04, (spec.x0 + spec.x1) / 2, RAIL_Y, 0.014);
-    for (const [c0, c1] of layout.columns) {
-      frameOf(strip, spec.centre + c0, spec.centre + c1, LOW_Y0, LOW_Y1);
-      frameOf(strip, spec.centre + c0, spec.centre + c1, RAIL_Y + 0.08, 3.0);
+    for (const [c0, c1] of columns) {
+      frameOf(strip, c0, c1, LOW_Y0, LOW_Y1);
+      frameOf(strip, c0, c1, RAIL_Y + 0.08, 3.0);
     }
     mergeMeshes(inner.children);
   }

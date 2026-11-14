@@ -40,13 +40,15 @@ const shown = (o: THREE.Object3D) => {
 };
 
 describe('living-room moulding', () => {
-  it('builds three columns and a rail on each wall, inside the wall', () => {
+  it('builds a rail and the columns on each wall, inside the wall', () => {
     const { m, meshes } = setup();
     m.apply(settings());
-    for (const [name, wallZ, x0, x1] of [['living-mould-sofa', -1.925, 3.69, 8.69], ['living-mould-tv', 2.725, 3.69, 7.376]] as const) {
+    for (const [name, wallZ, x0, x1, columns] of [
+      ['living-mould-sofa', -1.925, 3.69, 8.69, 5], ['living-mould-tv', 2.725, 3.69, 7.376, 3],
+    ] as const) {
       const boxes = meshes(name).flatMap(strips);
-      /* rail + 3 columns × 2 frames × 4 strips */
-      expect(boxes).toHaveLength(25);
+      /* rail + columns × 2 frames × 4 strips */
+      expect(boxes).toHaveLength(1 + columns * 8);
       for (const b of boxes) {
         expect(b.min.x).toBeGreaterThanOrEqual(x0 - 1e-6);
         expect(b.max.x).toBeLessThanOrEqual(x1 + 1e-6);
@@ -98,21 +100,47 @@ describe('living-room moulding', () => {
     for (const mesh of meshes('living-mould-tv')) expect(shown(mesh)).toBe(true);
   });
 
-  it('rebuilds only when the layout changes', () => {
+  it.each([2, 5, 10])('lays the sofa wall out as %i equal columns inside its ends', (count) => {
+    const { m, meshes } = setup();
+    m.apply(settings({ mouldSofaColumns: count, mouldSofaGap: 8 }));
+    const boxes = meshes('living-mould-sofa').flatMap(strips);
+    expect(boxes).toHaveLength(1 + count * 8);
+    /* the low frames' outer strips at the bottom: one full-width strip per column at y 0.28 */
+    const bottoms = boxes.filter((b) => Math.abs(b.min.y - 0.28) < 1e-6 && b.max.y - b.min.y < 0.1)
+      .sort((a, b) => a.min.x - b.min.x);
+    expect(bottoms).toHaveLength(count);
+    const w = (5 - (count + 1) * 0.08) / count;
+    bottoms.forEach((b, i) => {
+      expect(b.max.x - b.min.x).toBeCloseTo(w);
+      expect(b.min.x).toBeCloseTo(3.69 + 0.08 + i * (w + 0.08));
+    });
+    expect(bottoms[0].min.x).toBeGreaterThan(3.69);
+    expect(bottoms[count - 1].max.x).toBeLessThan(8.69);
+  });
+
+  it('rebuilds only the wall whose layout changes', () => {
     const { m, meshes } = setup();
     m.apply(settings());
-    const first = meshes('living-mould-sofa');
+    const sofa = meshes('living-mould-sofa');
+    const tv = meshes('living-mould-tv');
     m.apply(settings({ mouldTvWall: 'off' }));
-    expect(meshes('living-mould-sofa')).toEqual(first);
-    m.apply(settings({ mouldGap: 12 }));
-    expect(meshes('living-mould-sofa')[0]).not.toBe(first[0]);
+    expect(meshes('living-mould-sofa')).toEqual(sofa);
+    m.apply(settings({ mouldSofaColumns: 4 }));
+    expect(meshes('living-mould-sofa')[0]).not.toBe(sofa[0]);
+    expect(meshes('living-mould-tv')).toEqual(tv);
+    const sofa2 = meshes('living-mould-sofa');
+    m.apply(settings({ mouldSofaColumns: 4, mouldCentre: 160 }));
+    expect(meshes('living-mould-tv')[0]).not.toBe(tv[0]);
+    expect(meshes('living-mould-sofa')).toEqual(sofa2);
+    m.apply(settings({ mouldSofaColumns: 4, mouldCentre: 160, mouldSofaGap: 12 }));
+    expect(meshes('living-mould-sofa')[0]).not.toBe(sofa2[0]);
   });
 
   it('attaches each wall once, so rebuilding keeps the attached group', () => {
     const { m, parent, attached } = setup();
     m.apply(settings());
     const groups = [...parent.children];
-    m.apply(settings({ mouldGap: 12 }));
+    m.apply(settings({ mouldGap: 12, mouldSofaColumns: 6 }));
     expect(parent.children).toEqual(groups);
     expect(attached).toEqual([[5.855, -1.925], [5.58, 2.725]]);
   });

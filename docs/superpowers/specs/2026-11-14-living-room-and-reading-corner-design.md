@@ -233,3 +233,12 @@ the reading corner before each PR is filed.
 
 Exact product picks within the stated ranges; the chair, dresser and rug shape details; the pattern drawing; small
 placement adjustments after the render check; the cut height within "just above the shelf nearest 1.0 m".
+
+## Changed after the render check (14 Nov 2026)
+
+- The sofa wall's moulding is now a grid of equal columns filling the wall (3.69–8.69 m). The owner chooses the number
+  of columns (2–10, default 5) and the gap between them, which is also the gap at both wall ends (4–30 cm, default 8).
+  Each column keeps its low and high frame, and the wall keeps its full-length rail. The TV wall keeps the three
+  columns around the TV, and the existing column spacing, centre width and side width now apply to it only. The living
+  panel shows two layout groups, "Sofa wall layout" and "TV wall layout", each greyed out with its wall.
+- The String shelving's leftmost column is cut below the glass cabinet's floor; the middle column is cut as before.

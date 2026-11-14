@@ -25,7 +25,20 @@ export function LivingPanel({ settings, update }: Props) {
           { key: 'mouldSofaWall', label: 'Sofa wall' },
           { key: 'mouldTvWall', label: 'TV wall' },
         ]}
-        layoutLabel="Layout"
+        layouts={[
+          {
+            label: 'Sofa wall layout',
+            testId: 'living-sofa-layout',
+            wall: 'mouldSofaWall',
+            sliders: ['mouldSofaColumns', 'mouldSofaGap'],
+          },
+          {
+            label: 'TV wall layout',
+            testId: 'living-tv-layout',
+            wall: 'mouldTvWall',
+            sliders: ['mouldGap', 'mouldCentre', 'mouldSide'],
+          },
+        ]}
         settings={settings}
         update={update}
       />

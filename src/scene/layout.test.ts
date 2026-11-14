@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bedWallLayout, wallLayout } from './layout';
+import { bedWallLayout, gridLayout, wallLayout } from './layout';
 
 describe('bedWallLayout', () => {
   it('lays out three columns symmetrically for the defaults', () => {
@@ -45,5 +45,28 @@ describe('wallLayout', () => {
     const l = wallLayout(150, 8, 68, 1.75, 1.66);
     expect(l.centreHalf).toBeCloseTo(0.83);
     expect(l.columns[2][1]).toBeLessThanOrEqual(1.75 + 1e-9);
+  });
+});
+
+describe('gridLayout', () => {
+  it('fills the wall with equal columns and equal gaps, also at both ends', () => {
+    const cols = gridLayout(3.69, 8.69, 5, 8);
+    expect(cols).toHaveLength(5);
+    expect(cols[0][0]).toBeCloseTo(3.77);
+    expect(cols[4][1]).toBeCloseTo(8.61);
+    const w = cols[0][1] - cols[0][0];
+    expect(w).toBeCloseTo((5 - 6 * 0.08) / 5);
+    cols.forEach(([a, b], i) => {
+      expect(b - a).toBeCloseTo(w);
+      if (i > 0) expect(a - cols[i - 1][1]).toBeCloseTo(0.08);
+    });
+  });
+
+  it.each([2, 10])('fills the wall the same way with %i columns', (n) => {
+    const cols = gridLayout(3.69, 8.69, n, 8);
+    expect(cols).toHaveLength(n);
+    expect(cols[0][0]).toBeCloseTo(3.77);
+    expect(cols[n - 1][1]).toBeCloseTo(8.61);
+    for (let i = 1; i < n; i++) expect(cols[i][0] - cols[i - 1][1]).toBeCloseTo(0.08);
   });
 });
