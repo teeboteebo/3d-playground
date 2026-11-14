@@ -535,6 +535,7 @@ for (const time of ['day', 'eve'] as const) {
 - Floor-lamp spots live in `src/scene/roomLamps.ts` (`FLOOR_LAMP_SPOT`): living `{ x: 4.25, z: -1.2, rotY: 0 }` at the
   sofa's west end between sofa and shelving (the east end is taken by the plant); office
   `{ x: 11.55, z: 0.1, rotY: Math.PI }`.
+  Moved on 14 Nov 2026 to `{ x: 7.6, z: -1.2, rotY: Math.PI }`, beside the plant (see the 2026-11-14 design).
 - The arc is a straight stem with a horizontal arm, not a curve.
 - The catalog has four pendants and three floor lamps plus 'none', one of them discontinued and shown as such.
 - Lamp lights are on (and visible) only in the evening.

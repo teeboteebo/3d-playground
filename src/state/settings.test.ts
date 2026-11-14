@@ -28,6 +28,11 @@ describe('sanitizeSettings', () => {
     expect('floors' in sanitizeSettings(v2({ floors: { hall: 'light' } }))).toBe(false);
   });
 
+  it('drops removed living-room furniture from saved hidden lists', () => {
+    const s = sanitizeSettings(v2({ living: { hidden: ['armchairs', 'side-table', 'sofa'] } }));
+    expect(s.living.hidden).toEqual(['sofa']);
+  });
+
   it('replaces unknown rooms, swatches and furniture ids', () => {
     const s = sanitizeSettings(v2({ room: 'attic', walls: { living: 'chalk', office: 'neon' }, living: { hidden: ['sofa', 'piano', 3, 'sofa'] } }));
     expect(s.room).toBe('all');

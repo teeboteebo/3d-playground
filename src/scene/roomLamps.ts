@@ -12,10 +12,9 @@ export const FLOOR_LAMP_SPOT: Record<
   LampRoom,
   { x: number; z: number; rotY: number }
 > = {
-  /* at the sofa's west end, between the sofa (x 4.47-7.24, z -1.87...-0.08) and the String shelving (x 3.69-3.98);
-     the east end is taken by a large plant. The base and legs stand clear of both; the widest shade (51 cm) hangs over
-     the sofa arm, above it. With rotY 0 the arc's reach points along +x, over the sofa. */
-  living: { x: 4.25, z: -1.2, rotY: 0 },
+  /* between the sofa's east end (x 7.24) and the plant pot (x 7.96); rotY π points an arc lamp's reach back over
+     the sofa, and a shade stands among the plant's leaves. */
+  living: { x: 7.6, z: -1.2, rotY: Math.PI },
   /* past the desk's free end (the desk covers x 11.14-11.84, z -1.405...-0.205), against the back wall;
      the arc's reach points into the room */
   office: { x: 11.55, z: 0.1, rotY: Math.PI },

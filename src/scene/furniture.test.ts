@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { FURNITURE } from '../data/catalog';
 import { loadFurniture } from './furniture';
 
 afterEach(() => vi.restoreAllMocks());
@@ -22,7 +23,7 @@ describe('loadFurniture', () => {
     const scene = new THREE.Scene();
     const f = loadFurniture(scene, (piece) => (piece.id === 'tv' ? Promise.reject(new Error('404')) : Promise.resolve(new THREE.Group())));
     await f.ready;
-    expect(scene.children).toHaveLength(7);
+    expect(scene.children).toHaveLength(FURNITURE.length - 1);
     expect(warn).toHaveBeenCalledTimes(1);
   });
 

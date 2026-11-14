@@ -228,8 +228,6 @@ export interface FurniturePiece {
 export const FURNITURE: FurniturePiece[] = [
   ...[
     ['sofa', 'Sofa'],
-    ['armchairs', 'Armchairs'],
-    ['side-table', 'Side table'],
     ['tv', 'Frame TV'],
     ['tv-bench', 'TV bench'],
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
