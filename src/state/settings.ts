@@ -122,6 +122,7 @@ export const DEFAULTS: Settings = {
   office: {
     pendant: 'none',
     floorLamp: 'none',
+    /* the first real product of each list (index 1, after 'none'): reordering the catalog changes these defaults */
     readingChair: READING_CHAIRS[1].id,
     dresser: DRESSERS[1].id,
     roundRug: ROUND_RUGS[1].id,

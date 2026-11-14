@@ -245,3 +245,13 @@ placement adjustments after the render check; the cut height within "just above 
 - A shelving triangle counts as in a cut region when any of its corners is in it (with "all corners", boards ending
   inside the shared ladder floated above the cut). A 2-3 cm stub of the leftmost column's board is left inside the
   shared ladder; this is accepted.
+
+- Office reading corner (PR B), as built: three chairs (no premium one: none had a readable Swedish listing), three
+  dressers and four rugs, plus 'none' in each list; `ArmchairShape` has no `type` field.
+- The chair is placed by `placeReadingChair`: facing kept, slid from the door wall until every corner is inside the
+  office and clear of the desk and the floor-lamp spot, which leaves the back about 5 cm (FAGERBACKEN), 8 cm
+  (STRANDMON) and 20 cm (Cielo, stopped by the north wall) off the door wall. It stands in the outer door's swing on
+  purpose (the door is not used).
+- The dresser stands on the rug's rim for every rug.
+- No extra reading-corner screenshots were added, because the Office view shows the corner; the Office-with-lamps and
+  Apartment baselines were re-recorded too.

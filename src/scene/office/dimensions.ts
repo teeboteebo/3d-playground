@@ -1,3 +1,6 @@
+import { roomById } from '../../data/rooms';
+import { FLOOR_LAMP_SPOT } from '../roomLamps';
+
 /** Sizes and positions (metres) of the office's furniture. The left wall is z = −1.925, the back wall x = 11.89. */
 export const LEFT_WALL_Z = -1.925;
 export const BACK_WALL_X = 11.89;
@@ -49,12 +52,10 @@ export const CORNER = {
 
 /** the outer door's wall, the angled north-east corner of the office */
 export const DOOR_WALL = { a: [11.89, 1.355], b: [11.35, 2.075] } as const;
-/** the office outline, anticlockwise from the left-wall/entrance-wall corner (as in rooms.ts) */
-const OUTLINE: readonly (readonly [number, number])[] = [
-  [8.89, -1.925], [11.89, -1.925], [11.89, 1.355], [11.35, 2.075], [9.63, 2.075], [8.89, 0.925],
-];
-/** the office floor lamp's spot (as in roomLamps.ts) and how much room an arc lamp's base needs around it */
-const LAMP_SPOT = { x: 11.55, z: 0.1, clear: 0.3 } as const;
+/** the office outline, anticlockwise from the left-wall/entrance-wall corner */
+const OUTLINE = roomById('office').poly;
+/** the office floor lamp's spot, and how much room an arc lamp's base needs around it */
+const LAMP_SPOT = { ...FLOOR_LAMP_SPOT.office, clear: 0.3 } as const;
 const STEP = 0.01;
 
 type P = readonly [number, number];

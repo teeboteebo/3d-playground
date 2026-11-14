@@ -5,6 +5,7 @@ import { ROOMS } from '../../data/rooms';
 import { DEFAULTS, type Settings } from '../../state/settings';
 import { roomAt } from '../pickRoom';
 import { buildCorner } from './corner';
+import { FLOOR_LAMP_SPOT } from '../roomLamps';
 import { CORNER } from './dimensions';
 import { buildOffice } from './index';
 
@@ -105,7 +106,8 @@ describe('buildCorner', () => {
       expect(-0.8 * (p.x - 11.89) - 0.6 * (p.z - 1.355)).toBeGreaterThan(0.049);
     }
     expect(quadHitsBox(corners, boxOf(g, 'office-desk'))).toBe(false);
-    const lamp = new THREE.Box3(new THREE.Vector3(11.25, 0, -0.2), new THREE.Vector3(11.85, 1, 0.4));
+    const { x: lx, z: lz } = FLOOR_LAMP_SPOT.office;
+    const lamp = new THREE.Box3(new THREE.Vector3(lx - 0.3, 0, lz - 0.3), new THREE.Vector3(lx + 0.3, 1, lz + 0.3));
     expect(quadHitsBox(corners, lamp)).toBe(false);
     g.getObjectByName('office-reading-chair')!.traverse((o) => {
       if (o instanceof THREE.Mesh) expect(o.castShadow).toBe(true);
@@ -128,6 +130,25 @@ describe('buildCorner', () => {
     expect(sorted[1] - sorted[0]).toBeLessThan(0.001);
   });
 
+  const pairs = READING_CHAIRS.slice(1).flatMap((c) => DRESSERS.slice(1).map((d) => [c.id, d.id]));
+  it.each(pairs)('keeps chair %s and dresser %s from overlapping', (chair, dresser) => {
+    const g = build({ readingChair: chair, dresser });
+    const c = footprint(g, 'office-reading-chair');
+    const d = footprint(g, 'office-dresser');
+    const axes = [c, d].flatMap((q) =>
+      q.map((p, i) => {
+        const e = q[(i + 1) % q.length].clone().sub(p);
+        return new THREE.Vector3(-e.z, 0, e.x);
+      }),
+    );
+    const separated = axes.some((a) => {
+      const pa = c.map((p) => p.dot(a));
+      const pb = d.map((p) => p.dot(a));
+      return Math.max(...pa) <= Math.min(...pb) || Math.max(...pb) <= Math.min(...pa);
+    });
+    expect(separated).toBe(true);
+  });
+
   it('swaps pieces without leaking', () => {
     const g = new THREE.Group();
     const corner = buildCorner(g);
@@ -135,10 +156,16 @@ describe('buildCorner', () => {
     corner.apply(settings({ readingChair: a }));
     const disposed = new Set<THREE.BufferGeometry>();
     const geos: THREE.BufferGeometry[] = [];
+    const disposedMats = new Set<THREE.Material>();
+    const mats = new Set<THREE.Material>();
     g.getObjectByName('office-reading-chair')!.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         geos.push(o.geometry);
         o.geometry.addEventListener('dispose', () => disposed.add(o.geometry));
+        for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+          mats.add(m);
+          m.addEventListener('dispose', () => disposedMats.add(m));
+        }
       }
     });
     const first = g.getObjectByName('office-reading-chair');
@@ -147,6 +174,7 @@ describe('buildCorner', () => {
     expect(disposed.size).toBe(0);
     corner.apply(settings({ readingChair: b }));
     expect(disposed.size).toBe(geos.length);
+    expect(disposedMats.size).toBe(mats.size);
     corner.apply(settings({ readingChair: a }));
     expect(g.children.filter((c) => c.name === 'office-reading-chair')).toHaveLength(1);
   });

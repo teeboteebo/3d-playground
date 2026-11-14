@@ -224,11 +224,14 @@ const roundRugDraw: Record<string, (g: Ctx) => void> = {
 
 let roundRugCanvases: Record<string, HTMLCanvasElement> | null = null;
 
+/** The round rug patterns that can be drawn. */
+export const ROUND_RUG_PATTERNS = Object.keys(roundRugDraw);
+
 /** Round rug pattern canvases (square), keyed by pattern, drawn once. Empty if the browser has no 2D canvas. */
 export function getRoundRugCanvases(): Record<string, HTMLCanvasElement> {
   if (roundRugCanvases) return roundRugCanvases;
   const out: Record<string, HTMLCanvasElement> = {};
-  for (const id of Object.keys(roundRugDraw)) {
+  for (const id of ROUND_RUG_PATTERNS) {
     const c = makeCanvas(RR, RR);
     const g = c.getContext('2d');
     if (!g) return (roundRugCanvases = {});
