@@ -356,9 +356,10 @@ describe('reading corner in the office', () => {
     expect(lastApplied().office[key]).toBe(items[2].id);
     expect(stored().office[key]).toBe(items[2].id);
   });
-  it.each(lists)('does not select in the %s list when a shop link is clicked', async (name, _items, key) => {
+  it.each(lists)('does not select in the %s list when a shop link is clicked', async (name, items, key) => {
     await renderIn('office');
-    const link = within(screen.getByRole('group', { name })).getAllByRole('link')[0];
+    const card = within(screen.getByRole('group', { name })).getByRole('button', { name: new RegExp(esc(items[2].name)) });
+    const link = within(card).getByRole('link');
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(lastApplied().office[key]).toBe(DEFAULTS.office[key]);
