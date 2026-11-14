@@ -19,6 +19,12 @@ export interface Apartment {
   rooms: Record<RoomId, ApartmentRoom>;
   /** hides the skirting and frames on any wall the camera is looking through from outside */
   showFrom(camera: THREE.Vector3): void;
+  /**
+   * hides `parts` with the wall of `room` whose line passes within 2 cm of `onWall`, as the wall's own fittings are.
+   * Attaching again for the same wall replaces the parts attached before. `showFrom` drives each part's `visible`,
+   * so put anything with its own on/off state in a child of the part.
+   */
+  attachToWall(room: RoomId, onWall: XZ, parts: THREE.Object3D[]): void;
 }
 
 export interface ApartmentRoom {
@@ -41,7 +47,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
   const rooms = {} as Record<RoomId, ApartmentRoom>;
   const windowLights: THREE.SpotLight[] = [];
   /** each wall with the parts mounted on its face */
-  const wallParts: { wall: Wall; parts: THREE.Object3D[] }[] = [];
+  const wallParts: { wall: Wall; parts: THREE.Object3D[]; attached: THREE.Object3D[] }[] = [];
 
   const mesh = (geo: THREE.BufferGeometry, mat: THREE.Material, cast = true) => {
     const m = new THREE.Mesh(geo, mat);
@@ -100,7 +106,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
           architrave(wall, h.u0, h.u1, o.y1, 0.01);
         }
       }
-      wallParts.push({ wall, parts: group.children.slice(n0) });
+      wallParts.push({ wall, parts: group.children.slice(n0), attached: [] });
     }
   }
   /* linings across the wall thickness of each passage, built once per passage */
@@ -162,13 +168,25 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     group,
     windowLights,
     rooms,
+    attachToWall(room, onWall, parts) {
+      const hit = wallParts.find(({ wall }) => {
+        if (wall.room.id !== room) return false;
+        const ux = (wall.b[0] - wall.a[0]) / wall.length;
+        const uz = (wall.b[1] - wall.a[1]) / wall.length;
+        const off = -uz * (onWall[0] - wall.a[0]) + ux * (onWall[1] - wall.a[1]);
+        const along = ux * (onWall[0] - wall.a[0]) + uz * (onWall[1] - wall.a[1]);
+        return Math.abs(off) <= 0.02 && along >= 0 && along <= wall.length;
+      });
+      if (!hit) throw new Error(`no ${room} wall passes through (${onWall[0]}, ${onWall[1]})`);
+      hit.attached = [...parts];
+    },
     showFrom(camera) {
-      for (const { wall, parts } of wallParts) {
+      for (const { wall, parts, attached } of wallParts) {
         /* the camera is outside the room when it is behind the wall's face (its +w side faces in) */
         const ux = (wall.b[0] - wall.a[0]) / wall.length;
         const uz = (wall.b[1] - wall.a[1]) / wall.length;
         const inFront = -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
-        for (const p of parts) p.visible = inFront;
+        for (const p of [...parts, ...attached]) p.visible = inFront;
       }
     },
   };

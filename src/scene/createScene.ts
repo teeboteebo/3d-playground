@@ -6,6 +6,7 @@ import { ROOMS, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
 import { buildApartment } from './buildApartment';
+import { buildLivingMoulding } from './livingMoulding';
 import { addSkyAndSun, setWindowSpot } from './daylight';
 import { disposeTree } from './dispose';
 import { loadFurniture } from './furniture';
@@ -71,6 +72,7 @@ export function createApartmentScene(
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
   scene.add(apartment.group);
+  const livingMoulding = buildLivingMoulding(scene, (p, parts) => apartment.attachToWall('living', p, parts));
   const office = buildOffice(scene);
   const roomLamps = addRoomLamps(scene);
   for (const l of apartment.windowLights) scene.add(l, l.target);
@@ -99,6 +101,7 @@ export function createApartmentScene(
     const evening = s.time === 'eve';
     bedroom.apply(s);
     office.apply(s);
+    livingMoulding.apply(s);
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
     furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
@@ -165,6 +168,7 @@ export function createApartmentScene(
       disposeTree(scene);
       bedroom.dispose();
       office.dispose();
+      livingMoulding.dispose();
       roomLamps.dispose();
       renderer.dispose();
     },
