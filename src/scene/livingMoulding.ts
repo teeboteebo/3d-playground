@@ -74,9 +74,10 @@ function frameOf(strip: Strip, x0: number, x1: number, y0: number, y1: number) {
 }
 
 /**
- * Moulding on the living room's sofa wall and TV wall: a rail at 75 cm and three columns of framed panels, centred
- * on the sofa and on the TV. Each wall hangs in a wrapper group that the apartment shows and hides with its wall (it
- * is attached once, so a rebuild never changes it); the strips sit in an inner group that follows the wall's setting.
+ * Moulding on the living room's sofa wall and TV wall: a rail at 75 cm and columns of framed panels. The sofa wall
+ * has a grid you size (columns and gap) filling the wall; the TV wall has three columns centred on the TV. Each
+ * wall hangs in a wrapper group that the apartment shows and hides with its wall (it is attached once, so a rebuild
+ * never changes it); the strips sit in an inner group that follows the wall's setting.
  */
 export function buildLivingMoulding(
   parent: THREE.Object3D,

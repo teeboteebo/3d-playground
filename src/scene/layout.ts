@@ -44,7 +44,7 @@ export function wallLayout(mcenCm: number, mgapCm: number, mswCm: number, halfSp
   };
 }
 
-/** `count` equal columns filling x0..x1, with `gap` between neighbouring columns and at both ends; absolute x */
+/** `count` equal columns filling x0..x1, with `gap` between neighbouring columns and at both ends; absolute x; assumes the clamped slider ranges, so the width stays positive */
 export function gridLayout(x0: number, x1: number, count: number, gapCm: number): [number, number][] {
   const gap = gapCm / 100;
   const width = (x1 - x0 - (count + 1) * gap) / count;
