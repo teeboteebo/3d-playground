@@ -149,3 +149,107 @@ export function rugThumbnail(id: string): string {
   return (thumbCache[id] = url);
 }
 
+
+/* ---------- round rugs ---------- */
+const RR = 512;
+
+/* The canvases are square with the design centred and inside the disc they are mapped onto. */
+function disc(g: Ctx, r: number, fill: string): void {
+  g.fillStyle = fill;
+  g.beginPath();
+  g.arc(RR / 2, RR / 2, r, 0, Math.PI * 2);
+  g.fill();
+}
+
+const roundRugDraw: Record<string, (g: Ctx) => void> = {
+  /* plain natural jute, flat weave */
+  jute(g) {
+    g.fillStyle = '#C2A675';
+    g.fillRect(0, 0, RR, RR);
+    for (let y = 0; y < RR; y += 4) {
+      g.fillStyle = (y / 4) % 2 ? 'rgba(90,64,30,.16)' : 'rgba(255,240,200,.14)';
+      g.fillRect(0, y, RR, 2);
+    }
+    for (let x = 0; x < RR; x += 4) {
+      g.fillStyle = (x / 4) % 3 ? 'rgba(90,64,30,.08)' : 'rgba(255,240,200,.1)';
+      g.fillRect(x, 0, 1.5, RR);
+    }
+    speckle(g, RR, RR, 14000, 0.12);
+  },
+  /* concentric natural and white rings */
+  rings(g) {
+    g.fillStyle = '#E9E3D3';
+    g.fillRect(0, 0, RR, RR);
+    const bands = 9;
+    for (let i = 0; i < bands; i++) {
+      disc(g, RR / 2 - (i * RR) / 2 / bands, i % 2 ? '#F1EDE2' : '#C9B58E');
+    }
+    for (let y = 0; y < RR; y += 4) {
+      g.fillStyle = 'rgba(90,64,30,.07)';
+      g.fillRect(0, y, RR, 1.5);
+    }
+    speckle(g, RR, RR, 14000, 0.1);
+  },
+  /* plain beige wool, a soft mottled pile */
+  wool(g) {
+    g.fillStyle = '#D9CBAE';
+    g.fillRect(0, 0, RR, RR);
+    for (let i = 0; i < 70; i++) {
+      g.fillStyle = R() < 0.5 ? 'rgba(255,255,255,.08)' : 'rgba(120,98,66,.07)';
+      g.beginPath();
+      g.ellipse(R() * RR, R() * RR, 20 + R() * 50, 10 + R() * 28, R() * 3, 0, 7);
+      g.fill();
+    }
+    speckle(g, RR, RR, 26000, 0.09);
+  },
+  /* cubes in a rainbow of colours on a cream ground */
+  cubes(g) {
+    g.fillStyle = '#EDE6D6';
+    g.fillRect(0, 0, RR, RR);
+    const cols = ['#C8553D', '#E0A458', '#6B8F71', '#4F7CAC', '#8E6C8A', '#D98E73'];
+    const n = 8;
+    const s = RR / n;
+    g.save();
+    g.beginPath();
+    g.arc(RR / 2, RR / 2, RR / 2, 0, Math.PI * 2);
+    g.clip();
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++) {
+        g.fillStyle = cols[(r * 3 + c * 5 + ((r * c) % 4)) % cols.length];
+        g.fillRect(c * s + 5, r * s + 5, s - 10, s - 10);
+      }
+    g.restore();
+    speckle(g, RR, RR, 18000, 0.08);
+  },
+};
+
+let roundRugCanvases: Record<string, HTMLCanvasElement> | null = null;
+
+/** Round rug pattern canvases (square), keyed by pattern, drawn once. Empty if the browser has no 2D canvas. */
+export function getRoundRugCanvases(): Record<string, HTMLCanvasElement> {
+  if (roundRugCanvases) return roundRugCanvases;
+  const out: Record<string, HTMLCanvasElement> = {};
+  for (const id of Object.keys(roundRugDraw)) {
+    const c = makeCanvas(RR, RR);
+    const g = c.getContext('2d');
+    if (!g) return (roundRugCanvases = {});
+    reseed(id.length * 89 + 31);
+    roundRugDraw[id](g);
+    out[id] = c;
+  }
+  return (roundRugCanvases = out);
+}
+
+const roundThumbCache: Record<string, string> = {};
+/** JPEG data URL of a round rug pattern for the side panel, or '' when unavailable. */
+export function roundRugThumbnail(pattern: string): string {
+  if (pattern in roundThumbCache) return roundThumbCache[pattern];
+  const c = getRoundRugCanvases()[pattern];
+  let url: string;
+  try {
+    url = c ? c.toDataURL('image/jpeg', 0.7) : '';
+  } catch {
+    url = '';
+  }
+  return (roundThumbCache[pattern] = url);
+}
