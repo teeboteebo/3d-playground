@@ -3,15 +3,16 @@ import { FURNITURE, SHELVING_CUT, type FurniturePiece } from '../data/catalog';
 import { disposeTree } from './dispose';
 import { trimAbove } from './trimGeometry';
 
-/** cuts the String shelving's two left columns to half height (see `SHELVING_CUT`), in place */
+/** cuts the String shelving's two left columns to about half height (see `SHELVING_CUT`), in place */
 function trimShelving(shelving: THREE.Object3D): void {
   shelving.updateMatrixWorld(true);
-  const inCutColumns = (world: THREE.Vector3) => world.z > SHELVING_CUT.zFrom;
   shelving.traverse((o) => {
     if (!(o instanceof THREE.Mesh)) return;
-    const old = o.geometry as THREE.BufferGeometry;
-    o.geometry = trimAbove(old, o.matrixWorld, SHELVING_CUT.y, inCutColumns);
-    old.dispose();
+    for (const { zFrom, zTo, y } of SHELVING_CUT) {
+      const old = o.geometry as THREE.BufferGeometry;
+      o.geometry = trimAbove(old, o.matrixWorld, y, (world) => world.z > zFrom && world.z <= zTo);
+      old.dispose();
+    }
   });
 }
 

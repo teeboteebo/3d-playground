@@ -239,14 +239,29 @@ export const FURNITURE: FurniturePiece[] = [
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
 ];
 
+export interface ShelvingCutRegion {
+  /** the region is zFrom < z ≤ zTo (scene metres); a triangle with any corner in it is cut */
+  zFrom: number;
+  zTo: number;
+  /** cut height: nothing in the region stays above it */
+  y: number;
+}
+
 /**
- * Where the String shelving's two left columns (z > zFrom, towards the TV wall) are cut, in scene metres.
- * Measured from shelving.glb: wooden shelf tops in those columns at y 0.194, 0.342/0.346, 0.538, 0.746, 1.043, 1.444
- * and 1.694; the one nearest 1 m (the glass-door cabinet's floor) tops out at 1.043, so the cut is 1 cm above it.
- * The black ladder shared with the full-height column spans z −1.018…−0.985, so the region starts at its +z face
- * and the ladder stays whole.
+ * Where the String shelving's two left columns (towards the TV wall) are cut, in scene metres, applied in turn.
+ * Measured from shelving.glb (black ladders at z −1.808…−1.779, −1.018…−0.985, −0.235…−0.199 and 0.562…0.588):
+ * - Middle column: the region starts at the +z face of the ladder it shares with the full-height column (whose max
+ *   z is −0.98510), so that ladder stays whole. It runs to the +z face of the ladder it shares with the leftmost
+ *   column (max z −0.19943), so that ladder keeps this height. Cut at 1.053, as before.
+ * - Leftmost column: everything past that shared ladder, through its outer ladder (max z 0.5877). Its glass-door
+ *   cabinet's floor (wooden board 1.0235…1.0434 on aluminium plates whose lowest vertex is at y 1.02149) is cut
+ *   away with the glass, so the cut is just below it at 1.02; its top shelf is then the 0.728…0.746 board.
+ *   The floor's end (z −0.2196…−0.1991, y 1.0215…1.053) lies inside the shared ladder, so it keeps the middle cut.
  */
-export const SHELVING_CUT = { zFrom: -0.985, y: 1.053 };
+export const SHELVING_CUT: readonly ShelvingCutRegion[] = [
+  { zFrom: -0.985, zTo: -0.199, y: 1.053 },
+  { zFrom: -0.199, zTo: 0.6, y: 1.02 },
+];
 
 const viewNamed = (name: string) => VIEWS.find((v) => v.name === name)!;
 
