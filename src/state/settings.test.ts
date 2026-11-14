@@ -121,6 +121,19 @@ describe('load/save', () => {
   });
 });
 
+describe('living room moulding settings', () => {
+  it('gives the living room moulding defaults, also to designs saved before it existed', () => {
+    const s = sanitizeSettings({ version: 2, living: { hidden: [] } });
+    expect(s.living).toMatchObject({
+      mouldColour: 'white', mouldSofaWall: 'on', mouldTvWall: 'on', mouldGap: 8, mouldCentre: 180, mouldSide: 68,
+    });
+  });
+  it('clamps living moulding sizes to the slider ranges', () => {
+    expect(sanitizeSettings({ version: 2, living: { mouldCentre: 999, mouldGap: -3 } }).living)
+      .toMatchObject({ mouldCentre: 200, mouldGap: 4 });
+  });
+});
+
 describe('lamp settings', () => {
   const P = PENDANTS[1].id, F = FLOOR_LAMPS[1].id;
   it('defaults every lamp to none', () => {
@@ -130,7 +143,7 @@ describe('lamp settings', () => {
   });
   it('loads a version 2 design saved before lamps existed unchanged', () => {
     const old = { version: 2, room: 'living', time: 'eve', walls: DEFAULTS.walls, bedroom: DEFAULTS.bedroom, living: { hidden: ['sofa'] } };
-    expect(sanitizeSettings(old)).toEqual({ ...DEFAULTS, room: 'living', time: 'eve', living: { hidden: ['sofa'], pendant: 'none', floorLamp: 'none' } });
+    expect(sanitizeSettings(old)).toEqual({ ...DEFAULTS, room: 'living', time: 'eve', living: { ...DEFAULTS.living, hidden: ['sofa'] } });
   });
   it('keeps valid lamp ids and drops unknown ones', () => {
     const s = sanitizeSettings({ version: 2, living: { pendant: P, floorLamp: 'gone' }, office: { pendant: 'gone', floorLamp: F } });

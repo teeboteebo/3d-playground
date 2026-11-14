@@ -39,10 +39,10 @@ describe('addRoomLamps', () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
     lamps.apply(
-      withLamps({ living: { hidden: [], pendant: P, floorLamp: F } }),
+      withLamps({ living: { ...DEFAULTS.living, pendant: P, floorLamp: F } }),
     );
     lamps.apply(
-      withLamps({ living: { hidden: [], pendant: P2, floorLamp: F } }),
+      withLamps({ living: { ...DEFAULTS.living, pendant: P2, floorLamp: F } }),
     );
     expect(names(g)).toEqual([
       'living-floor-lamp',

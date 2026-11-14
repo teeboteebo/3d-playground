@@ -31,10 +31,20 @@ export interface LampSettings {
   floorLamp: string;
 }
 
+/** Wall moulding layout, in cm: gap between columns, centre column width, side column width. */
+export interface MouldLayout {
+  mouldGap: number;
+  mouldCentre: number;
+  mouldSide: number;
+}
+
 /** What can be changed in the living room. */
-export interface LivingSettings extends LampSettings {
+export interface LivingSettings extends LampSettings, MouldLayout {
   /** furniture ids switched off */
   hidden: string[];
+  mouldColour: 'white' | 'tone';
+  mouldSofaWall: OnOff;
+  mouldTvWall: OnOff;
 }
 
 export interface Settings {
@@ -85,7 +95,17 @@ export const DEFAULTS: Settings = {
     art: 'sun',
     frame: 'brass',
   },
-  living: { hidden: [], pendant: 'none', floorLamp: 'none' },
+  living: {
+    hidden: [],
+    pendant: 'none',
+    floorLamp: 'none',
+    mouldColour: 'white',
+    mouldSofaWall: 'on',
+    mouldTvWall: 'on',
+    mouldGap: 8,
+    mouldCentre: 180,
+    mouldSide: 68,
+  },
   office: { pendant: 'none', floorLamp: 'none' },
 };
 
@@ -154,6 +174,27 @@ function sanitizeLamps(raw: unknown): LampSettings {
   };
 }
 
+function sanitizeMouldLayout(raw: Raw, d: MouldLayout): MouldLayout {
+  return {
+    mouldGap: num(raw.mouldGap, d.mouldGap, SLIDERS.mouldGap.min, SLIDERS.mouldGap.max),
+    mouldCentre: num(raw.mouldCentre, d.mouldCentre, SLIDERS.mouldCentre.min, SLIDERS.mouldCentre.max),
+    mouldSide: num(raw.mouldSide, d.mouldSide, SLIDERS.mouldSide.min, SLIDERS.mouldSide.max),
+  };
+}
+
+function sanitizeLiving(raw: unknown): LivingSettings {
+  const l = obj(raw);
+  const d = DEFAULTS.living;
+  return {
+    ...sanitizeLamps(l),
+    hidden: Array.isArray(l.hidden) ? [...new Set(l.hidden.filter((h): h is string => ids(FURNITURE).includes(h as string)))] : [],
+    mouldColour: oneOf(l.mouldColour, ['white', 'tone'] as const, d.mouldColour),
+    mouldSofaWall: onOff(l.mouldSofaWall),
+    mouldTvWall: onOff(l.mouldTvWall),
+    ...sanitizeMouldLayout(l, d),
+  };
+}
+
 function sanitizeBedroom(raw: unknown): BedroomSettings {
   const b = obj(raw);
   const d = DEFAULTS.bedroom;
@@ -162,9 +203,7 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
     mouldColour: oneOf(b.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldBedWall: onOff(b.mouldBedWall),
     mouldDresserWall: onOff(b.mouldDresserWall),
-    mouldGap: num(b.mouldGap, d.mouldGap, SLIDERS.mouldGap.min, SLIDERS.mouldGap.max),
-    mouldCentre: num(b.mouldCentre, d.mouldCentre, SLIDERS.mouldCentre.min, SLIDERS.mouldCentre.max),
-    mouldSide: num(b.mouldSide, d.mouldSide, SLIDERS.mouldSide.min, SLIDERS.mouldSide.max),
+    ...sanitizeMouldLayout(b, d),
     pendant: onOff(b.pendant),
     wardrobes: oneOf(b.wardrobes, ids(WARDROBES), d.wardrobes),
     rug: oneOf(b.rug, ids(RUGS), d.rug),
@@ -181,17 +220,13 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
 export function sanitizeSettings(raw: unknown): Settings {
   const r = obj(raw);
   const s = r.version === 2 ? r : fromVersion1(r);
-  const hidden = obj(s.living).hidden;
   return {
     version: 2,
     room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
     bedroom: sanitizeBedroom(s.bedroom),
-    living: {
-      ...sanitizeLamps(s.living),
-      hidden: Array.isArray(hidden) ? [...new Set(hidden.filter((h): h is string => ids(FURNITURE).includes(h as string)))] : [],
-    },
+    living: sanitizeLiving(s.living),
     office: sanitizeLamps(s.office),
   };
 }
