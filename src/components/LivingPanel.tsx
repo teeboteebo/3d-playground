@@ -3,6 +3,7 @@ import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
+import { MouldingSection } from './MouldingSection';
 
 interface Props {
   settings: Settings;
@@ -18,6 +19,16 @@ export function LivingPanel({ settings, update }: Props) {
       <p className="sub">500 × 465 cm with an angled bay window. The furniture comes from the SketchUp model, in its places.</p>
       <FinishSection room="living" settings={settings} update={update} />
       <LightingSection room="living" settings={settings} update={update} />
+      <MouldingSection
+        room="living"
+        walls={[
+          { key: 'mouldSofaWall', label: 'Sofa wall' },
+          { key: 'mouldTvWall', label: 'TV wall' },
+        ]}
+        layoutLabel="Layout"
+        settings={settings}
+        update={update}
+      />
       <section>
         <h2>Furniture</h2>
         <div className="checks" role="group" aria-label="Furniture">

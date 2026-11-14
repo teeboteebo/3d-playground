@@ -8,7 +8,7 @@ describe('views by room', () => {
 
   it("shows only the selected room's views", () => {
     expect(viewsFor('bedroom').map((v) => v.name)).toEqual(['Overview', 'Foot of bed', 'Wardrobe wall', 'Dresser wall', 'Top down']);
-    expect(viewsFor('living').map((v) => v.name)).toEqual(['Living room']);
+    expect(viewsFor('living').map((v) => v.name)).toEqual(['Living room', 'Sofa wall']);
   });
 
   it("picks each selection's main view", () => {
