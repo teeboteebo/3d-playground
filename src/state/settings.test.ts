@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FLOOR_LAMPS, PENDANTS } from '../data/catalog';
+import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
 import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
 
 const v2 = (patch: Record<string, unknown>) => ({ version: 2, ...patch });
@@ -155,7 +155,7 @@ describe('lamp settings', () => {
   it('defaults every lamp to none', () => {
     const s = sanitizeSettings(null);
     expect(s.living).toMatchObject({ pendant: 'none', floorLamp: 'none' });
-    expect(s.office).toEqual({ pendant: 'none', floorLamp: 'none' });
+    expect(s.office).toMatchObject({ pendant: 'none', floorLamp: 'none' });
   });
   it('loads a version 2 design saved before lamps existed unchanged', () => {
     const old = { version: 2, room: 'living', time: 'eve', walls: DEFAULTS.walls, bedroom: DEFAULTS.bedroom, living: { hidden: ['sofa'] } };
@@ -164,13 +164,38 @@ describe('lamp settings', () => {
   it('keeps valid lamp ids and drops unknown ones', () => {
     const s = sanitizeSettings({ version: 2, living: { pendant: P, floorLamp: 'gone' }, office: { pendant: 'gone', floorLamp: F } });
     expect(s.living).toMatchObject({ pendant: P, floorLamp: 'none' });
-    expect(s.office).toEqual({ pendant: 'none', floorLamp: F });
+    expect(s.office).toMatchObject({ pendant: 'none', floorLamp: F });
   });
   it('does not accept a floor lamp id as a pendant', () => {
     expect(sanitizeSettings({ version: 2, office: { pendant: F } }).office.pendant).toBe('none');
   });
   it('patches one office lamp without touching the other', () => {
-    const s = applyPatch({ ...DEFAULTS, office: { pendant: P, floorLamp: F } }, { office: { pendant: 'none' } });
-    expect(s.office).toEqual({ pendant: 'none', floorLamp: F });
+    const s = applyPatch({ ...DEFAULTS, office: { ...DEFAULTS.office, pendant: P, floorLamp: F } }, { office: { pendant: 'none' } });
+    expect(s.office).toEqual({ ...DEFAULTS.office, pendant: 'none', floorLamp: F });
+  });
+});
+
+describe('reading corner settings', () => {
+  const C = READING_CHAIRS[1].id, D = DRESSERS[1].id, R = ROUND_RUGS[1].id;
+  const o = (office: object) => sanitizeSettings({ version: 2, office }).office;
+  it('defaults to the first chair, dresser and rug', () => {
+    expect(DEFAULTS.office).toEqual({ pendant: 'none', floorLamp: 'none', readingChair: C, dresser: D, roundRug: R });
+    expect(sanitizeSettings(null).office).toEqual(DEFAULTS.office);
+  });
+  it('gives a saved office with only lamps the three defaults', () => {
+    expect(o({ pendant: PENDANTS[1].id })).toEqual({ ...DEFAULTS.office, pendant: PENDANTS[1].id });
+  });
+  it("keeps 'none' as no piece", () => {
+    expect(o({ readingChair: 'none', dresser: 'none', roundRug: 'none' }))
+      .toMatchObject({ readingChair: 'none', dresser: 'none', roundRug: 'none' });
+  });
+  it('replaces an unknown id with the default', () => {
+    expect(o({ readingChair: 'gone', dresser: 3, roundRug: 'nope' })).toMatchObject({ readingChair: C, dresser: D, roundRug: R });
+  });
+  it('checks each id only against its own list', () => {
+    expect(o({ readingChair: D, dresser: R, roundRug: C })).toMatchObject({ readingChair: C, dresser: D, roundRug: R });
+  });
+  it('patches one piece without touching the other fields', () => {
+    expect(applyPatch(DEFAULTS, { office: { dresser: 'none' } }).office).toEqual({ ...DEFAULTS.office, dresser: 'none' });
   });
 });
