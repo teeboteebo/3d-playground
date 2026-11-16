@@ -6,19 +6,27 @@ export const MOONLIGHT_COLOUR = 0x8ea6d6;
 
 /**
  * Soft daylight spilling in through a window: a wide, soft-edged spot that falls off across the room, so the
- * window side reads bright and the far side goes dim. Off (intensity 0) until the scene sets the time of day.
+ * window side reads bright and the far side goes dim. By day it casts soft shadows, so furniture shades the floor
+ * and the wall behind it on the side away from the window. Off (intensity 0) until the scene sets the time of day.
  */
-export function windowSpot(position: THREE.Vector3, target: THREE.Vector3): THREE.SpotLight {
-  const l = new THREE.SpotLight(DAYLIGHT_COLOUR, 0, 7.5, 1.15, 1, 1.6);
+export function windowSpot(position: THREE.Vector3, target: THREE.Vector3, reach = 7.5): THREE.SpotLight {
+  const l = new THREE.SpotLight(DAYLIGHT_COLOUR, 0, reach, 1.15, 1, 1.6);
   l.position.copy(position);
   l.target.position.copy(target);
+  l.shadow.mapSize.set(1024, 1024);
+  l.shadow.radius = 1;
+  l.shadow.camera.near = 0.1;
+  l.shadow.camera.far = reach;
+  l.shadow.bias = -0.0008;
+  l.shadow.normalBias = 0.02;
   return l;
 }
 
-/** day: strong daylight through every window; evening: faint, cool moonlight */
+/** day: strong, shadow-casting daylight through every window; evening: faint, cool, shadowless moonlight */
 export function setWindowSpot(l: THREE.SpotLight, evening: boolean): void {
   l.intensity = evening ? 0.18 : 1.6;
   l.color.set(evening ? MOONLIGHT_COLOUR : DAYLIGHT_COLOUR);
+  l.castShadow = !evening;
 }
 
 /**

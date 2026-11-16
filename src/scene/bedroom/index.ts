@@ -83,7 +83,6 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       lamp.set(evening);
       bedside.setEvening(evening);
       pendant.set(s.pendant === 'on', evening);
-      for (const l of windows) l.castShadow = !evening;
       m.glass.color.set(evening ? 0x1b2634 : 0xdce8ee);
     },
     showFrom(cam) {
