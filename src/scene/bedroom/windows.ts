@@ -64,13 +64,6 @@ export function buildWindows({ add, box, collect, parent }: Kit, m: BedroomMater
 export function windowLights(parent: THREE.Object3D): THREE.SpotLight[] {
   return WIN_Z.map((cz) => {
     const l = windowSpot(new THREE.Vector3(-W / 2 + 0.32, 2.15, cz), new THREE.Vector3(0.9, 0.2, cz * 0.6));
-    l.castShadow = true;
-    l.shadow.mapSize.set(1024, 1024);
-    l.shadow.radius = 1;
-    l.shadow.camera.near = 0.1;
-    l.shadow.camera.far = 8;
-    l.shadow.bias = -0.0008;
-    l.shadow.normalBias = 0.02;
     parent.add(l, l.target);
     return l;
   });

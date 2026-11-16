@@ -266,11 +266,17 @@ export function archPath<P extends THREE.Path>(p: P, cu: number, w: number, y0: 
 }
 
 /** soft daylight from just inside a window, aimed down and into the room */
+/**
+ * Daylight through a window, shining in from outside and above it: the wall, frame and ceiling block everything but
+ * the opening, so by day it lays a window-shaped pool of light on the floor and lights the room from that side.
+ */
 function windowLight(wall: Wall, u0: number, u1: number, o: Opening): THREE.SpotLight {
   const f = wallFrame(wall);
   const uc = (u0 + u1) / 2;
   return windowSpot(
-    new THREE.Vector3(uc, Math.min(o.y1 - 0.4, 2.15), 0.32).applyMatrix4(f),
-    new THREE.Vector3(uc, 0.2, 2.6).applyMatrix4(f),
+    new THREE.Vector3(uc, o.y1 + 0.5, -1.3).applyMatrix4(f),
+    new THREE.Vector3(uc, 0, 2.4).applyMatrix4(f),
+    /* reaching well past the room, so the light fades gently across it rather than dying out mid-floor */
+    16,
   );
 }

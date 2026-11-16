@@ -15,6 +15,7 @@ import { lin } from './materials';
 import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
 import { pickRoom } from './pickRoom';
+import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
 import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
@@ -95,6 +96,7 @@ export function createApartmentScene(
 
   const roomLights = addRoomLights(scene);
   const sky = addSkyAndSun(scene);
+  const pipeline = renderPipeline(renderer, scene, camera);
 
   function apply(s: Settings) {
     invalidate();
@@ -105,6 +107,7 @@ export function createApartmentScene(
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
     furniture.setHidden(s.living.hidden);
     sky.setEvening(evening);
+    pipeline.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
     roomLamps.apply(s);
     roomLights.apply(s);
@@ -118,8 +121,10 @@ export function createApartmentScene(
     const r = container.getBoundingClientRect();
     const w = Math.max(1, r.width);
     const h = Math.max(1, r.height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(ratio);
     renderer.setSize(w, h, false);
+    pipeline.setSize(w, h, ratio);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     /* resizing clears the canvas, so draw again now rather than show a blank frame, and once more next frame,
@@ -135,7 +140,7 @@ export function createApartmentScene(
   function draw() {
     bedroom.showFrom(camera.position);
     apartment.showFrom(camera.position);
-    renderer.render(scene, camera);
+    pipeline.render();
     dirty = false;
   }
   /* a restored WebGL context starts blank */
@@ -170,6 +175,7 @@ export function createApartmentScene(
       office.dispose();
       livingMoulding.dispose();
       roomLamps.dispose();
+      pipeline.dispose();
       renderer.dispose();
     },
   };
