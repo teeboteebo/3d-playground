@@ -34,6 +34,8 @@ export function loadFurniture(
   load: (piece: FurniturePiece) => Promise<THREE.Object3D>,
   /** called after each piece is added */
   onAdded: () => void = () => {},
+  /** called with each piece once it is in the scene (not for pieces that arrive after dispose) */
+  onPiece?: (id: string, obj: THREE.Object3D) => void,
 ): Furniture {
   let hidden: readonly string[] = [];
   const loaded = new Map<string, THREE.Object3D>();
@@ -58,6 +60,7 @@ export function loadFurniture(
           });
           loaded.set(id, obj);
           parent.add(obj);
+          onPiece?.(id, obj);
           onAdded();
         },
         (err: unknown) => {

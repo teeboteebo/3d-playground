@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BEMZ_FABRICS } from './bemzFabrics';
-import { fabricPrice, fabricUrl, searchFabrics, swatchUrl, type BemzFabric } from './fabrics';
+import { fabricLook, fabricPrice, fabricUrl, searchFabrics, swatchUrl, type BemzFabric } from './fabrics';
 
 const velvet: BemzFabric = {
   code: 'RVM107',
@@ -65,5 +65,31 @@ describe('BEMZ_FABRICS', () => {
       const collection = f.family.match(/\((.*)\)$/)?.[1];
       if (collection) expect(['Flowers for a Home', 'Past Forward', 'The Reverie Collection']).toContain(collection);
     }
+  });
+});
+
+describe('fabricLook', () => {
+  const lookOf = (family: string) => {
+    const f = BEMZ_FABRICS.find((x) => x.family === family);
+    expect(f, family).toBeDefined();
+    return fabricLook(f!).kind;
+  };
+
+  it('sorts real Bemz families by how they read on a sofa', () => {
+    expect(lookOf('Recycled Linen Block Stripe')).toBe('pattern');
+    expect(lookOf('Jacquard Bouclé Floral (Flowers for a Home)')).toBe('pattern');
+    expect(lookOf('Plain Satin (Flowers for a Home)')).toBe('satin');
+    expect(lookOf('Mohair Velvet (The Reverie Collection)')).toBe('velvet');
+    expect(lookOf('Recycled Micro Boucle')).toBe('textured');
+    expect(lookOf('Simply Linen (Past Forward)')).toBe('weave');
+    expect(lookOf('Chunky Corduroy')).toBe('cord');
+  });
+
+  it('checks patterns first, then pile, cord, satin and texture', () => {
+    expect(lookOf('Satin Stripe (Flowers for a Home)')).toBe('pattern');
+    expect(lookOf('Teddy')).toBe('velvet');
+    expect(lookOf('Bouclé')).toBe('textured');
+    expect(lookOf('Melton Wool')).toBe('textured');
+    expect(lookOf('Organic Panama Cotton')).toBe('weave');
   });
 });

@@ -34,6 +34,23 @@ export function searchFabrics(list: readonly BemzFabric[], query: string): BemzF
   });
 }
 
+/** how a fabric reads on a sofa: a pattern is shown from its photo, the rest as their colour with a fine detail map */
+export type FabricKind = 'pattern' | 'velvet' | 'textured' | 'cord' | 'satin' | 'weave';
+
+/* checked in order: a striped satin or a bouclé jacquard is a pattern first */
+const LOOKS: [FabricKind, RegExp][] = [
+  ['pattern', /stripe|check|gingham|tartan|zebra|damask|floral|leaves|marble|jaquard|jacquard/i],
+  ['velvet', /velvet|teddy/i],
+  ['cord', /corduroy/i],
+  ['satin', /satin/i],
+  ['textured', /boucl|tweed|melange|chenille|wool/i],
+];
+
+/** the look of a fabric, from its family name; anything unmatched (linen, cotton, twill, panama) is a plain weave */
+export function fabricLook(f: BemzFabric): { kind: FabricKind } {
+  return { kind: LOOKS.find(([, re]) => re.test(f.family))?.[0] ?? 'weave' };
+}
+
 export function swatchUrl(f: BemzFabric, width: number): string {
   return `${f.image}&width=${width}&q=85`;
 }
