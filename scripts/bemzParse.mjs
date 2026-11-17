@@ -5,7 +5,8 @@ import { inflateSync } from 'node:zlib';
 const unescapePage = (html) => html.replace(/\\"/g, '"').replace(/\\u0026/g, '&').replace(/&amp;/g, '&');
 
 /**
- * Metres per tile of the weave: the printed collections have large repeats, plain weaves are fine.
+ * Tile size in metres for pattern fabrics (plain kinds use their own detail scale): the printed collections have
+ * large repeats, other prints (stripes, checks) are small.
  * @param {string} family
  * @returns {number}
  */

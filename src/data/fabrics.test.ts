@@ -68,6 +68,22 @@ describe('BEMZ_FABRICS', () => {
   });
 });
 
+describe('fabricLook of prints named only in the colour or the code', () => {
+  const kindOf = (code: string) => fabricLook(BEMZ_FABRICS.find((x) => x.code === code)!).kind;
+
+  it('treats the printed fabrics as patterns, found by their swatch photos', () => {
+    for (const code of ['CVH101', 'MOV101', 'CCC101', 'VCJ101', 'VCJ102', 'SLB114', 'SLB115', 'MCS101', 'PRC103', 'PRC102', 'ITW101', 'WMR101', 'SLB103', 'SLB108', 'SLB112', 'SLB113']) {
+      expect(kindOf(code), code).toBe('pattern');
+    }
+  });
+  it('keeps plain fabrics with print-like words in the colour as plain', () => {
+    expect(kindOf('SL183')).toBe('weave'); // Vintage Blue
+    expect(kindOf('SL177')).toBe('weave'); // Rosemary
+    expect(kindOf('RHV105')).toBe('velvet'); // Vintage Rose
+    expect(kindOf('RCD102')).toBe('cord'); // Dusty Rose
+  });
+});
+
 describe('fabricLook', () => {
   const lookOf = (family: string) => {
     const f = BEMZ_FABRICS.find((x) => x.family === family);
@@ -79,9 +95,9 @@ describe('fabricLook', () => {
     expect(lookOf('Recycled Linen Block Stripe')).toBe('pattern');
     expect(lookOf('Jacquard Bouclé Floral (Flowers for a Home)')).toBe('pattern');
     expect(lookOf('Plain Satin (Flowers for a Home)')).toBe('satin');
-    expect(lookOf('Mohair Velvet (The Reverie Collection)')).toBe('velvet');
+    expect(lookOf('Mohair Velvet (The Reverie Collection)')).toBe('pattern');
     expect(lookOf('Recycled Micro Boucle')).toBe('textured');
-    expect(lookOf('Simply Linen (Past Forward)')).toBe('weave');
+    expect(fabricLook(BEMZ_FABRICS.find((x) => x.code === 'SL132')!).kind).toBe('weave'); // Simply Linen, Unbleached
     expect(lookOf('Chunky Corduroy')).toBe('cord');
   });
 
