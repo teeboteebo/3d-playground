@@ -2,7 +2,8 @@
 
 Interactive 3D model of an apartment, decoded from a SketchUp model. Pick a room and try wall colours; in the
 bedroom, try rugs, pillows, art, wall moulding and wardrobe colours; in the living room, switch furniture on and
-off and try lamps and wall moulding. Day and evening lighting are shared by every room.
+off, try lamps and wall moulding, and try Bemz fabrics on the sofa. Day and evening lighting are shared by every
+room.
 
 Built with React, TypeScript, Vite and three.js.
 
@@ -62,6 +63,8 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`; `trimGeometry.ts` cuts the String shelving's
     two left columns to half height as it loads
+  - `sofaFabric.ts`, `fabricDetail.ts`: the chosen Bemz fabric on the sofa, and the procedural weave drawn for plain
+    fabrics (pattern fabrics load their swatch photo)
   - `livingMoulding.ts`: the living room's sofa-wall and TV-wall moulding, laid out like the bedroom's
     (`layout.ts`) and hidden with its wall
   - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down
