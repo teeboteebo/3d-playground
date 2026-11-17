@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
 import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
 
@@ -197,5 +198,24 @@ describe('reading corner settings', () => {
   });
   it('patches one piece without touching the other fields', () => {
     expect(applyPatch(DEFAULTS, { office: { dresser: 'none' } }).office).toEqual({ ...DEFAULTS.office, dresser: 'none' });
+  });
+});
+
+describe('living room sofa fabric', () => {
+  const f = (living: object) => sanitizeSettings({ version: 2, living }).living.sofaFabric;
+  it('defaults to the original sofa fabric', () => {
+    expect(DEFAULTS.living.sofaFabric).toBe('original');
+    expect(sanitizeSettings(null).living.sofaFabric).toBe('original');
+  });
+  it('keeps a known Bemz fabric code', () => {
+    expect(f({ sofaFabric: BEMZ_FABRICS[0].code })).toBe(BEMZ_FABRICS[0].code);
+  });
+  it("keeps 'original' as the sofa's own fabric", () => {
+    expect(f({ sofaFabric: 'original' })).toBe('original');
+  });
+  it('falls back to the original fabric for unknown codes, non-strings and missing values', () => {
+    expect(f({ sofaFabric: 'XXX999' })).toBe('original');
+    expect(f({ sofaFabric: 42 })).toBe('original');
+    expect(f({})).toBe('original');
   });
 });
