@@ -37,6 +37,10 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   between rooms, and helpers for sizes and extents. Scene coordinates are metres with the bedroom centred on the
   origin, x east and z south; the conversion from SketchUp coordinates is at the top of the file.
 - `src/data/catalog.ts`: palettes, paints, rugs, pillows, art, camera views and the living-room furniture list
+- `src/data/fabrics.ts`, `src/data/bemzFabrics.ts`: the `BemzFabric` type with search, swatch/product URL and price
+  helpers, and the captured list of Bemz fabrics for the NOCKEBY cover (generated; do not edit by hand)
+- `scripts/bemz-fabrics.mjs`, `scripts/bemzParse.mjs`: the capture script and its parsers. Refresh the fabric list and
+  prices with `node scripts/bemz-fabrics.mjs` (2-3 minutes, 0.5 s between requests) and commit the diff
 - `src/state/`: the settings, grouped by room and versioned (`version: 2`), with sanitising and migration of
   anything saved earlier, and the `useSettings` hook (persists to `localStorage['apartment-playground']`; settings
   saved under the old `bedroom-viz` key are read and migrated)
