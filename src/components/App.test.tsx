@@ -2,6 +2,8 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS, RUGS, VIEWS, mainView } from '../data/catalog';
+import { BEMZ_FABRICS } from '../data/bemzFabrics';
+import { fabricPrice, fabricUrl } from '../data/fabrics';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
@@ -369,4 +371,62 @@ describe('reading corner in the office', () => {
 it('still lists the bedroom rugs', async () => {
   await renderIn('bedroom');
   expect(within(screen.getByRole('group', { name: 'Rug' })).getAllByRole('button')).toHaveLength(RUGS.length);
+});
+
+describe('sofa fabric', () => {
+  const grid = () => screen.getByRole('group', { name: 'Sofa fabrics' });
+  const search = () => screen.getByRole('searchbox', { name: 'Search Bemz fabrics' });
+  const f = BEMZ_FABRICS[0];
+  const own = () => within(grid()).getByRole('button', { name: 'Original fabric' });
+
+  it('filters the grid by search', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    await user.type(search(), f.family);
+    const labels = within(grid()).getAllByRole('button').map((b) => b.getAttribute('aria-label')!);
+    expect(labels.length).toBeGreaterThan(1);
+    for (const l of labels.filter((x) => x !== 'Original fabric')) expect(l).toContain(f.family);
+  });
+
+  it('selects a fabric, applies and stores it, and shows its price and link', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    const btn = within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` });
+    await user.click(btn);
+    expect(lastApplied().living.sofaFabric).toBe(f.code);
+    expect(stored().living.sofaFabric).toBe(f.code);
+    expect(btn).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(new RegExp(fabricPrice(f).replace(/[()]/g, '\\$&')))).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: /View on Bemz/ });
+    expect(link).toHaveAttribute('href', fabricUrl(f));
+    expect(link).toHaveAttribute('target', '_blank');
+  });
+
+  it('says so when nothing matches, and still shows the selected fabric', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
+    await user.type(search(), 'zzzz');
+    expect(screen.getByText('No fabrics match')).toBeInTheDocument();
+    expect(own()).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /View on Bemz/ })).toHaveAttribute('href', fabricUrl(f));
+  });
+
+  it('shows 24 fabrics and 24 more on request', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    expect(within(grid()).getAllByRole('button')).toHaveLength(25);
+    await user.click(screen.getByRole('button', { name: 'Show more' }));
+    expect(within(grid()).getAllByRole('button')).toHaveLength(49);
+  });
+
+  it('goes back to the original fabric', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
+    await user.click(own());
+    expect(lastApplied().living.sofaFabric).toBe('original');
+    expect(screen.getByText("The sofa's own dark grey")).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /View on Bemz/ })).not.toBeInTheDocument();
+  });
 });
