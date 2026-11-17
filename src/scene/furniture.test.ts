@@ -126,6 +126,19 @@ describe('loadFurniture', () => {
     expect(seen.map(([id]) => id)).not.toContain('tv');
   });
 
+  it('warns once and carries on when onPiece throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const scene = new THREE.Scene();
+    const onAdded = vi.fn();
+    const f = loadFurniture(scene, () => Promise.resolve(new THREE.Group()), onAdded, () => {
+      throw new Error('boom');
+    });
+    await expect(f.ready).resolves.toBeUndefined();
+    expect(scene.children).toHaveLength(FURNITURE.length);
+    expect(onAdded).toHaveBeenCalledTimes(FURNITURE.length);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
   it('leaves the sofa\'s materials alone when it is hidden and shown again', async () => {
     const scene = new THREE.Scene();
     const material = new THREE.MeshStandardMaterial({ name: 'Surf-Fabric' });

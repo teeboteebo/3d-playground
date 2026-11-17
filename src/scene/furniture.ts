@@ -40,6 +40,7 @@ export function loadFurniture(
   let hidden: readonly string[] = [];
   const loaded = new Map<string, THREE.Object3D>();
   let warned = false;
+  let pieceWarned = false;
   let disposed = false;
 
   const ready = Promise.all(
@@ -60,7 +61,12 @@ export function loadFurniture(
           });
           loaded.set(id, obj);
           parent.add(obj);
-          onPiece?.(id, obj);
+          try {
+            onPiece?.(id, obj);
+          } catch (err) {
+            if (!pieceWarned) console.warn(`The living-room piece ${id} could not be set up`, err);
+            pieceWarned = true;
+          }
           onAdded();
         },
         (err: unknown) => {
