@@ -4,7 +4,7 @@ import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { fabricLook, swatchUrl, type FabricKind } from '../data/fabrics';
 import type { FabricDetail } from './fabricDetail';
 import { lin } from './materials';
-import { MAP_FRAGMENT_TARGET, sofaFabric, triplanarWeights } from './sofaFabric';
+import { MAP_FRAGMENT_TARGET, sofaFabric, triplanarSources, triplanarWeights } from './sofaFabric';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -231,6 +231,23 @@ describe('sofaFabric', () => {
     await flush();
     expect(fabricOf(seat).map).toBe(maps.get('satin'));
     expect(dispose).toHaveBeenCalled();
+  });
+
+  it('patches the shaders of a real MeshStandardMaterial, finding every target', () => {
+    const { vertex, fragment } = triplanarSources(
+      THREE.ShaderLib.standard.vertexShader,
+      THREE.ShaderLib.standard.fragmentShader,
+    );
+    expect(vertex).toContain('vFabricPos = ');
+    expect(fragment).toContain('uniform float uFabricScale;');
+    expect(fragment).toContain('fabricP.zy');
+    expect(fragment).not.toContain('#include <map_fragment>');
+    expect(THREE.ShaderChunk.map_fragment).toContain(MAP_FRAGMENT_TARGET);
+  });
+
+  it('throws when a patch target is missing', () => {
+    expect(() => triplanarSources('void main() {}', THREE.ShaderLib.standard.fragmentShader)).toThrow(/could not find/);
+    expect(() => triplanarSources(THREE.ShaderLib.standard.vertexShader, 'void main() {}')).toThrow(/could not find/);
   });
 
   it('patches a map_fragment chunk that still has the expected text', () => {

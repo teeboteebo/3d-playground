@@ -29,6 +29,53 @@ export function triplanarWeights(normal: THREE.Vector3): THREE.Vector3 {
   return sum > 0 ? w.divideScalar(sum) : w.setScalar(1 / 3);
 }
 
+/** like String.replace, but a target that is not there is an error, so a three upgrade that moves it fails loudly */
+function replaceOrThrow(src: string, from: string, to: string, where: string): string {
+  const out = src.replace(from, () => to);
+  if (out === src) throw new Error(`sofaFabric: could not find ${JSON.stringify(from.slice(0, 60))} in ${where}`);
+  return out;
+}
+
+/** the vertex and fragment shader text the triplanar patch produces, from three's own chunks */
+export function triplanarSources(vertexShader: string, fragmentShader: string): { vertex: string; fragment: string } {
+  const vertex = replaceOrThrow(
+    replaceOrThrow(
+      vertexShader,
+      '#include <common>',
+      '#include <common>\nvarying vec3 vFabricPos;\nvarying vec3 vFabricNormal;',
+      'the vertex shader',
+    ),
+    '#include <worldpos_vertex>',
+    `#include <worldpos_vertex>
+	vFabricPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
+	vFabricNormal = mat3( modelMatrix ) * objectNormal;`,
+    'the vertex shader',
+  );
+  const sampling = replaceOrThrow(
+    THREE.ShaderChunk.map_fragment,
+    MAP_FRAGMENT_TARGET,
+    `vec3 fabricW = pow( abs( normalize( vFabricNormal ) ), vec3( 4.0 ) );
+	fabricW /= fabricW.x + fabricW.y + fabricW.z;
+	vec3 fabricP = vFabricPos / uFabricScale;
+	vec4 sampledDiffuseColor = texture2D( map, fabricP.zy ) * fabricW.x
+		+ texture2D( map, fabricP.xz ) * fabricW.y
+		+ texture2D( map, fabricP.xy ) * fabricW.z;`,
+    'ShaderChunk.map_fragment',
+  );
+  const fragment = replaceOrThrow(
+    replaceOrThrow(
+      fragmentShader,
+      '#include <common>',
+      '#include <common>\nvarying vec3 vFabricPos;\nvarying vec3 vFabricNormal;\nuniform float uFabricScale;',
+      'the fragment shader',
+    ),
+    '#include <map_fragment>',
+    sampling,
+    'the fragment shader',
+  );
+  return { vertex, fragment };
+}
+
 /*
  * The sofa model has no texture coordinates, so the fabric is projected from the three world axes and blended by the
  * surface normal (as triplanarWeights), in world metres: one weave scale across seat, back and arms, and no hard
@@ -39,31 +86,9 @@ function triplanar(material: THREE.MeshStandardMaterial, scale: { value: number 
   material.customProgramCacheKey = () => 'sofa-triplanar';
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uFabricScale = scale;
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vFabricPos;\nvarying vec3 vFabricNormal;')
-      .replace(
-        '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>
-	vFabricPos = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;
-	vFabricNormal = mat3( modelMatrix ) * objectNormal;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace(
-        '#include <common>',
-        '#include <common>\nvarying vec3 vFabricPos;\nvarying vec3 vFabricNormal;\nuniform float uFabricScale;',
-      )
-      .replace(
-        '#include <map_fragment>',
-        THREE.ShaderChunk.map_fragment.replace(
-          MAP_FRAGMENT_TARGET,
-          `vec3 fabricW = pow( abs( normalize( vFabricNormal ) ), vec3( 4.0 ) );
-	fabricW /= fabricW.x + fabricW.y + fabricW.z;
-	vec3 fabricP = vFabricPos / uFabricScale;
-	vec4 sampledDiffuseColor = texture2D( map, fabricP.zy ) * fabricW.x
-		+ texture2D( map, fabricP.xz ) * fabricW.y
-		+ texture2D( map, fabricP.xy ) * fabricW.z;`,
-        ),
-      );
+    const { vertex, fragment } = triplanarSources(shader.vertexShader, shader.fragmentShader);
+    shader.vertexShader = vertex;
+    shader.fragmentShader = fragment;
   };
 }
 
