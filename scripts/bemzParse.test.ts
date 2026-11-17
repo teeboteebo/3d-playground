@@ -27,16 +27,27 @@ describe('parseFabricList', () => {
   });
 });
 
+describe('parseFabricList validation', () => {
+  it('throws when a record has no name or colour', () => {
+    const html = fixture('fabrics.html').replace(/\\"name\\":\\"Recycled Velvet\\"/, '\\"name\\":\\"\\"');
+    expect(html).not.toBe(fixture('fabrics.html'));
+    expect(() => parseFabricList(html)).toThrow(/RVM107/);
+    const noColour = fixture('fabrics.html').replace(/\\"fabricColorName\\":\\"Midnight\\",/, '').replace('Recycled Velvet - Midnight', 'Recycled Velvet');
+    expect(() => parseFabricList(noColour)).toThrow(/RVM107/);
+  });
+});
+
 describe('parseProduct', () => {
   it('reads the price of the fabric asked for', () => {
     expect(parseProduct(fixture('product.html'), 'NOC6-RVM107')).toEqual({ price: 7999 });
-    expect(parseProduct(fixture('product.html'))).toEqual({ price: 7999 });
   });
   it('reads a sale price next to the regular one', () => {
     expect(parseProduct(fixture('product-sale.html'), 'NOC6-AGL102')).toEqual({ price: 10999, salePrice: 9899 });
   });
   it('returns null when Bemz served another fabric instead', () => {
-    expect(parseProduct(fixture('product-missing.html'), 'NOC6-ZZZ999')).toBeNull();
+    // for a fabric it doesn't offer, Bemz redirects (308) to the cover's default variant page; that page, here the
+    // AGL102 one, has another article number than the one asked for
+    expect(parseProduct(fixture('product-sale.html'), 'NOC6-ZZZ999')).toBeNull();
   });
 });
 

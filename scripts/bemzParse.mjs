@@ -13,8 +13,11 @@ export function scaleFor(family) {
   return /flowers for a home|past forward|the reverie collection/i.test(family) ? 0.6 : 0.25;
 }
 
-const COLLECTIONS = ['FLOWERS FOR A HOME', 'PAST FORWARD COLLECTION', 'THE REVERIE COLLECTION'];
-const collectionName = (c) => (c === 'FLOWERS FOR A HOME' ? 'Flowers for a Home' : c.replace(/ collection$/i, '').toLowerCase());
+const COLLECTIONS = {
+  'FLOWERS FOR A HOME': 'Flowers for a Home',
+  'PAST FORWARD COLLECTION': 'Past Forward',
+  'THE REVERIE COLLECTION': 'The Reverie Collection',
+};
 
 /**
  * Every fabric on the /fabrics page, in the order the grid shows them.
@@ -37,7 +40,7 @@ export function parseFabricList(html) {
       name: (str('name') ?? '').trim(),
       colour: (str('fabricColorName') ?? str('fabricTitle')?.split(' - ').slice(1).join(' - ') ?? '').trim(),
       tier: str('priceRange'),
-      collection: categories.find((c) => COLLECTIONS.includes(c.toUpperCase())),
+      collection: COLLECTIONS[categories.map((c) => c.toUpperCase()).find((c) => c in COLLECTIONS)],
     });
   });
   const result = [];
@@ -47,7 +50,8 @@ export function parseFabricList(html) {
     const r = records.get(code);
     if (seen.has(code) || !r) continue;
     seen.add(code);
-    const family = r.collection ? `${r.name} (${collectionName(r.collection.toUpperCase())})` : r.name;
+    const family = r.collection && r.name ? `${r.name} (${r.collection})` : r.name;
+    if (!family || !r.colour || !src) throw new Error(`fabric ${code}: missing family or colour; has the page changed?`);
     result.push({ code, family, colour: r.colour, tier: !r.tier || r.tier === '$undefined' ? '' : r.tier, image: src });
   }
   return result;
@@ -57,13 +61,13 @@ export function parseFabricList(html) {
  * The price of the product page's own fabric. Bemz redirects unknown fabrics to a default variant, so pass the
  * article number you asked for ('NOC6-RVM107'): when the page is for another one, the fabric isn't offered.
  * @param {string} html
- * @param {string} [articleNumber]
+ * @param {string} articleNumber
  * @returns {{price: number, salePrice?: number} | null}
  */
 export function parseProduct(html, articleNumber) {
   const text = unescapePage(html);
   const m = text.match(/"__typename":"CoverProduct","articleNumber":"([^"]+)".*?"price":\{"unitPriceIncludingVat":([\d.]+),"unitPriceExcludingVat":[\d.]+,"discountPriceIncludingVat":(null|[\d.]+)/s);
-  if (!m || (articleNumber && m[1] !== articleNumber)) return null;
+  if (!m || m[1] !== articleNumber) return null;
   const price = Math.round(Number(m[2]));
   const sale = m[3] === 'null' ? undefined : Math.round(Number(m[3]));
   return sale !== undefined && sale < price ? { price, salePrice: sale } : { price };

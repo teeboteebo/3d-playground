@@ -62,6 +62,8 @@ describe('BEMZ_FABRICS', () => {
       expect(f.price).toBeGreaterThan(0);
       expect(f.image.startsWith('https://image.bemz.com/productImage/')).toBe(true);
       expect([0.25, 0.6]).toContain(f.scale);
+      const collection = f.family.match(/\((.*)\)$/)?.[1];
+      if (collection) expect(['Flowers for a Home', 'Past Forward', 'The Reverie Collection']).toContain(collection);
     }
   });
 });
