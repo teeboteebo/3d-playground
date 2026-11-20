@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { FLOOR_LAMPS, PENDANTS, VIEWS } from '../src/data/catalog';
+import { BEMZ_FABRICS } from '../src/data/bemzFabrics';
 import { openWith, settled } from './helpers';
 
 /* the buttons and hint drawn over the canvas: their text antialiasing varies between runs, and they are not the scene */
@@ -50,6 +51,36 @@ for (const time of ['day', 'eve'] as const) {
       await openWith(page, { room, time, [room]: { pendant: PENDANTS[1].id, floorLamp: FLOOR_LAMPS[1].id } });
       await settled(page);
       await expect(page.locator('canvas.stage-canvas')).toHaveScreenshot(`${view}-lamps-${time}.png`.replace(/ /g, '-').toLowerCase(), overlays(page));
+    });
+  }
+}
+
+/* the sofa in a Bemz fabric: a pattern (its swatch photo is routed to a generated test weave, so nothing leaves
+   the machine) and a plain weave (drawn from its colour; the route only catches an accidental request) */
+const pinned = (code: string) => {
+  const f = BEMZ_FABRICS.find((x) => x.code === code);
+  if (!f) {
+    throw new Error(`The Bemz fabric ${code} is no longer in BEMZ_FABRICS; pin another one and regenerate the baselines`);
+  }
+  return f;
+};
+const patternFabric = pinned('SAS101');
+const plainFabric = pinned('OT190');
+for (const time of ['day', 'eve'] as const) {
+  for (const [label, file, fabric] of [
+    ['a Bemz fabric', 'fabric', patternFabric],
+    ['a plain Bemz fabric', 'fabric-plain', plainFabric],
+  ] as const) {
+    test(`Living room, with ${label}, ${time}`, async ({ page }) => {
+      await page.route('https://image.bemz.com/**', (r) =>
+        r.fulfill({
+          path: 'e2e/fixtures/fabric.png',
+          contentType: 'image/png',
+          headers: { 'access-control-allow-origin': '*' },
+        }));
+      await openWith(page, { room: 'living', time, living: { sofaFabric: fabric.code } });
+      await settled(page);
+      await expect(page.locator('canvas.stage-canvas')).toHaveScreenshot(`living-room-${file}-${time}.png`, overlays(page));
     });
   }
 }

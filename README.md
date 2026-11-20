@@ -2,7 +2,8 @@
 
 Interactive 3D model of an apartment, decoded from a SketchUp model. Pick a room and try wall colours; in the
 bedroom, try rugs, pillows, art, wall moulding and wardrobe colours; in the living room, switch furniture on and
-off and try lamps and wall moulding. Day and evening lighting are shared by every room.
+off, try lamps and wall moulding, and try Bemz fabrics on the sofa. Day and evening lighting are shared by every
+room.
 
 Built with React, TypeScript, Vite and three.js.
 
@@ -37,6 +38,10 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   between rooms, and helpers for sizes and extents. Scene coordinates are metres with the bedroom centred on the
   origin, x east and z south; the conversion from SketchUp coordinates is at the top of the file.
 - `src/data/catalog.ts`: palettes, paints, rugs, pillows, art, camera views and the living-room furniture list
+- `src/data/fabrics.ts`, `src/data/bemzFabrics.ts`: the `BemzFabric` type with search, swatch/product URL and price
+  helpers, and the captured list of Bemz fabrics for the NOCKEBY cover (generated; do not edit by hand)
+- `scripts/bemz-fabrics.mjs`, `scripts/bemzParse.mjs`: the capture script and its parsers. Refresh the fabric list and
+  prices with `node scripts/bemz-fabrics.mjs` (2-3 minutes, 0.5 s between requests) and commit the diff
 - `src/state/`: the settings, grouped by room and versioned (`version: 2`), with sanitising and migration of
   anything saved earlier, and the `useSettings` hook (persists to `localStorage['apartment-playground']`; settings
   saved under the old `bedroom-viz` key are read and migrated)
@@ -58,6 +63,8 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `orbitCamera.ts`: drag, wheel and pinch controls, eased towards a pose, and click detection
   - `furniture.ts`: loads the living-room models from `public/models/`; `trimGeometry.ts` cuts the String shelving's
     two left columns to half height as it loads
+  - `sofaFabric.ts`, `fabricDetail.ts`: the chosen Bemz fabric on the sofa, and the procedural weave drawn for plain
+    fabrics (pattern fabrics load their swatch photo)
   - `livingMoulding.ts`: the living room's sofa-wall and TV-wall moulding, laid out like the bedroom's
     (`layout.ts`) and hidden with its wall
   - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down

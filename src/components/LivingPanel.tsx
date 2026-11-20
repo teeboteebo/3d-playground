@@ -4,6 +4,7 @@ import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
 import { MouldingSection } from './MouldingSection';
+import { SofaFabricSection } from './SofaFabricSection';
 
 interface Props {
   settings: Settings;
@@ -19,6 +20,7 @@ export function LivingPanel({ settings, update }: Props) {
       <p className="sub">500 × 465 cm with an angled bay window. The furniture comes from the SketchUp model, in its places.</p>
       <FinishSection room="living" settings={settings} update={update} />
       <LightingSection room="living" settings={settings} update={update} />
+      <SofaFabricSection settings={settings} update={update} />
       <MouldingSection
         room="living"
         walls={[

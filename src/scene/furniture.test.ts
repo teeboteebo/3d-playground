@@ -103,4 +103,51 @@ describe('loadFurniture', () => {
     expect(scene.getObjectByName('sofa')).toBeUndefined();
     for (const spy of freed) expect(spy).toHaveBeenCalled();
   });
+
+  it('hands each piece to onPiece once it is in the scene, but not a piece that arrives after dispose', async () => {
+    const scene = new THREE.Scene();
+    let release!: (o: THREE.Object3D) => void;
+    const late = new Promise<THREE.Object3D>((r) => (release = r));
+    const seen: [string, THREE.Object3D, boolean][] = [];
+    const f = loadFurniture(
+      scene,
+      (piece) => (piece.id === 'tv' ? late : Promise.resolve(new THREE.Group())),
+      () => {},
+      (id, obj) => seen.push([id, obj, obj.parent === scene]),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+    const sofa = seen.find(([id]) => id === 'sofa');
+    expect(sofa?.[1]).toBe(byFile(scene, 'sofa'));
+    expect(sofa?.[2]).toBe(true);
+    f.dispose();
+    release(new THREE.Group());
+    await f.ready;
+    expect(seen.map(([id]) => id)).not.toContain('tv');
+  });
+
+  it('warns once and carries on when onPiece throws', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const scene = new THREE.Scene();
+    const onAdded = vi.fn();
+    const f = loadFurniture(scene, () => Promise.resolve(new THREE.Group()), onAdded, () => {
+      throw new Error('boom');
+    });
+    await expect(f.ready).resolves.toBeUndefined();
+    expect(scene.children).toHaveLength(FURNITURE.length);
+    expect(onAdded).toHaveBeenCalledTimes(FURNITURE.length);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the sofa\'s materials alone when it is hidden and shown again', async () => {
+    const scene = new THREE.Scene();
+    const material = new THREE.MeshStandardMaterial({ name: 'Surf-Fabric' });
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), material);
+    const sofa = new THREE.Group().add(mesh);
+    const f = loadFurniture(scene, (piece) => Promise.resolve(piece.id === 'sofa' ? sofa : new THREE.Group()));
+    await f.ready;
+    f.setHidden(['sofa']);
+    f.setHidden([]);
+    expect(mesh.material).toBe(material);
+  });
 });

@@ -19,6 +19,7 @@ import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
 import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
+import { sofaFabric } from './sofaFabric';
 import { floorTexture } from './textures';
 
 export interface ApartmentScene {
@@ -86,10 +87,13 @@ export function createApartmentScene(
 
   /* the models are meshopt-compressed (see README) */
   const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  /* the sofa's cover, a Bemz fabric or the model's own (see sofaFabric) */
+  const fabric = sofaFabric(invalidate);
   const furniture = loadFurniture(
     scene,
     (piece) => (piece.file ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene) : Promise.resolve(quebecRug())),
     invalidate,
+    (id, obj) => id === 'sofa' && fabric.attach(obj),
   );
   let furnitureReady = false;
   void furniture.ready.then(() => (furnitureReady = true));
@@ -106,6 +110,7 @@ export function createApartmentScene(
     livingMoulding.apply(s);
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
     furniture.setHidden(s.living.hidden);
+    fabric.set(s.living.sofaFabric);
     sky.setEvening(evening);
     pipeline.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
@@ -148,8 +153,9 @@ export function createApartmentScene(
   function frame() {
     const { moved, arrived } = orbit.update();
     if (moved || dirty) draw();
-    /* lets screenshot tests wait for a still frame: the camera has arrived and the furniture has loaded */
-    const settled = String(arrived && furnitureReady);
+    /* lets screenshot tests wait for a still frame: the camera has arrived, and the furniture and the sofa's fabric
+       have loaded */
+    const settled = String(arrived && furnitureReady && fabric.settled);
     if (canvas.dataset.settled !== settled) canvas.dataset.settled = settled;
     raf = requestAnimationFrame(frame);
   }
@@ -170,6 +176,7 @@ export function createApartmentScene(
       canvas.removeEventListener('webglcontextrestored', invalidate);
       orbit.dispose();
       furniture.dispose();
+      fabric.dispose();
       disposeTree(scene);
       bedroom.dispose();
       office.dispose();

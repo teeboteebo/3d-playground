@@ -2,6 +2,7 @@ import {
   ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
   WARDROBES,
 } from '../data/catalog';
+import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
@@ -56,6 +57,8 @@ export interface LivingSettings extends LampSettings, MouldLayout {
   /** sofa-wall grid: number of equal columns, and the gap between them and at both wall ends (cm) */
   mouldSofaColumns: number;
   mouldSofaGap: number;
+  /** the sofa's fabric: 'original' for the sofa as modelled, or a Bemz fabric code */
+  sofaFabric: string;
 }
 
 export interface Settings {
@@ -118,6 +121,7 @@ export const DEFAULTS: Settings = {
     mouldSide: 68,
     mouldSofaColumns: 5,
     mouldSofaGap: 8,
+    sofaFabric: 'original',
   },
   office: {
     pendant: 'none',
@@ -230,6 +234,7 @@ function sanitizeLiving(raw: unknown): LivingSettings {
       num(l.mouldSofaColumns, d.mouldSofaColumns, SLIDERS.mouldSofaColumns.min, SLIDERS.mouldSofaColumns.max),
     ),
     mouldSofaGap: num(l.mouldSofaGap, d.mouldSofaGap, SLIDERS.mouldSofaGap.min, SLIDERS.mouldSofaGap.max),
+    sofaFabric: oneOf(l.sofaFabric, ['original', ...BEMZ_FABRICS.map((f) => f.code)], d.sofaFabric),
   };
 }
 
