@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BEMZ_FABRICS } from './bemzFabrics';
-import { fabricLook, fabricPrice, fabricUrl, searchFabrics, swatchUrl, type BemzFabric } from './fabrics';
+import { coverName, fabricLook, fabricPrice, fabricUrl, searchFabrics, swatchUrl, type BemzFabric } from './fabrics';
 
 const velvet: BemzFabric = {
   code: 'RVM107',
@@ -107,5 +107,25 @@ describe('fabricLook', () => {
     expect(lookOf('Bouclé')).toBe('textured');
     expect(lookOf('Melton Wool')).toBe('textured');
     expect(lookOf('Organic Panama Cotton')).toBe('weave');
+  });
+});
+
+describe('coverName', () => {
+  it('names the cover the data was captured for, and each NOCKEBY cover', () => {
+    expect(coverName()).toBe('NOCKEBY 3-seat with right chaise cover');
+    expect(coverName('NOC7')).toBe('NOCKEBY 3-seat with left chaise cover');
+    expect(coverName('XYZ1')).toBe('Bemz cover XYZ1');
+  });
+});
+
+describe('fabricLook word matching', () => {
+  const look = (family: string, colour: string) =>
+    fabricLook({ code: 'TST101', family, colour, tier: '', hex: '#808080', price: 1, image: '', scale: 0.25 }).kind;
+
+  it('matches the short pattern words only as whole words', () => {
+    expect(look('Cow Chenille', 'Creme/Brown')).toBe('pattern');
+    expect(look('Simply Linen', 'Dots Black')).toBe('pattern');
+    expect(look('Simply Linen', 'Cowslip')).toBe('weave');
+    expect(look('Recycled Linen', 'Sandots')).toBe('weave');
   });
 });

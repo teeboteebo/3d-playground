@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BEMZ_CHECKED, BEMZ_FABRICS } from '../data/bemzFabrics';
-import { fabricPrice, fabricUrl, searchFabrics, swatchUrl } from '../data/fabrics';
+import { coverName, fabricPrice, fabricUrl, searchFabrics, swatchUrl } from '../data/fabrics';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 
@@ -66,7 +66,7 @@ export function SofaFabricSection({ settings, update }: Props) {
             </strong>
             {` · ${selected.code}${selected.tier ? ` · ${selected.tier}` : ''}`}
             <br />
-            {`NOCKEBY 3-seat with chaise cover · ${fabricPrice(selected)} · `}
+            {`${coverName()} · ${fabricPrice(selected)} · `}
             <a href={fabricUrl(selected)} target="_blank" rel="noreferrer">
               View on Bemz ↗
             </a>

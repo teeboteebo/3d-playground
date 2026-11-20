@@ -4,7 +4,7 @@ import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { fabricLook, swatchUrl, type FabricKind } from '../data/fabrics';
 import type { FabricDetail } from './fabricDetail';
 import { lin } from './materials';
-import { MAP_FRAGMENT_TARGET, sofaFabric, triplanarSources, triplanarWeights } from './sofaFabric';
+import { MAP_FRAGMENT_TARGET, plainColour, sofaFabric, triplanarSources, triplanarWeights } from './sofaFabric';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -34,14 +34,17 @@ function fakeSofa() {
 
 /** a `load` whose calls each return a promise the test settles by url */
 function controllableLoad() {
-  const pending = new Map<string, { resolve: (t: THREE.Texture) => void; reject: (e: unknown) => void }>();
+  type Call = { resolve: (t: THREE.Texture) => void; reject: (e: unknown) => void };
+  const pending = new Map<string, Call>();
+  const calls: Call[] = [];
   const load = vi.fn(
     (url: string) =>
       new Promise<THREE.Texture>((resolve, reject) => {
         pending.set(url, { resolve, reject });
+        calls.push({ resolve, reject });
       }),
   );
-  return { load, pending };
+  return { load, pending, calls };
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -60,6 +63,21 @@ describe('triplanarWeights', () => {
       const w = triplanarWeights(n.normalize());
       expect(w.x + w.y + w.z).toBeCloseTo(1);
     }
+  });
+});
+
+describe('plainColour', () => {
+  it('multiplies the swatch colour by the gain', () => {
+    const c = plainColour('#808080', 1.25);
+    expect(c.r).toBeCloseTo(lin('#808080').r * 1.25);
+  });
+
+  it('scales a too-light colour down as a whole, keeping its hue, instead of clipping each channel', () => {
+    const c = plainColour('#F2EEE4', 2);
+    const raw = lin('#F2EEE4').multiplyScalar(2);
+    expect(Math.max(c.r, c.g, c.b)).toBeCloseTo(1);
+    expect(c.g / c.r).toBeCloseTo(raw.g / raw.r);
+    expect(c.b / c.r).toBeCloseTo(raw.b / raw.r);
   });
 });
 
@@ -109,6 +127,40 @@ describe('sofaFabric', () => {
     expect(fabricOf(seat).map).toBe(texB);
     expect(disposeA).toHaveBeenCalled();
     expect(f.settled).toBe(true);
+  });
+
+  it('drops a load from an earlier pick of the same fabric, waiting for the newest one', async () => {
+    const { sofa, seat } = fakeSofa();
+    const { load, calls } = controllableLoad();
+    const { detail } = fakeDetail();
+    const f = sofaFabric(() => {}, load, detail);
+    f.attach(sofa);
+    f.set(A.code);
+    f.set(plain('weave').code);
+    f.set(A.code);
+    expect(calls).toHaveLength(2);
+    const older = new THREE.Texture();
+    const newer = new THREE.Texture();
+    const disposeOlder = vi.spyOn(older, 'dispose');
+    calls[0].resolve(older);
+    await flush();
+    expect(fabricOf(seat).map).toBeNull();
+    expect(f.settled).toBe(false);
+    expect(disposeOlder).toHaveBeenCalled();
+    calls[1].resolve(newer);
+    await flush();
+    expect(fabricOf(seat).map).toBe(newer);
+    expect(f.settled).toBe(true);
+  });
+
+  it('unhooks the shared detail map on dispose, so the scene teardown does not free it', () => {
+    const { sofa, seat } = fakeSofa();
+    const { detail } = fakeDetail();
+    const f = sofaFabric(() => {}, controllableLoad().load, detail);
+    f.attach(sofa);
+    f.set(plain('weave').code);
+    f.dispose();
+    expect(fabricOf(seat).map).toBeNull();
   });
 
   it('restores the original colour and drops the texture', async () => {
@@ -192,9 +244,9 @@ describe('sofaFabric', () => {
     expect(load).not.toHaveBeenCalled();
     expect(f.settled).toBe(true);
     expect(fabricOf(seat).map).toBe(maps.get('velvet'));
-    const c = lin(velvet.hex).multiplyScalar(1.25);
-    expect(fabricOf(seat).color.r).toBeCloseTo(Math.min(1, c.r));
-    expect(fabricOf(seat).color.b).toBeCloseTo(Math.min(1, c.b));
+    const c = plainColour(velvet.hex, 1.25);
+    expect(fabricOf(seat).color.r).toBeCloseTo(c.r);
+    expect(fabricOf(seat).color.b).toBeCloseTo(c.b);
     expect(fabricOf(seat).roughness).toBe(0.6);
     f.set('original');
     expect(fabricOf(seat).roughness).toBe(roughness);

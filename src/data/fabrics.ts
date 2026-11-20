@@ -39,7 +39,7 @@ export type FabricKind = 'pattern' | 'velvet' | 'textured' | 'cord' | 'satin' | 
 
 /* checked in order: a striped satin or a bouclé jacquard is a pattern first */
 const LOOKS: [FabricKind, RegExp][] = [
-  ['pattern', /stripe|check|gingham|tartan|zebra|damask|floral|leaves|marble|jaquard|jacquard|cow|dots|fleur|vintage (forest|chenille)/i],
+  ['pattern', /stripe|check|gingham|tartan|zebra|damask|floral|leaves|marble|jaquard|jacquard|\bcow\b|\bdots?\b|fleur|vintage (forest|chenille)/i],
   ['velvet', /velvet|teddy/i],
   ['cord', /corduroy/i],
   ['satin', /satin/i],
@@ -62,6 +62,19 @@ export function fabricLook(f: BemzFabric): { kind: FabricKind } {
 
 export function swatchUrl(f: BemzFabric, width: number): string {
   return `${f.image}&width=${width}&q=85`;
+}
+
+/** Bemz's NOCKEBY covers by code, so the panel names whichever cover the data was captured for */
+const COVER_NAMES: Record<string, string> = {
+  NOC1: 'NOCKEBY 3-seat cover',
+  NOC2: 'NOCKEBY 2-seat cover',
+  NOC5: 'NOCKEBY footstool cover',
+  NOC6: 'NOCKEBY 3-seat with right chaise cover',
+  NOC7: 'NOCKEBY 3-seat with left chaise cover',
+};
+
+export function coverName(cover: string = BEMZ_COVER): string {
+  return COVER_NAMES[cover] ?? `Bemz cover ${cover}`;
 }
 
 export function fabricUrl(f: BemzFabric, cover: string = BEMZ_COVER): string {

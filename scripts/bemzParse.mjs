@@ -32,7 +32,8 @@ export function parseFabricList(html) {
   const records = new Map();
   const starts = [...text.matchAll(/"([A-Z0-9]+)":\{"fabricId":"\1"/g)];
   starts.forEach((m, i) => {
-    const body = text.slice(m.index, starts[i + 1]?.index ?? m.index + 8000);
+    const end = starts[i + 1]?.index ?? text.indexOf('</script>', m.index);
+    const body = text.slice(m.index, end === -1 ? undefined : end);
     const str = (key) => body.match(new RegExp(`"${key}":"([^"]*)"`))?.[1];
     const categories = [...(body.match(/"categories":\[(.*?)\],"fabricTitle"/)?.[1] ?? '').matchAll(/"name":"([^"]*)"/g)].map(
       (c) => c[1].trim(),

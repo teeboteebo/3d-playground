@@ -92,10 +92,29 @@ function triplanar(material: THREE.MeshStandardMaterial, scale: { value: number 
   };
 }
 
+/** how many flattened swatches are kept, so going back to a recently tried print needs no new download or flattening */
+const KEEP_SWATCHES = 6;
+const swatches = new Map<string, Promise<HTMLCanvasElement>>();
+
 /** a patterned fabric's swatch photo, trimmed and with its fold shading flattened out (see flattenSwatch) */
 async function defaultLoad(url: string): Promise<THREE.Texture> {
-  const img = await new THREE.ImageLoader().setCrossOrigin('anonymous').loadAsync(url);
-  return new THREE.CanvasTexture(flattenSwatch(img));
+  let canvas = swatches.get(url);
+  if (canvas) swatches.delete(url);
+  else {
+    canvas = new THREE.ImageLoader().setCrossOrigin('anonymous').loadAsync(url).then(flattenSwatch);
+    canvas.catch(() => swatches.delete(url));
+  }
+  swatches.set(url, canvas);
+  if (swatches.size > KEEP_SWATCHES) swatches.delete(swatches.keys().next().value!);
+  return new THREE.CanvasTexture(await canvas);
+}
+
+/** a plain fabric's colour: the swatch colour times the detail map's gain, scaled down as a whole (keeping its hue)
+    where a channel would pass 1, since a surface cannot reflect more than all the light */
+export function plainColour(hex: string, gain: number): THREE.Color {
+  const c = lin(hex).multiplyScalar(gain);
+  const top = Math.max(c.r, c.g, c.b);
+  return top > 1 ? c.multiplyScalar(1 / top) : c;
 }
 
 /**
@@ -116,6 +135,8 @@ export function sofaFabric(
   /** a pattern's photo texture, which this sofa owns (the plain kinds' maps are shared and never disposed here) */
   let owned: THREE.Texture | null = null;
   let loading: string | null = null;
+  /** counts apply() calls, so a load started by an earlier one is dropped even if the same fabric was picked again */
+  let generation = 0;
   let attached = false;
   let disposed = false;
   let warned = false;
@@ -133,6 +154,7 @@ export function sofaFabric(
 
   function apply() {
     const fabric = BEMZ_FABRICS.find((f) => f.code === current);
+    const mine = ++generation;
     loading = null;
     if (!fabric) {
       show(null, originalColour);
@@ -142,9 +164,7 @@ export function sofaFabric(
     if (kind !== 'pattern') {
       const d = detail(kind);
       scale.value = d.scale;
-      const c = lin(fabric.hex).multiplyScalar(d.gain);
-      const colour = new THREE.Color(Math.min(1, c.r), Math.min(1, c.g), Math.min(1, c.b));
-      show(d.map, colour, d.roughness ?? originalRoughness);
+      show(d.map, plainColour(fabric.hex, d.gain), d.roughness ?? originalRoughness);
       return;
     }
     const code = current;
@@ -152,7 +172,7 @@ export function sofaFabric(
     loading = code;
     load(swatchUrl(fabric, SWATCH_WIDTH)).then(
       (tex) => {
-        if (disposed || code !== current) {
+        if (disposed || mine !== generation) {
           tex.dispose();
           return;
         }
@@ -165,7 +185,7 @@ export function sofaFabric(
         onChange();
       },
       (err: unknown) => {
-        if (disposed || code !== current) return;
+        if (disposed || mine !== generation) return;
         loading = null;
         if (!warned) console.warn(`The Bemz fabric ${code} could not be loaded; showing its average colour`, err);
         warned = true;
@@ -213,6 +233,8 @@ export function sofaFabric(
       loading = null;
       owned?.dispose();
       owned = null;
+      /* the plain kinds' detail maps are shared; unhooking them keeps the scene's teardown from disposing them */
+      for (const m of materials) m.map = null;
     },
   };
 }
