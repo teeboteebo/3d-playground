@@ -106,7 +106,7 @@
     - `lower` ≈ [0.26, 0.65]
     - `upper` ≈ [0.85, 3.22]
   - `rows(0.3, 0.77).lower` is `null`. Its `upper` is still a valid range.
-  - `spacingMax(0.77)` ≈ 0.225, and `dadoRange(0.08)` ≈ { min: 0.54, max: 2.94 }. Both follow from requiring each row to be at least `MIN_ROW` tall.
+  - `spacingMax(0.77)` ≈ 0.225, and `dadoRange(0.08)` ≈ { min: 0.48, max: 3.04 }. Both follow from requiring each row to be at least `MIN_ROW` tall.
   - **Rule sweep** (`it.each`):
     - Inputs: runs [0, 3.72] and [0, 1.59]; S in {4, 8, 15, 30} cm; D 77 cm; columns 1–10; fixed column none, 1, or the last; width 20, 100 and 500 cm; position `'even'`, or `'custom'` at 0, 50% and 100% of the run.
     - For every layout:
@@ -117,7 +117,7 @@
   - **Bed wall default:** `layoutSection([-2.15, 1.57], {spacing: 8, dado: 77}, bedDefault, -0.33).columns` ≈ [[-2.07, -1.31], [-1.23, 0.57], [0.65, 1.49]]. The side columns are 0.76 and 0.84 wide.
   - **TV default:** run [3.69, 7.376], fixed column 2 at 170 cm `'even'`. The centre column spans ≈ [4.683, 6.383], which contains [4.85, 6.31].
   - **Clamping**, with the saved inputs unchanged in each case:
-    - Columns 10 at S 30 cm on a 1.59 m run draw `limits.maxColumns` columns, which is 4.
+    - Columns 10 at S 30 cm on a 1.59 m run draw `limits.maxColumns` columns, which is 2.
     - A `fixedColumn` greater than the drawn count gives `fixed === null`.
     - `fixedWidth` 500 is drawn at `limits.fixedWidth.max`.
     - A custom centre of 0 is drawn at `limits.fixedCentre.min`.
@@ -224,7 +224,11 @@ The old fields (`mouldGap`, `mouldCentre`, `mouldSide`, `mouldSofaColumns`, `mou
 
 - [ ] **Step 2: Run the tests and check they fail.** Run `npx vitest run src/state`. Expected: FAIL.
 
-- [ ] **Step 3: Implement the changes.** The legacy mapping applies only when `raw.mouldWalls` is absent.
+- [ ] **Step 3: Implement the changes.**
+  - The legacy mapping applies only when `raw.mouldWalls` is absent.
+  - `sanitizeBedroom` calls `sanitizeMouldWall` with `minColumns` 0 for the three `dresser*` sections and 1 for the others, and with `allowBed` true only for `bed`.
+  - The living sections use `minColumns` 1 and `allowBed` false.
+  - These must match the `minColumns` and `bedAnchor` values in Task 4's wall definitions.
 
 - [ ] **Step 4: Run the tests and typecheck.** Run `npm test && npm run typecheck`. Expected: PASS.
 
@@ -255,7 +259,7 @@ The old fields (`mouldGap`, `mouldCentre`, `mouldSide`, `mouldSofaColumns`, `mou
   |---|---|---|---|
   | Bed wall | `bed` | [−W/2, WARD_FRONT] | `bedAnchor` true |
   | Dresser wall | `dresserWindow` | [−W/2, MIRROR_X − MIRROR_HALF] | label "By the window" |
-  | Dresser wall | `dresserMiddle` | [MIRROR_X + MIRROR_HALF, FRONT_DOOR_X0] | label "Mirror to door", `minColumns` 0 |
+  | Dresser wall | `dresserMiddle` | [MIRROR_X + MIRROR_HALF, FRONT_DOOR_X0] | label "Mirror to door" |
   | Dresser wall | `dresserCorner` | [FRONT_DOOR_X1, W/2] | label "Door to corner" |
   | Sofa wall | `sofa` | [3.69, 8.69] | |
   | TV wall | `tv` | [3.69, 7.376] | |
@@ -265,7 +269,7 @@ The old fields (`mouldGap`, `mouldCentre`, `mouldSide`, `mouldSofaColumns`, `mou
   - Dresser wall: today's four segments. It stays broken behind the dresser, at `DRESSER_X` ± 0.4.
   - Sofa and TV walls: their run.
 
-  The dresser sections other than `dresserMiddle` also have `minColumns` 0, so all three dresser sections allow 0 columns.
+  All three dresser sections have `minColumns` 0, and the other sections have 1.
 - In `mouldStrips.ts`: `drawSection(strip: (w: number, h: number, x: number, y: number, d?: number) => void, l: SectionLayout, frameT: number): void` draws a lower and an upper frame per column for the rows that aren't null. `drawRail(strip, segments, rows.rail)` draws the rail.
 - The strip depths and wall z per wall stay as they are today.
 - The dresser wall is no longer static. It is rebuilt on change, like the bed wall.
