@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING, SKIRTING } from '../data/rooms';
-import { MIN_COL, dadoRange, layoutSection, layoutWall, rows, segments, shareColumns, spacingMax, type MouldWall } from './mouldLayout';
+import { MIN_COL, MIN_ROW, dadoRange, frameAbove, layoutSection, layoutWall, rows, segments, shareColumns, spacingMax, type MouldWall } from './mouldLayout';
 
 const wall = (o: Partial<MouldWall> = {}): MouldWall => ({
   spacing: null,
@@ -185,5 +185,12 @@ describe('layoutWall around a door', () => {
 
   it('is layoutSection when nothing is in the way', () => {
     expect(layoutWall(run, [], room, w({ fixedColumn: 2 }))).toEqual(layoutSection(run, room, w({ fixedColumn: 2 })));
+  });
+});
+
+describe('frameAbove', () => {
+  it('keeps S from the opening and from the ceiling, or draws nothing when that leaves too little', () => {
+    expect(frameAbove([1, 2], 2.65, 0.08)).toEqual({ x: [1, 2], y: [expect.closeTo(2.73), expect.closeTo(CEILING - 0.08)] });
+    expect(frameAbove([1, 2], CEILING - 0.2 - MIN_ROW + 0.01, 0.1)).toBeNull();
   });
 });

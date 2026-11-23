@@ -1,6 +1,6 @@
 import type { BedroomSection, LivingSection } from '../state/mould';
-import { DRESSER_X, FRONT_DOOR_X0, FRONT_DOOR_X1, W, WARD_FRONT } from './bedroom/dimensions';
-import { layoutWall, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
+import { DRESSER_X, FRONT_DOOR_TOP, FRONT_DOOR_X0, FRONT_DOOR_X1, W, WARD_FRONT } from './bedroom/dimensions';
+import { frameAbove, layoutWall, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
 
 export interface MouldSectionDef<K extends string> {
   key: K;
@@ -12,6 +12,8 @@ export interface MouldSectionDef<K extends string> {
   bedAnchor: boolean;
   /** x ranges inside the run that the moulding stays clear of, such as a door and its casing */
   gaps?: [number, number][];
+  /** openings that get a frame of their own above them, as wide as the opening: its x range and the top of the opening */
+  above?: { x: [number, number]; top: number }[];
 }
 
 export interface MouldWallDef<K extends string> {
@@ -39,7 +41,11 @@ export const BEDROOM_MOULD_WALLS: MouldWallDef<BedroomSection>[] = [
     label: 'Dresser wall',
     /* one run from the window wall to the east corner; the door splits it, and the columns are shared either side */
     sections: [
-      { key: 'dresser', label: 'Dresser wall', run: [WINDOW_SIDE, W / 2], minColumns: 1, bedAnchor: false, gaps: [[FRONT_DOOR_X0, FRONT_DOOR_X1]] },
+      { key: 'dresser', label: 'Dresser wall', run: [WINDOW_SIDE, W / 2], minColumns: 1, bedAnchor: false,
+        gaps: [[FRONT_DOOR_X0, FRONT_DOOR_X1]],
+        /* one frame over the door, as wide as its casing */
+        above: [{ x: [FRONT_DOOR_X0, FRONT_DOOR_X1], top: FRONT_DOOR_TOP }],
+      },
     ],
     /* the rail stays broken behind the dresser and at the door */
     rail: [
@@ -72,5 +78,9 @@ export function wallLayouts<K extends string>(
   walls: Record<K, MouldWall>,
   bedX?: number,
 ): SectionLayout[] {
-  return def.sections.map((sec) => layoutWall(sec.run, sec.gaps ?? [], room, walls[sec.key], sec.bedAnchor ? bedX : undefined));
+  return def.sections.map((sec) => {
+    const l = layoutWall(sec.run, sec.gaps ?? [], room, walls[sec.key], sec.bedAnchor ? bedX : undefined);
+    if (!sec.above) return l;
+    return { ...l, over: sec.above.flatMap(({ x, top }) => frameAbove(x, top, l.spacing) ?? []) };
+  });
 }

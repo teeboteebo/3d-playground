@@ -5,7 +5,7 @@ import { layoutSection } from '../mouldLayout';
 import { BEDROOM_MOULD_WALLS, WINDOW_WALL_CLEARANCE } from '../mouldWalls';
 import { strips } from '../testStrips';
 import { buildBedroom } from './index';
-import { BEDX, DRESSER_X, FRONT_DOOR_X0, FRONT_DOOR_X1, L, WARD_FRONT, W } from './dimensions';
+import { BEDX, DRESSER_X, FRONT_DOOR_TOP, FRONT_DOOR_X0, FRONT_DOOR_X1, H, L, WARD_FRONT, W } from './dimensions';
 import { kit } from './kit';
 import { bedroomMaterials } from './materials';
 import { bedroomMoulding } from './moulding';
@@ -101,6 +101,18 @@ describe('bedroom moulding', () => {
       [expect.closeTo(FRONT_DOOR_X1), expect.closeTo(W / 2)],
     ]);
     for (const b of rails) expect(b.max.z).toBeCloseTo(L / 2);
+  });
+
+  it('frames the space over the door, as wide as its casing, S from the casing and from the ceiling', () => {
+    const { mould, boxes } = setup();
+    mould.dresser.layout(bedroom({ mouldSpacing: 10 }));
+    const over = boxes('dresser').filter((b) => b.min.x >= FRONT_DOOR_X0 - 1e-6 && b.max.x <= FRONT_DOOR_X1 + 1e-6);
+    /* one frame of four strips */
+    expect(over).toHaveLength(4);
+    expect(Math.min(...over.map((b) => b.min.x))).toBeCloseTo(FRONT_DOOR_X0);
+    expect(Math.max(...over.map((b) => b.max.x))).toBeCloseTo(FRONT_DOOR_X1);
+    expect(Math.min(...over.map((b) => b.min.y))).toBeCloseTo(FRONT_DOOR_TOP + 0.1);
+    expect(Math.max(...over.map((b) => b.max.y))).toBeCloseTo(H - 0.1);
   });
 
   it('lays the dresser wall out as one wall, 12 cm plus the spacing from the window wall and clear of the door', () => {

@@ -41,6 +41,8 @@ export interface SectionLayout {
   /** absolute x */
   columns: [number, number][];
   rows: Rows;
+  /** frames of their own, such as one over a door: absolute x and y extents */
+  over?: { x: [number, number]; y: [number, number] }[];
   limits: {
     maxColumns: number;
     /** cm, null when no fixed column is drawn */
@@ -216,4 +218,11 @@ export function layoutWall(
       spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
     },
   };
+}
+
+/** a frame over an opening `x` wide whose top is at `top`: S above the opening and S below the ceiling, or null when that
+ * leaves less than MIN_ROW */
+export function frameAbove(x: [number, number], top: number, spacing: number): { x: [number, number]; y: [number, number] } | null {
+  const y = range(top + spacing, CEILING - spacing);
+  return y ? { x, y } : null;
 }
