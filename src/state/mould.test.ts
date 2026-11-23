@@ -18,9 +18,8 @@ describe('defaults', () => {
     expect(bed).toMatchObject({ columns: 3, fixedColumn: 2, fixedWidth: 180, fixedPosition: 'bed', spacing: null });
     expect(tv).toMatchObject({ columns: 3, fixedColumn: 2, fixedWidth: 170, fixedPosition: 'even' });
     expect(LIVING_MOULD_DEFAULTS.sofa).toMatchObject({ columns: 5, fixedColumn: 0, fixedWidth: 100, fixedPosition: 'even', fixedCentre: 0 });
-    expect(BEDROOM_MOULD_DEFAULTS.dresserMiddle.columns).toBe(0);
-    expect(BEDROOM_MOULD_DEFAULTS.dresserWindow.columns).toBe(1);
-    expect(BEDROOM_MOULD_DEFAULTS.dresserCorner.columns).toBe(1);
+    expect(BEDROOM_MOULD_DEFAULTS.dresser).toMatchObject({ columns: 4, fixedColumn: 0, fixedPosition: 'even' });
+    expect(Object.keys(BEDROOM_MOULD_DEFAULTS)).toEqual(['bed', 'dresser']);
   });
 });
 

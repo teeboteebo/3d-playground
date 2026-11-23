@@ -225,9 +225,19 @@ describe('moulding spacing settings', () => {
     expect(sanitizeSettings({ version: 2, living: { mouldDado: 'x', mouldSpacing: NaN } }).living).toMatchObject({ mouldDado: 77, mouldSpacing: 8 });
   });
   it('sanitises each wall with its own minimum and bed rule', () => {
-    const b = sanitizeSettings({ version: 2, bedroom: { mouldWalls: { dresserMiddle: { columns: 0 }, bed: { columns: 0, fixedPosition: 'bed' }, dresserWindow: { fixedPosition: 'bed' } } } }).bedroom.mouldWalls;
-    expect(b.dresserMiddle.columns).toBe(0);
+    const b = sanitizeSettings({ version: 2, bedroom: { mouldWalls: { dresser: { columns: 0, fixedPosition: 'bed' }, bed: { columns: 0, fixedPosition: 'bed' } } } }).bedroom.mouldWalls;
+    expect(b.dresser.columns).toBe(1);
+    expect(b.dresser.fixedPosition).toBe('even');
     expect(b.bed.columns).toBe(1);
-    expect(b.dresserWindow.fixedPosition).toBe('even');
+    expect(b.bed.fixedPosition).toBe('bed');
+  });
+  it('starts a dresser wall saved as three sections from the one-wall default', () => {
+    const b = sanitizeSettings({
+      version: 2,
+      bedroom: { mouldWalls: { bed: { columns: 5 }, dresserWindow: { columns: 2 }, dresserMiddle: { columns: 1 }, dresserCorner: { columns: 1 } } },
+    }).bedroom.mouldWalls;
+    expect(Object.keys(b)).toEqual(['bed', 'dresser']);
+    expect(b.dresser).toEqual(DEFAULTS.bedroom.mouldWalls.dresser);
+    expect(b.bed.columns).toBe(5);
   });
 });

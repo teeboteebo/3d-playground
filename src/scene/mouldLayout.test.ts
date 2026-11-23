@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING, SKIRTING } from '../data/rooms';
-import { MIN_COL, dadoRange, layoutSection, rows, spacingMax, type MouldWall } from './mouldLayout';
+import { MIN_COL, dadoRange, layoutSection, layoutWall, rows, segments, shareColumns, spacingMax, type MouldWall } from './mouldLayout';
 
 const wall = (o: Partial<MouldWall> = {}): MouldWall => ({
   spacing: null,
@@ -129,5 +129,61 @@ describe('layoutSection clamping', () => {
     const l = layoutSection([0, 4], room, wall({ columns: 0 }));
     expect(l.columns).toEqual([]);
     expect(l.rows.rail).toEqual([0.73, 0.77]);
+  });
+});
+
+describe('layoutWall around a door', () => {
+  const room = { spacing: 10, dado: 77 };
+  const w = (p: Partial<MouldWall> = {}): MouldWall => ({
+    spacing: null, columns: 4, fixedColumn: 0, fixedWidth: 100, fixedPosition: 'even', fixedCentre: 0, ...p,
+  });
+  const run: [number, number] = [0, 4];
+  const door: [number, number] = [2.5, 3.2];
+
+  it('splits the run at the gaps', () => {
+    expect(segments(run, [door])).toEqual([[0, 2.5], [3.2, 4]]);
+    expect(segments(run, [[-1, 0.5], [3.5, 9]])).toEqual([[0.5, 3.5]]);
+    expect(segments(run, [])).toEqual([run]);
+  });
+
+  it('gives every stretch a column before evening out the widths', () => {
+    const segs = segments(run, [door]);
+    expect(shareColumns(segs, 0.1, 1)).toEqual([1, 0]);
+    expect(shareColumns(segs, 0.1, 2)).toEqual([1, 1]);
+    expect(shareColumns(segs, 0.1, 4)).toEqual([3, 1]);
+    /* a stretch too narrow for a column gets none */
+    expect(shareColumns([[0, 2], [2.5, 2.7]], 0.1, 3)).toEqual([3, 0]);
+  });
+
+  it('keeps the spacing from both ends and from the door', () => {
+    const l = layoutWall(run, [door], room, w());
+    expect(l.count).toBe(4);
+    const [a, b, c, d] = l.columns;
+    expect(a[0]).toBeCloseTo(0.1);
+    expect(door[0] - c[1]).toBeCloseTo(0.1);
+    expect(b[0] - a[1]).toBeCloseTo(0.1);
+    expect(d).toEqual([expect.closeTo(3.3), expect.closeTo(3.9)]);
+    for (const [x0, x1] of l.columns) expect(x1 <= door[0] + 1e-9 || x0 >= door[1] - 1e-9).toBe(true);
+  });
+
+  it('caps the columns at what fits either side', () => {
+    const l = layoutWall(run, [door], room, w({ columns: 10 }));
+    expect(l.limits.maxColumns).toBe(Math.floor(2.4 / (MIN_COL + 0.1)) + Math.floor(0.7 / (MIN_COL + 0.1)));
+    expect(l.count).toBe(l.limits.maxColumns);
+  });
+
+  it('places the fixed column in its stretch, with the custom centre measured from the run start', () => {
+    const right = layoutWall(run, [door], room, w({ fixedColumn: 4, fixedWidth: 40 }));
+    expect(right.fixed).toMatchObject({ index: 3, centre: expect.closeTo(3.6) });
+    /* alone in its stretch, it fills it and cannot move */
+    expect(right.limits.fixedCentre).toEqual({ min: expect.closeTo(360), max: expect.closeTo(360) });
+    const left = layoutWall(run, [door], room, w({ fixedColumn: 2, fixedWidth: 60, fixedPosition: 'custom', fixedCentre: 120 }));
+    expect(left.fixed).toMatchObject({ index: 1, width: expect.closeTo(0.6), centre: expect.closeTo(1.2) });
+    expect(left.limits.fixedCentre!.min).toBeGreaterThan(0);
+    expect(left.limits.fixedCentre!.max * 0.01).toBeLessThan(door[0]);
+  });
+
+  it('is layoutSection when nothing is in the way', () => {
+    expect(layoutWall(run, [], room, w({ fixedColumn: 2 }))).toEqual(layoutSection(run, room, w({ fixedColumn: 2 })));
   });
 });

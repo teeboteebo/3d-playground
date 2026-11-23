@@ -1,7 +1,7 @@
 import { clamp } from '../lib/math';
 import type { FixedPosition, MouldWall } from '../scene/mouldLayout';
 
-export type BedroomSection = 'bed' | 'dresserWindow' | 'dresserMiddle' | 'dresserCorner';
+export type BedroomSection = 'bed' | 'dresser';
 export type LivingSection = 'sofa' | 'tv';
 
 export const MOULD_SLIDERS = {
@@ -18,9 +18,8 @@ const wall = (columns: number): MouldWall => ({
 
 export const BEDROOM_MOULD_DEFAULTS: Record<BedroomSection, MouldWall> = {
   bed: { ...wall(3), fixedColumn: 2, fixedWidth: 180, fixedPosition: 'bed' },
-  dresserWindow: wall(1),
-  dresserMiddle: wall(0),
-  dresserCorner: wall(1),
+  /* three between the window wall and the door, one between the door and the corner */
+  dresser: wall(4),
 };
 
 export const LIVING_MOULD_DEFAULTS: Record<LivingSection, MouldWall> = {
