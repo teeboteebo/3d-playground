@@ -147,6 +147,11 @@ describe('App', () => {
     await renderIn('bedroom');
     expect(within(screen.getByTestId('mould-bed')).getByRole('button', { name: 'Centred on bed' })).toBeInTheDocument();
     expect(screen.getByTestId('mould-dresserWindow')).toBeInTheDocument();
+    // a dresser section with a fixed column shows its position chips, but not the bed one
+    fireEvent.change(within(screen.getByTestId('mould-dresserWindow')).getByRole('combobox'), { target: { value: '1' } });
+    const win = within(screen.getByTestId('mould-dresserWindow'));
+    expect(win.getByRole('button', { name: 'Custom' })).toBeInTheDocument();
+    expect(win.queryByRole('button', { name: 'Centred on bed' })).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Centred on bed' })).toHaveLength(1);
   });
 
