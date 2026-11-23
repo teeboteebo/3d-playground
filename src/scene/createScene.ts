@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
+import { FLOOR, OAK, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
 import { ROOMS, type RoomId, type RoomSelection } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
@@ -23,7 +23,7 @@ import { sideboard } from './sideboard';
 import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { sofaFabric } from './sofaFabric';
-import { floorTexture } from './textures';
+import { floorTexture, woodTexture } from './textures';
 import { tagOption } from './options';
 
 export interface ApartmentScene {
@@ -87,6 +87,7 @@ export function createApartmentScene(
     trim: bedroom.shared.trim,
     glass: bedroom.shared.glass,
     floor: () => new THREE.MeshStandardMaterial({ roughness: 0.42 }),
+    threshold: new THREE.MeshStandardMaterial({ roughness: 0.55, map: woodTexture(OAK.hex) }),
   });
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
