@@ -66,7 +66,7 @@ describe('living-room moulding', () => {
     expect(c1).toBeGreaterThanOrEqual(6.31);
     /* no strip crosses the TV's side edges */
     for (const b of meshes('living-mould-tv').flatMap(strips)) {
-      expect(b.min.x < 4.85 && b.max.x > 4.85 && b.max.x - b.min.x < 0.1).toBe(false);
+      for (const edge of [4.85, 6.31]) expect(b.min.x < edge && b.max.x > edge && b.max.x - b.min.x < 0.1).toBe(false);
     }
   });
 

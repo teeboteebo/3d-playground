@@ -100,12 +100,22 @@ describe('dresser wall toggle', () => {
       return vis;
     };
     const on = state(true);
+    /* the moulding meshes, told apart by where they stand: thin strips against the front or the back wall */
+    const bbox = (m: THREE.Mesh) => new THREE.Box3().setFromBufferAttribute(m.geometry.attributes.position as THREE.BufferAttribute);
+    const meshes = [...on.keys()] as THREE.Mesh[];
+    const dresser = meshes.filter((m) => {
+      const b = bbox(m);
+      return b.min.z > L / 2 - 0.0125 && b.max.z < L / 2 + 1e-6 && b.min.y > 0.2 && b.max.y < 3.3;
+    });
+    const bed = meshes.filter((m) => {
+      const b = bbox(m);
+      return b.max.z < -L / 2 + 0.0205 && b.min.z > -L / 2 - 1e-6 && b.min.y > 0.2 && b.max.y < 3.3;
+    });
+    expect(dresser.length).toBeGreaterThan(0);
+    expect(bed.length).toBeGreaterThan(0);
+    for (const m of dresser) expect(on.get(m)).toBe(true);
     const off = state(false);
-    const flipped = [...on].filter(([o, v]) => v && off.get(o) === false).map(([o]) => o as THREE.Mesh);
-    expect(flipped.length).toBeGreaterThan(0);
-    for (const mesh of flipped) {
-      const bb = new THREE.Box3().setFromBufferAttribute(mesh.geometry.attributes.position as THREE.BufferAttribute);
-      expect(bb.min.z).toBeGreaterThan(L / 2 - 0.02);
-    }
+    for (const m of dresser) expect(off.get(m)).toBe(false);
+    for (const m of bed) expect(off.get(m)).toBe(true);
   });
 });
