@@ -17,7 +17,6 @@ export function LightingSection({ room, settings, update }: Props) {
   const id = useId();
   return (
     <section>
-      <h2>Lighting</h2>
       <h3 id={`${id}-pendant`}>Pendant</h3>
       <ProductList labelledBy={`${id}-pendant`} items={PENDANTS} value={pendant} onChange={(id) => update({ [room]: { pendant: id } })} meta={meta} />
       <h3 id={`${id}-floor`}>Floor lamp</h3>

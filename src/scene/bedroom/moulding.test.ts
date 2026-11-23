@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULTS, applyPatch, type BedroomSettings, type SettingsPatch } from '../../state/settings';
 import { layoutSection } from '../mouldLayout';
-import { BEDROOM_MOULD_WALLS } from '../mouldWalls';
+import { BEDROOM_MOULD_WALLS, BED_WALL_LEFT_BLOCK } from '../mouldWalls';
 import { strips } from '../testStrips';
 import { buildBedroom } from './index';
 import { BEDX, L, WARD_FRONT, W } from './dimensions';
@@ -51,11 +51,22 @@ describe('bedroom moulding', () => {
     expect(lowTop).toBeCloseTo(0.65);
     const upTop = Math.max(...all.map((b) => b.max.y));
     expect(upTop).toBeCloseTo(3.22);
-    const rail = all.find((b) => b.max.x - b.min.x > W - 0.01)!;
+    const rail = all.find((b) => b.max.x - b.min.x > W - BED_WALL_LEFT_BLOCK - 0.01)!;
+    expect(rail.min.x).toBeCloseTo(-W / 2 + BED_WALL_LEFT_BLOCK);
+    expect(rail.max.x).toBeCloseTo(W / 2);
     expect(rail.min.y).toBeCloseTo(0.73);
     expect(rail.max.y).toBeCloseTo(0.77);
-    expect(expected.columns[0][0]).toBeCloseTo(-W / 2 + 0.08);
+    /* the left corner keeps 12 cm clear on top of the spacing; the wardrobe side has the spacing alone */
+    expect(expected.columns[0][0]).toBeCloseTo(-W / 2 + 0.12 + 0.08);
     expect(expected.columns[2][1]).toBeCloseTo(WARD_FRONT - 0.08);
+  });
+
+  it('starts the bed wall 12 cm plus the spacing from the left corner', () => {
+    const { mould, boxes } = setup();
+    mould.bed.layout(bedroom({ mouldSpacing: 10 }));
+    const panels = boxes('bed').filter((b) => b.max.x - b.min.x < W - 0.5);
+    expect(Math.min(...panels.map((b) => b.min.x)) - -W / 2).toBeCloseTo(0.22);
+    expect(WARD_FRONT - Math.max(...panels.map((b) => b.max.x))).toBeCloseTo(0.1);
   });
 
   it('rebuilds only the wall whose layout changes', () => {

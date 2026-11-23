@@ -20,12 +20,16 @@ export interface MouldWallDef<K extends string> {
   rail: [number, number][];
 }
 
+/** the bed wall's moulding is kept this far, m, from the window-side (left) corner; the room spacing comes on top */
+export const BED_WALL_LEFT_BLOCK = 0.12;
+const BED_WALL_START = -W / 2 + BED_WALL_LEFT_BLOCK;
+
 export const BEDROOM_MOULD_WALLS: MouldWallDef<BedroomSection>[] = [
   {
     toggle: 'mouldBedWall',
     label: 'Bed wall',
-    sections: [{ key: 'bed', label: 'Bed wall', run: [-W / 2, WARD_FRONT], minColumns: 1, bedAnchor: true }],
-    rail: [[-W / 2, W / 2]],
+    sections: [{ key: 'bed', label: 'Bed wall', run: [BED_WALL_START, WARD_FRONT], minColumns: 1, bedAnchor: true }],
+    rail: [[BED_WALL_START, W / 2]],
   },
   {
     toggle: 'mouldDresserWall',

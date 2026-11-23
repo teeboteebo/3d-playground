@@ -108,7 +108,6 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .checks label{display:flex;align-items:center;gap:8px;font:500 12.5px var(--body);background:var(--chip);border-radius:6px;padding:7px 10px;cursor:pointer}
 .checks input{accent-color:var(--accent);margin:0}
-.fabric-checked{float:right;text-transform:none;letter-spacing:0;font:400 11px var(--body)}
 .fabric-search{display:block;width:100%;box-sizing:border-box;margin:0 0 8px;font:500 12.5px var(--body);color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:7px 8px}
 .fabrics{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .fabric{position:relative;width:44px;height:44px;padding:0;overflow:hidden;border:1px solid var(--line);border-radius:6px;cursor:pointer;color:var(--fg)}
@@ -117,3 +116,18 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 .fabric[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent)}
 .fabric-details{font:400 12px var(--body);color:var(--muted);margin:8px 0 0}
 .fabric-details strong{color:var(--fg);font-weight:600}
+.acc-note.mt8{display:block;margin:8px 0 0}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* a room's menu: one row per topic with its current choice; each opens a page of its own */
+h1:focus{outline:none}
+h1:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.topics{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.topic{width:100%;display:flex;align-items:center;gap:10px;font:inherit;color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:9px 10px;cursor:pointer;text-align:left}
+.topic:hover{border-color:var(--accent)}
+.topic i{width:22px;height:22px;flex:none;border-radius:4px;border:1px solid rgba(0,0,0,.25)}
+.topic i.blank{visibility:hidden}
+.topic>span:first-of-type{flex:1;min-width:0}
+.topic strong{display:block;font:600 13px var(--body)}
+.topic small{display:block;font:400 11.5px var(--body);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topic .chev{flex:none;font:400 18px/1 var(--body);color:var(--muted)}
+.topic:hover .chev{color:var(--accent)}

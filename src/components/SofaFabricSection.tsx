@@ -20,9 +20,6 @@ export function SofaFabricSection({ settings, update }: Props) {
   const pick = (code: string) => update({ living: { sofaFabric: code } });
   return (
     <section>
-      <h2>
-        Sofa fabric <span className="fabric-checked">Bemz · checked {BEMZ_CHECKED}</span>
-      </h2>
       <input
         type="search"
         className="fabric-search"
@@ -75,6 +72,7 @@ export function SofaFabricSection({ settings, update }: Props) {
           "The sofa's own dark grey"
         )}
       </p>
+      <p className="acc-note mt8">Fabrics from Bemz, checked {BEMZ_CHECKED}.</p>
     </section>
   );
 }

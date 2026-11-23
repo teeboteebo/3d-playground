@@ -17,7 +17,6 @@ export function ReadingCornerSection({ settings, update }: Props) {
   const id = useId();
   return (
     <section>
-      <h2>Reading corner</h2>
       <h3 id={`${id}-chair`}>Reading chair</h3>
       <ProductList labelledBy={`${id}-chair`} items={READING_CHAIRS} value={readingChair} onChange={(v) => update({ office: { readingChair: v } })} meta={meta} />
       <h3 id={`${id}-dresser`}>Dresser</h3>

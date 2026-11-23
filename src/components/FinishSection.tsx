@@ -14,7 +14,6 @@ interface Props {
 export function FinishSection({ room, settings, update }: Props) {
   return (
     <section>
-      <h2>Walls</h2>
       <ChipGroup
         label="Wall colour"
         options={PAINTS}

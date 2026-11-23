@@ -44,7 +44,8 @@ export function MouldSectionControls({ def, label, wall, layout, roomSpacing, on
   const positions = POSITIONS.filter((p) => p.id !== 'bed' || def.bedAnchor);
   return (
     <div className={on ? 'grp' : 'grp off'} data-testid={`mould-${def.key}`} role="group" aria-labelledby={id}>
-      <h3 id={id}>{label}</h3>
+      <h3 id={id} className="vh">{label}</h3>
+      {!on && <p className="acc-note">This wall's moulding is hidden. Turn it on under Wall moulding to change it.</p>}
       <label className="sl">
         Spacing <b>{spacing} cm</b>
         <input
