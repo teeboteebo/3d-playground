@@ -5,8 +5,16 @@ export const W = BEDROOM_HALF.x * 2;
 export const L = BEDROOM_HALF.z * 2;
 export const H = CEILING;
 
-/** the bed's centre line: halfway between the window wall and the wardrobes' fronts */
-export const BEDX = (-W / 2 + (W / 2 - 0.58)) / 2;
+/** where the two built-in wardrobes' fronts stand */
+export const WARD_FRONT = W / 2 - 0.58;
+
+/** wall-hung nightstand (AC Design Cholet, scaled): width, height, depth out from the wall, and its bottom height */
+export const NIGHTSTAND = { w: 0.4, h: 0.23, d: 0.3, y0: 0.48 };
+/** centre x of the left and right nightstand: 0.47 m from the window wall, and 0.55 m from the wardrobe fronts */
+export const NIGHTSTAND_X: readonly [number, number] = [-W / 2 + 0.47 + 0.2, WARD_FRONT - 0.55 - 0.2];
+
+/** the bed's centre line: halfway between the two nightstands */
+export const BEDX = (NIGHTSTAND_X[0] + NIGHTSTAND_X[1]) / 2;
 
 /* the doorway to the hall, on the east wall (z range and height) */
 export const DOOR_Z0 = BEDROOM_DOOR.a[1];
@@ -24,10 +32,7 @@ export const FRONT_DOOR_X = (BEDROOM_FRONT_DOOR.a[0] + BEDROOM_FRONT_DOOR.b[0]) 
 export const FRONT_DOOR_W = Math.abs(BEDROOM_FRONT_DOOR.b[0] - BEDROOM_FRONT_DOOR.a[0]);
 export const FRONT_DOOR_H = BEDROOM_FRONT_DOOR.y1;
 
-/* wall moulding: the rail, and the lower panels from just above the skirting to just under the rail */
-export const RAIL_Y = 0.75;
-export const LOW_Y0 = 0.28;
-export const LOW_Y1 = RAIL_Y - 0.08;
+/* wall moulding: the thickness of a frame's strips */
 export const FRAME_T = 0.028;
 
 /* Mio Adina wall lamp: centre height of its shade, and how far its stem (and the shade's axis) stands off the wall */

@@ -5,6 +5,9 @@ import { DEFAULTS, applyPatch, type SettingsPatch } from '../state/settings';
 import { buildApartment } from './buildApartment';
 import { buildLivingMoulding } from './livingMoulding';
 import { lin } from './materials';
+import { layoutSection } from './mouldLayout';
+import { LIVING_MOULD_WALLS } from './mouldWalls';
+import { strips } from './testStrips';
 
 const settings = (living: SettingsPatch['living'] = {}, walls: Partial<typeof DEFAULTS.walls> = {}) =>
   applyPatch(DEFAULTS, { living, walls: { ...DEFAULTS.walls, ...walls } });
@@ -19,18 +22,6 @@ function setup() {
     return out;
   };
   return { parent, m, meshes, attached };
-}
-
-/** one Box3 per strip: merged boxes are 36 non-indexed vertices each */
-function strips(mesh: THREE.Mesh): THREE.Box3[] {
-  const pos = mesh.geometry.attributes.position;
-  const out: THREE.Box3[] = [];
-  for (let i = 0; i < pos.count; i += 36) {
-    const b = new THREE.Box3();
-    for (let j = i; j < i + 36; j++) b.expandByPoint(new THREE.Vector3().fromBufferAttribute(pos, j));
-    out.push(b);
-  }
-  return out;
 }
 
 const shown = (o: THREE.Object3D) => {
@@ -51,8 +42,8 @@ describe('living-room moulding', () => {
       for (const b of boxes) {
         expect(b.min.x).toBeGreaterThanOrEqual(x0 - 1e-6);
         expect(b.max.x).toBeLessThanOrEqual(x1 + 1e-6);
-        expect(b.min.y).toBeGreaterThanOrEqual(0.28 - 1e-6);
-        expect(b.max.y).toBeLessThanOrEqual(3.0 + 1e-6);
+        expect(b.min.y).toBeGreaterThanOrEqual(0.26 - 1e-6);
+        expect(b.max.y).toBeLessThanOrEqual(3.22 + 1e-6);
         expect(Math.abs(b.min.z - wallZ)).toBeLessThanOrEqual(0.015);
         expect(Math.abs(b.max.z - wallZ)).toBeLessThanOrEqual(0.015);
       }
@@ -66,13 +57,17 @@ describe('living-room moulding', () => {
     for (const b of meshes('living-mould-tv').flatMap(strips)) expect(b.max.z).toBeCloseTo(2.725);
   });
 
-  it('keeps the TV-wall moulding off the TV at the narrowest centre width', () => {
+  it('keeps the TV wall centre column over the TV', () => {
     const { m, meshes } = setup();
-    m.apply(settings({ mouldCentre: 150 }));
-    const tv = new THREE.Box3(new THREE.Vector3(4.85, 1.0, 2.6), new THREE.Vector3(6.31, 1.83, 2.8));
-    const boxes = meshes('living-mould-tv').flatMap(strips);
-    expect(boxes.length).toBeGreaterThan(0);
-    for (const b of boxes) expect(b.intersectsBox(tv)).toBe(false);
+    m.apply(settings());
+    const l = layoutSection(LIVING_MOULD_WALLS[1].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.living.mouldWalls.tv);
+    const [c0, c1] = l.columns[1];
+    expect(c0).toBeLessThanOrEqual(4.85);
+    expect(c1).toBeGreaterThanOrEqual(6.31);
+    /* no strip crosses the TV's side edges */
+    for (const b of meshes('living-mould-tv').flatMap(strips)) {
+      for (const edge of [4.85, 6.31]) expect(b.min.x < edge && b.max.x > edge && b.max.x - b.min.x < 0.1).toBe(false);
+    }
   });
 
   it('follows the wall paint in tone mode', () => {
@@ -99,22 +94,20 @@ describe('living-room moulding', () => {
     for (const mesh of meshes('living-mould-tv')) expect(shown(mesh)).toBe(true);
   });
 
-  it.each([2, 5, 10])('lays the sofa wall out as %i equal columns inside its ends', (count) => {
+  it('lays the sofa wall out as five columns with one spacing on every side', () => {
     const { m, meshes } = setup();
-    m.apply(settings({ mouldSofaColumns: count, mouldSofaGap: 8 }));
+    m.apply(settings());
     const boxes = meshes('living-mould-sofa').flatMap(strips);
-    expect(boxes).toHaveLength(1 + count * 8);
-    /* the low frames' outer strips at the bottom: one full-width strip per column at y 0.28 */
-    const bottoms = boxes.filter((b) => Math.abs(b.min.y - 0.28) < 1e-6 && b.max.y - b.min.y < 0.1)
+    expect(boxes).toHaveLength(1 + 5 * 8);
+    const bottoms = boxes.filter((b) => Math.abs(b.min.y - 0.26) < 1e-6 && b.max.y - b.min.y < 0.1)
       .sort((a, b) => a.min.x - b.min.x);
-    expect(bottoms).toHaveLength(count);
-    const w = (5 - (count + 1) * 0.08) / count;
+    expect(bottoms).toHaveLength(5);
+    const w = (5 - 6 * 0.08) / 5;
     bottoms.forEach((b, i) => {
       expect(b.max.x - b.min.x).toBeCloseTo(w);
       expect(b.min.x).toBeCloseTo(3.69 + 0.08 + i * (w + 0.08));
     });
-    expect(bottoms[0].min.x).toBeGreaterThan(3.69);
-    expect(bottoms[count - 1].max.x).toBeLessThan(8.69);
+    expect(bottoms[4].max.x).toBeCloseTo(8.69 - 0.08);
   });
 
   it('rebuilds only the wall whose layout changes', () => {
@@ -124,14 +117,15 @@ describe('living-room moulding', () => {
     const tv = meshes('living-mould-tv');
     m.apply(settings({ mouldTvWall: 'off' }));
     expect(meshes('living-mould-sofa')).toEqual(sofa);
-    m.apply(settings({ mouldSofaColumns: 4 }));
+    const wallsOf = (o: Partial<typeof DEFAULTS.living.mouldWalls.sofa>) => ({
+      ...DEFAULTS.living.mouldWalls, sofa: { ...DEFAULTS.living.mouldWalls.sofa, ...o },
+    });
+    m.apply(settings({ mouldWalls: wallsOf({ columns: 4 }) }));
     expect(meshes('living-mould-sofa')[0]).not.toBe(sofa[0]);
     expect(meshes('living-mould-tv')).toEqual(tv);
     const sofa2 = meshes('living-mould-sofa');
-    m.apply(settings({ mouldSofaColumns: 4, mouldCentre: 160 }));
+    m.apply(settings({ mouldWalls: wallsOf({ columns: 4 }), mouldSpacing: 12 }));
     expect(meshes('living-mould-tv')[0]).not.toBe(tv[0]);
-    expect(meshes('living-mould-sofa')).toEqual(sofa2);
-    m.apply(settings({ mouldSofaColumns: 4, mouldCentre: 160, mouldSofaGap: 12 }));
     expect(meshes('living-mould-sofa')[0]).not.toBe(sofa2[0]);
   });
 
@@ -139,7 +133,7 @@ describe('living-room moulding', () => {
     const { m, parent, attached } = setup();
     m.apply(settings());
     const groups = [...parent.children];
-    m.apply(settings({ mouldGap: 12, mouldSofaColumns: 6 }));
+    m.apply(settings({ mouldSpacing: 12 }));
     expect(parent.children).toEqual(groups);
     expect(attached).toEqual([[5.855, -1.925], [5.58, 2.725]]);
   });

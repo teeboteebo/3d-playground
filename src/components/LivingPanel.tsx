@@ -1,4 +1,5 @@
 import { FURNITURE } from '../data/catalog';
+import { LIVING_MOULD_WALLS } from '../scene/mouldWalls';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
@@ -21,29 +22,7 @@ export function LivingPanel({ settings, update }: Props) {
       <FinishSection room="living" settings={settings} update={update} />
       <LightingSection room="living" settings={settings} update={update} />
       <SofaFabricSection settings={settings} update={update} />
-      <MouldingSection
-        room="living"
-        walls={[
-          { key: 'mouldSofaWall', label: 'Sofa wall' },
-          { key: 'mouldTvWall', label: 'TV wall' },
-        ]}
-        layouts={[
-          {
-            label: 'Sofa wall layout',
-            testId: 'living-sofa-layout',
-            wall: 'mouldSofaWall',
-            sliders: ['mouldSofaColumns', 'mouldSofaGap'],
-          },
-          {
-            label: 'TV wall layout',
-            testId: 'living-tv-layout',
-            wall: 'mouldTvWall',
-            sliders: ['mouldGap', 'mouldCentre', 'mouldSide'],
-          },
-        ]}
-        settings={settings}
-        update={update}
-      />
+      <MouldingSection room="living" walls={LIVING_MOULD_WALLS} settings={settings} update={update} />
       <section>
         <h2>Furniture</h2>
         <div className="checks" role="group" aria-label="Furniture">
