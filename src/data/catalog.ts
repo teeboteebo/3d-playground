@@ -342,6 +342,14 @@ export const FURNITURE: FurniturePiece[] = [
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
 ];
 
+/**
+ * The TV bench is a sideboard 160 cm wide and 75 cm tall (its model's 48 cm depth), against the TV wall with 126 cm
+ * between it and the wall to its right (seen facing the TV: the hall-side wall, x = 3.69). The TV hangs centred over
+ * it, its bottom 86 cm from the floor, which leaves 11 cm above the sideboard. Scene metres.
+ */
+export const TV_BENCH = { x0: 3.69 + 1.26, w: 1.6, h: 0.75 } as const;
+export const TV_BOTTOM = 0.86;
+
 export interface ShelvingCutRegion {
   /** the region is zFrom < z ≤ zTo (scene metres); a triangle with any corner in it is cut */
   zFrom: number;

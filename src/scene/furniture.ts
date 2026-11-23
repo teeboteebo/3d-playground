@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FURNITURE, SHELVING_CUT, type FurniturePiece } from '../data/catalog';
+import { FURNITURE, SHELVING_CUT, TV_BENCH, TV_BOTTOM, type FurniturePiece } from '../data/catalog';
 import { disposeTree } from './dispose';
 import { trimAbove } from './trimGeometry';
 
@@ -14,6 +14,27 @@ function trimShelving(shelving: THREE.Object3D): void {
       old.dispose();
     }
   });
+}
+
+/**
+ * Moves the TV bench and the TV from their model positions to where they stand (see `TV_BENCH`): the bench is scaled
+ * to the sideboard's width and height and keeps its depth against the wall; the TV keeps its size, centred above it.
+ */
+export function placePiece(id: string, obj: THREE.Object3D): void {
+  if (id !== 'tv-bench' && id !== 'tv') return;
+  obj.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  if (id === 'tv-bench') {
+    const sx = TV_BENCH.w / size.x;
+    const sy = TV_BENCH.h / size.y;
+    obj.scale.set(sx, sy, 1);
+    obj.position.set(TV_BENCH.x0 - sx * box.min.x, -sy * box.min.y, 0);
+  } else {
+    obj.position.set(TV_BENCH.x0 + TV_BENCH.w / 2 - (box.min.x + box.max.x) / 2, TV_BOTTOM - box.min.y, 0);
+  }
+  obj.updateMatrixWorld(true);
 }
 
 export interface Furniture {
@@ -53,6 +74,7 @@ export function loadFurniture(
           }
           const { id } = piece;
           if (id === 'shelving') trimShelving(obj);
+          placePiece(id, obj);
           obj.name = id;
           obj.visible = !hidden.includes(id);
           obj.traverse((o) => {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FURNITURE, SHELVING_CUT } from '../data/catalog';
-import { loadFurniture } from './furniture';
+import { loadFurniture, placePiece } from './furniture';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -149,5 +149,46 @@ describe('loadFurniture', () => {
     f.setHidden(['sofa']);
     f.setHidden([]);
     expect(mesh.material).toBe(material);
+  });
+});
+
+describe('placePiece', () => {
+  /** a box spanning min..max, its geometry in scene coordinates like the exported models */
+  const piece = (min: [number, number, number], max: [number, number, number]) => {
+    const size = max.map((v, i) => v - min[i]) as [number, number, number];
+    const g = new THREE.BoxGeometry(...size).translate(...(max.map((v, i) => (v + min[i]) / 2) as [number, number, number]));
+    const group = new THREE.Group();
+    group.add(new THREE.Mesh(g));
+    return group;
+  };
+  const bounds = (o: THREE.Object3D) => new THREE.Box3().setFromObject(o);
+
+  it('makes the bench a 160 × 75 cm sideboard 126 cm from the hall-side wall, keeping its depth on the wall', () => {
+    const bench = piece([4.245, 0, 2.229], [6.645, 0.56, 2.709]);
+    placePiece('tv-bench', bench);
+    const b = bounds(bench);
+    expect(b.min.x - 3.69).toBeCloseTo(1.26);
+    expect(b.max.x - b.min.x).toBeCloseTo(1.6);
+    expect(b.min.y).toBeCloseTo(0);
+    expect(b.max.y).toBeCloseTo(0.75);
+    expect([b.min.z, b.max.z]).toEqual([expect.closeTo(2.229), expect.closeTo(2.709)]);
+  });
+
+  it('centres the TV over the bench, 86 cm up, 11 cm above it, at its own size', () => {
+    const tv = piece([4.853, 1.002, 2.675], [6.306, 1.832, 2.718]);
+    placePiece('tv', tv);
+    const b = bounds(tv);
+    expect((b.min.x + b.max.x) / 2).toBeCloseTo(3.69 + 1.26 + 0.8);
+    expect(b.min.y).toBeCloseTo(0.86);
+    expect(b.min.y - 0.75).toBeCloseTo(0.11);
+    expect(b.max.x - b.min.x).toBeCloseTo(1.453);
+    expect(b.max.z).toBeCloseTo(2.718);
+  });
+
+  it('leaves every other piece where the model put it', () => {
+    const sofa = piece([1, 0, 1], [2, 1, 2]);
+    placePiece('sofa', sofa);
+    expect(sofa.position.toArray()).toEqual([0, 0, 0]);
+    expect(sofa.scale.toArray()).toEqual([1, 1, 1]);
   });
 });
