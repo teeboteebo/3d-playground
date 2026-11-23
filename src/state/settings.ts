@@ -6,6 +6,10 @@ import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
+import type { MouldWall } from '../scene/mouldLayout';
+import {
+  BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
+} from './mould';
 
 export type OnOff = 'on' | 'off';
 
@@ -19,6 +23,10 @@ export interface BedroomSettings {
   mouldGap: number;
   mouldCentre: number;
   mouldSide: number;
+  /** room-wide moulding spacing and dado (rail top) height, cm; the walls hold their own columns */
+  mouldSpacing: number;
+  mouldDado: number;
+  mouldWalls: Record<BedroomSection, MouldWall>;
   pendant: OnOff;
   wardrobes: string;
   rug: string;
@@ -57,6 +65,9 @@ export interface LivingSettings extends LampSettings, MouldLayout {
   /** sofa-wall grid: number of equal columns, and the gap between them and at both wall ends (cm) */
   mouldSofaColumns: number;
   mouldSofaGap: number;
+  mouldSpacing: number;
+  mouldDado: number;
+  mouldWalls: Record<LivingSection, MouldWall>;
   /** the sofa's fabric: 'original' for the sofa as modelled, or a Bemz fabric code */
   sofaFabric: string;
 }
@@ -102,6 +113,9 @@ export const DEFAULTS: Settings = {
     mouldGap: 8,
     mouldCentre: 180,
     mouldSide: 68,
+    mouldSpacing: 8,
+    mouldDado: 77,
+    mouldWalls: BEDROOM_MOULD_DEFAULTS,
     pendant: 'on',
     wardrobes: 'wall',
     rug: 'naver',
@@ -121,6 +135,9 @@ export const DEFAULTS: Settings = {
     mouldSide: 68,
     mouldSofaColumns: 5,
     mouldSofaGap: 8,
+    mouldSpacing: 8,
+    mouldDado: 77,
+    mouldWalls: LIVING_MOULD_DEFAULTS,
     sofaFabric: 'original',
   },
   office: {
@@ -220,6 +237,30 @@ function sanitizeMouldLayout(raw: Raw, d: MouldLayout): MouldLayout {
   };
 }
 
+/** room spacing and dado; a pre-wall save (no mouldWalls) takes its spacing from the old gap field */
+function sanitizeMouldRoom(raw: Raw, legacyGap: unknown, d: { mouldSpacing: number; mouldDado: number }) {
+  const legacy = raw.mouldWalls === undefined ? legacyGap : undefined;
+  const n = (v: unknown, fallback: number, s: { min: number; max: number }) => {
+    const x = typeof v === 'string' && v.trim() === '' ? NaN : Number(v);
+    return clamp(v !== undefined && v !== null && Number.isFinite(x) ? x : fallback, s.min, s.max);
+  };
+  return {
+    mouldSpacing: n(raw.mouldSpacing ?? legacy, d.mouldSpacing, MOULD_SLIDERS.spacing),
+    mouldDado: n(raw.mouldDado, d.mouldDado, MOULD_SLIDERS.dado),
+  };
+}
+
+/** each wall section's settings; a pre-wall save keeps the sofa column count */
+function sanitizeWalls<K extends string>(
+  raw: unknown, defaults: Record<K, MouldWall>, rules: Record<K, { minColumns: 0 | 1; allowBed: boolean }>, legacy: Partial<Record<K, Raw>>,
+): Record<K, MouldWall> {
+  const o = obj(raw);
+  const present = raw !== undefined;
+  return Object.fromEntries(
+    (Object.keys(defaults) as K[]).map((k) => [k, sanitizeMouldWall(present ? o[k] : legacy[k], defaults[k], rules[k])]),
+  ) as Record<K, MouldWall>;
+}
+
 function sanitizeLiving(raw: unknown): LivingSettings {
   const l = obj(raw);
   const d = DEFAULTS.living;
@@ -234,6 +275,12 @@ function sanitizeLiving(raw: unknown): LivingSettings {
       num(l.mouldSofaColumns, d.mouldSofaColumns, SLIDERS.mouldSofaColumns.min, SLIDERS.mouldSofaColumns.max),
     ),
     mouldSofaGap: num(l.mouldSofaGap, d.mouldSofaGap, SLIDERS.mouldSofaGap.min, SLIDERS.mouldSofaGap.max),
+    ...sanitizeMouldRoom(l, l.mouldSofaGap, d),
+    mouldWalls: sanitizeWalls(
+      l.mouldWalls, LIVING_MOULD_DEFAULTS,
+      { sofa: { minColumns: 1, allowBed: false }, tv: { minColumns: 1, allowBed: false } },
+      { sofa: { columns: l.mouldSofaColumns } },
+    ),
     sofaFabric: oneOf(l.sofaFabric, ['original', ...BEMZ_FABRICS.map((f) => f.code)], d.sofaFabric),
   };
 }
@@ -247,6 +294,17 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
     mouldBedWall: onOff(b.mouldBedWall),
     mouldDresserWall: onOff(b.mouldDresserWall),
     ...sanitizeMouldLayout(b, d),
+    ...sanitizeMouldRoom(b, b.mouldGap, d),
+    mouldWalls: sanitizeWalls(
+      b.mouldWalls, BEDROOM_MOULD_DEFAULTS,
+      {
+        bed: { minColumns: 1, allowBed: true },
+        dresserWindow: { minColumns: 0, allowBed: false },
+        dresserMiddle: { minColumns: 0, allowBed: false },
+        dresserCorner: { minColumns: 0, allowBed: false },
+      },
+      {},
+    ),
     pendant: onOff(b.pendant),
     wardrobes: oneOf(b.wardrobes, ids(WARDROBES), d.wardrobes),
     rug: oneOf(b.rug, ids(RUGS), d.rug),

@@ -56,7 +56,7 @@ describe('migrating flat settings from before version 2', () => {
     expect(s.time).toBe('eve');
     expect(s.bedroom).toEqual({
       accent: '#2F5D62', mouldColour: 'tone', mouldBedWall: 'off', mouldDresserWall: 'off', mouldGap: 12, mouldCentre: 160,
-      mouldSide: 70, pendant: 'off', wardrobes: 'ink', rug: 'rista', pillows: 'ink', art: 'hills', frame: 'oak',
+      mouldSide: 70, mouldSpacing: 12, mouldDado: 77, mouldWalls: DEFAULTS.bedroom.mouldWalls, pendant: 'off', wardrobes: 'ink', rug: 'rista', pillows: 'ink', art: 'hills', frame: 'oak',
     });
   });
 
@@ -217,5 +217,38 @@ describe('living room sofa fabric', () => {
     expect(f({ sofaFabric: 'XXX999' })).toBe('original');
     expect(f({ sofaFabric: 42 })).toBe('original');
     expect(f({})).toBe('original');
+  });
+});
+
+describe('moulding spacing settings', () => {
+  it('maps a legacy bedroom gap to the spacing, with default walls', () => {
+    const b = sanitizeSettings({ version: 2, bedroom: { mouldGap: 12 } }).bedroom;
+    expect(b.mouldSpacing).toBe(12);
+    expect(b.mouldWalls).toEqual(DEFAULTS.bedroom.mouldWalls);
+  });
+  it('maps legacy sofa gap and columns', () => {
+    const l = sanitizeSettings({ version: 2, living: { mouldSofaGap: 14, mouldSofaColumns: 7 } }).living;
+    expect(l.mouldSpacing).toBe(14);
+    expect(l.mouldWalls.sofa.columns).toBe(7);
+  });
+  it('maps a version 1 save', () => {
+    expect(sanitizeSettings({ mgap: 12 }).bedroom.mouldSpacing).toBe(12);
+  });
+  it('ignores the legacy fields when mouldWalls is present', () => {
+    const l = sanitizeSettings({ version: 2, living: { mouldSofaGap: 14, mouldSofaColumns: 7, mouldWalls: {} } }).living;
+    expect(l.mouldSpacing).toBe(DEFAULTS.living.mouldSpacing);
+    expect(l.mouldWalls.sofa.columns).toBe(5);
+  });
+  it('clamps dado, defaulting to 77, and rejects junk', () => {
+    expect(DEFAULTS.bedroom.mouldDado).toBe(77);
+    expect(sanitizeSettings({ version: 2, bedroom: { mouldDado: 10 } }).bedroom.mouldDado).toBe(60);
+    expect(sanitizeSettings({ version: 2, living: { mouldDado: 500 } }).living.mouldDado).toBe(110);
+    expect(sanitizeSettings({ version: 2, living: { mouldDado: 'x', mouldSpacing: NaN } }).living).toMatchObject({ mouldDado: 77, mouldSpacing: 8 });
+  });
+  it('sanitises each wall with its own minimum and bed rule', () => {
+    const b = sanitizeSettings({ version: 2, bedroom: { mouldWalls: { dresserMiddle: { columns: 0 }, bed: { columns: 0, fixedPosition: 'bed' }, dresserWindow: { fixedPosition: 'bed' } } } }).bedroom.mouldWalls;
+    expect(b.dresserMiddle.columns).toBe(0);
+    expect(b.bed.columns).toBe(1);
+    expect(b.dresserWindow.fixedPosition).toBe('even');
   });
 });
