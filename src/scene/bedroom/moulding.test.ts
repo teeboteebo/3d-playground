@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { DEFAULTS, applyPatch, type BedroomSettings, type SettingsPatch } from '../../state/settings';
 import { layoutSection } from '../mouldLayout';
-import { BEDROOM_MOULD_WALLS, BED_WALL_LEFT_BLOCK } from '../mouldWalls';
+import { BEDROOM_MOULD_WALLS, WINDOW_WALL_CLEARANCE } from '../mouldWalls';
 import { strips } from '../testStrips';
 import { buildBedroom } from './index';
-import { BEDX, L, WARD_FRONT, W } from './dimensions';
+import { BEDX, DRESSER_X, FRONT_DOOR_TOP, FRONT_DOOR_X0, FRONT_DOOR_X1, H, L, WARD_FRONT, W } from './dimensions';
 import { kit } from './kit';
 import { bedroomMaterials } from './materials';
 import { bedroomMoulding } from './moulding';
@@ -51,8 +51,8 @@ describe('bedroom moulding', () => {
     expect(lowTop).toBeCloseTo(0.65);
     const upTop = Math.max(...all.map((b) => b.max.y));
     expect(upTop).toBeCloseTo(3.22);
-    const rail = all.find((b) => b.max.x - b.min.x > W - BED_WALL_LEFT_BLOCK - 0.01)!;
-    expect(rail.min.x).toBeCloseTo(-W / 2 + BED_WALL_LEFT_BLOCK);
+    const rail = all.find((b) => b.max.x - b.min.x > W - WINDOW_WALL_CLEARANCE - 0.01)!;
+    expect(rail.min.x).toBeCloseTo(-W / 2 + WINDOW_WALL_CLEARANCE);
     expect(rail.max.x).toBeCloseTo(W / 2);
     expect(rail.min.y).toBeCloseTo(0.73);
     expect(rail.max.y).toBeCloseTo(0.77);
@@ -89,12 +89,45 @@ describe('bedroom moulding', () => {
     expect(mould.dresser.parts[0]).not.toBe(dresser[0]);
   });
 
-  it('draws the dresser rail broken behind the dresser', () => {
+  it('draws the dresser rail broken behind the dresser and at the door', () => {
     const { mould, boxes } = setup();
     mould.dresser.layout(bedroom());
-    const rails = boxes('dresser').filter((b) => Math.abs(b.max.y - b.min.y - 0.04) < 1e-6 && Math.abs(b.min.y - 0.73) < 1e-6);
-    expect(rails).toHaveLength(4);
+    const rails = boxes('dresser')
+      .filter((b) => Math.abs(b.max.y - b.min.y - 0.04) < 1e-6 && Math.abs(b.min.y - 0.73) < 1e-6)
+      .sort((a, b) => a.min.x - b.min.x);
+    expect(rails.map((b) => [b.min.x, b.max.x])).toEqual([
+      [expect.closeTo(-W / 2 + 0.12), expect.closeTo(DRESSER_X - 0.4)],
+      [expect.closeTo(DRESSER_X + 0.4), expect.closeTo(FRONT_DOOR_X0)],
+      [expect.closeTo(FRONT_DOOR_X1), expect.closeTo(W / 2)],
+    ]);
     for (const b of rails) expect(b.max.z).toBeCloseTo(L / 2);
+  });
+
+  it('frames the space over the door, as wide as its casing, S from the casing and from the ceiling', () => {
+    const { mould, boxes } = setup();
+    mould.dresser.layout(bedroom({ mouldSpacing: 10 }));
+    const over = boxes('dresser').filter((b) => b.min.x >= FRONT_DOOR_X0 - 1e-6 && b.max.x <= FRONT_DOOR_X1 + 1e-6);
+    /* one frame of four strips */
+    expect(over).toHaveLength(4);
+    expect(Math.min(...over.map((b) => b.min.x))).toBeCloseTo(FRONT_DOOR_X0);
+    expect(Math.max(...over.map((b) => b.max.x))).toBeCloseTo(FRONT_DOOR_X1);
+    expect(Math.min(...over.map((b) => b.min.y))).toBeCloseTo(FRONT_DOOR_TOP + 0.1);
+    expect(Math.max(...over.map((b) => b.max.y))).toBeCloseTo(H - 0.1);
+  });
+
+  it('lays the dresser wall out as one wall, 12 cm plus the spacing from the window wall and clear of the door', () => {
+    const { mould, boxes } = setup();
+    mould.dresser.layout(bedroom({ mouldSpacing: 10 }));
+    const panels = boxes('dresser').filter((b) => Math.abs(b.min.y - 0.28) < 1e-6 && b.max.y - b.min.y < 0.1);
+    const cols = panels.map((b) => [b.min.x, b.max.x]).sort((p, q) => p[0] - q[0]);
+    /* the default four columns: three from the window wall to the door, one from the door to the corner */
+    expect(cols).toHaveLength(4);
+    expect(cols[0][0] - -W / 2).toBeCloseTo(0.22);
+    expect(FRONT_DOOR_X0 - cols[2][1]).toBeCloseTo(0.1);
+    expect(cols[3][0] - FRONT_DOOR_X1).toBeCloseTo(0.1);
+    expect(W / 2 - cols[3][1]).toBeCloseTo(0.1);
+    const widths = cols.slice(0, 3).map(([a, b]) => b - a);
+    for (const w of widths) expect(w).toBeCloseTo(widths[0]);
   });
 });
 

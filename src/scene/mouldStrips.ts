@@ -13,11 +13,12 @@ function frameOf(strip: StripFn, x0: number, x1: number, y0: number, y1: number,
   strip(t, y1 - y0 - 2 * t, x1 - t / 2, cy);
 }
 
-/** a lower and an upper frame for each column, in the rows that are tall enough to draw */
+/** a lower and an upper frame for each column, in the rows that are tall enough to draw, and any frames of their own */
 export function drawSection(strip: StripFn, l: SectionLayout, frameT: number): void {
   for (const [x0, x1] of l.columns) {
     for (const row of [l.rows.lower, l.rows.upper]) if (row) frameOf(strip, x0, x1, row[0], row[1], frameT);
   }
+  for (const { x, y } of l.over ?? []) frameOf(strip, x[0], x[1], y[0], y[1], frameT);
 }
 
 /** the rail between `rail[0]` and `rail[1]`, one strip per x segment */

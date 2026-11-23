@@ -254,9 +254,8 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
       b.mouldWalls, BEDROOM_MOULD_DEFAULTS,
       {
         bed: { minColumns: 1, allowBed: true },
-        dresserWindow: { minColumns: 0, allowBed: false },
-        dresserMiddle: { minColumns: 0, allowBed: false },
-        dresserCorner: { minColumns: 0, allowBed: false },
+        /* saves from when the wall had three sections have no 'dresser' and start from the default */
+        dresser: { minColumns: 1, allowBed: false },
       },
       {},
     ),

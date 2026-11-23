@@ -1,6 +1,6 @@
 import type { BedroomSection, LivingSection } from '../state/mould';
-import { DRESSER_X, FRONT_DOOR_X0, FRONT_DOOR_X1, MIRROR_HALF, MIRROR_X, W, WARD_FRONT } from './bedroom/dimensions';
-import { layoutSection, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
+import { DRESSER_X, FRONT_DOOR_TOP, FRONT_DOOR_X0, FRONT_DOOR_X1, W, WARD_FRONT } from './bedroom/dimensions';
+import { frameAbove, layoutWall, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
 
 export interface MouldSectionDef<K extends string> {
   key: K;
@@ -10,6 +10,10 @@ export interface MouldSectionDef<K extends string> {
   minColumns: 0 | 1;
   /** the 'bed' fixed position is offered here */
   bedAnchor: boolean;
+  /** x ranges inside the run that the moulding stays clear of, such as a door and its casing */
+  gaps?: [number, number][];
+  /** openings that get a frame of their own above them, as wide as the opening: its x range and the top of the opening */
+  above?: { x: [number, number]; top: number }[];
 }
 
 export interface MouldWallDef<K extends string> {
@@ -20,30 +24,33 @@ export interface MouldWallDef<K extends string> {
   rail: [number, number][];
 }
 
-/** the bed wall's moulding is kept this far, m, from the window-side (left) corner; the room spacing comes on top */
-export const BED_WALL_LEFT_BLOCK = 0.12;
-const BED_WALL_START = -W / 2 + BED_WALL_LEFT_BLOCK;
+/** the bedroom's moulding is kept this far, m, from the window wall, on the bed and dresser walls alike; the spacing
+ * comes on top */
+export const WINDOW_WALL_CLEARANCE = 0.12;
+const WINDOW_SIDE = -W / 2 + WINDOW_WALL_CLEARANCE;
 
 export const BEDROOM_MOULD_WALLS: MouldWallDef<BedroomSection>[] = [
   {
     toggle: 'mouldBedWall',
     label: 'Bed wall',
-    sections: [{ key: 'bed', label: 'Bed wall', run: [BED_WALL_START, WARD_FRONT], minColumns: 1, bedAnchor: true }],
-    rail: [[BED_WALL_START, W / 2]],
+    sections: [{ key: 'bed', label: 'Bed wall', run: [WINDOW_SIDE, WARD_FRONT], minColumns: 1, bedAnchor: true }],
+    rail: [[WINDOW_SIDE, W / 2]],
   },
   {
     toggle: 'mouldDresserWall',
     label: 'Dresser wall',
+    /* one run from the window wall to the east corner; the door splits it, and the columns are shared either side */
     sections: [
-      { key: 'dresserWindow', label: 'By the window', run: [-W / 2, MIRROR_X - MIRROR_HALF], minColumns: 0, bedAnchor: false },
-      { key: 'dresserMiddle', label: 'Mirror to door', run: [MIRROR_X + MIRROR_HALF, FRONT_DOOR_X0], minColumns: 0, bedAnchor: false },
-      { key: 'dresserCorner', label: 'Door to corner', run: [FRONT_DOOR_X1, W / 2], minColumns: 0, bedAnchor: false },
+      { key: 'dresser', label: 'Dresser wall', run: [WINDOW_SIDE, W / 2], minColumns: 1, bedAnchor: false,
+        gaps: [[FRONT_DOOR_X0, FRONT_DOOR_X1]],
+        /* one frame over the door, as wide as its casing */
+        above: [{ x: [FRONT_DOOR_X0, FRONT_DOOR_X1], top: FRONT_DOOR_TOP }],
+      },
     ],
-    /* the rail stays broken behind the dresser */
+    /* the rail stays broken behind the dresser and at the door */
     rail: [
-      [-W / 2, DRESSER_X - 0.4],
-      [DRESSER_X + 0.4, MIRROR_X - MIRROR_HALF],
-      [MIRROR_X + MIRROR_HALF, FRONT_DOOR_X0],
+      [WINDOW_SIDE, DRESSER_X - 0.4],
+      [DRESSER_X + 0.4, FRONT_DOOR_X0],
       [FRONT_DOOR_X1, W / 2],
     ],
   },
@@ -71,5 +78,9 @@ export function wallLayouts<K extends string>(
   walls: Record<K, MouldWall>,
   bedX?: number,
 ): SectionLayout[] {
-  return def.sections.map((sec) => layoutSection(sec.run, room, walls[sec.key], sec.bedAnchor ? bedX : undefined));
+  return def.sections.map((sec) => {
+    const l = layoutWall(sec.run, sec.gaps ?? [], room, walls[sec.key], sec.bedAnchor ? bedX : undefined);
+    if (!sec.above) return l;
+    return { ...l, over: sec.above.flatMap(({ x, top }) => frameAbove(x, top, l.spacing) ?? []) };
+  });
 }

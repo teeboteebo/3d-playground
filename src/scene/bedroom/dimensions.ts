@@ -47,9 +47,11 @@ export const DRESSER_Z = L / 2 - 0.22;
 export const MIRROR_X = -0.2675;
 export const MIRROR_HALF = 0.295;
 
-/* the door in the front wall: its frame's inner edges */
-export const FRONT_DOOR_X0 = FRONT_DOOR_X - (FRONT_DOOR_W / 2 + 0.035);
-export const FRONT_DOOR_X1 = FRONT_DOOR_X + (FRONT_DOOR_W / 2 + 0.035);
+/* the door in the front wall: the outer edges of its 7 cm casing (see doors.ts) */
+export const FRONT_DOOR_X0 = FRONT_DOOR_X - (FRONT_DOOR_W / 2 + 0.07);
+export const FRONT_DOOR_X1 = FRONT_DOOR_X + (FRONT_DOOR_W / 2 + 0.07);
+/** the top of the door's casing head */
+export const FRONT_DOOR_TOP = FRONT_DOOR_H + 0.07;
 
 /** where the two built-in wardrobes along the east wall end */
 export const WARD_END = -L / 2 + 2;

@@ -170,10 +170,10 @@ describe('App', () => {
     goTo('Wall moulding', 'Bed wall');
     expect(within(screen.getByTestId('mould-bed')).getByRole('button', { name: 'Centred on bed' })).toBeInTheDocument();
     up('Wall moulding');
-    goTo('Dresser wall: By the window');
-    // a dresser section with a fixed column shows its position chips, but not the bed one
-    fireEvent.change(within(screen.getByTestId('mould-dresserWindow')).getByRole('combobox'), { target: { value: '1' } });
-    const win = within(screen.getByTestId('mould-dresserWindow'));
+    goTo('Dresser wall');
+    // the dresser wall with a fixed column shows its position chips, but not the bed one
+    fireEvent.change(within(screen.getByTestId('mould-dresser')).getByRole('combobox'), { target: { value: '1' } });
+    const win = within(screen.getByTestId('mould-dresser'));
     expect(win.getByRole('button', { name: 'Custom' })).toBeInTheDocument();
     expect(win.queryByRole('button', { name: 'Centred on bed' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Centred on bed' })).toBeNull();
@@ -181,9 +181,10 @@ describe('App', () => {
 
   it('disables the position chips while the fixed column\'s centre is forced', async () => {
     await renderIn('bedroom');
-    goTo('Wall moulding', 'Dresser wall: By the window');
-    const win = within(screen.getByTestId('mould-dresserWindow'));
-    fireEvent.change(win.getByRole('combobox'), { target: { value: '1' } });
+    goTo('Wall moulding', 'Dresser wall');
+    // the fourth column is alone between the door and the corner, so it fills that stretch and cannot move
+    const win = within(screen.getByTestId('mould-dresser'));
+    fireEvent.change(win.getByRole('combobox'), { target: { value: '4' } });
     for (const name of ['Even', 'Custom']) expect(win.getByRole('button', { name })).toBeDisabled();
     // a middle column of the bed wall can still move
     up('Wall moulding');
@@ -208,8 +209,8 @@ describe('App', () => {
     expect(within(bed).getByRole('slider', { name: /^Columns/ })).toBeDisabled();
     expect(within(bed).getByRole('combobox')).toBeDisabled();
     up('Wall moulding');
-    goTo('Dresser wall: By the window');
-    expect(screen.getByTestId('mould-dresserWindow')).not.toHaveClass('off');
+    goTo('Dresser wall');
+    expect(screen.getByTestId('mould-dresser')).not.toHaveClass('off');
     expect(lastApplied().bedroom.mouldBedWall).toBe('off');
   });
 
@@ -218,9 +219,9 @@ describe('App', () => {
     goTo('Wall moulding', 'Bed wall');
     expect(screen.getByRole('group', { name: 'Bed wall' })).toBe(screen.getByTestId('mould-bed'));
     up('Wall moulding');
-    goTo('Dresser wall: By the window');
-    expect(screen.getByRole('group', { name: 'Dresser wall: By the window' })).toBe(screen.getByTestId('mould-dresserWindow'));
-    const win = within(screen.getByTestId('mould-dresserWindow'));
+    goTo('Dresser wall');
+    expect(screen.getByRole('group', { name: 'Dresser wall' })).toBe(screen.getByTestId('mould-dresser'));
+    const win = within(screen.getByTestId('mould-dresser'));
     fireEvent.change(win.getByRole('slider', { name: /^Columns/ }), { target: { value: '10' } });
     expect(win.getByText(/10 \(\d+ fit\)/)).toBeInTheDocument();
   });
@@ -592,7 +593,7 @@ describe('room menu', () => {
     expect(screen.queryByTestId('mould-bed')).toBeNull();
     const walls = within(screen.getByRole('list', { name: 'Walls' })).getAllByRole('button');
     expect(walls.map((b) => b.querySelector('strong')!.textContent)).toEqual([
-      'Bed wall', 'Dresser wall: By the window', 'Dresser wall: Mirror to door', 'Dresser wall: Door to corner',
+      'Bed wall', 'Dresser wall',
     ]);
   });
 

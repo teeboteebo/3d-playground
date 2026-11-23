@@ -41,6 +41,8 @@ export interface SectionLayout {
   /** absolute x */
   columns: [number, number][];
   rows: Rows;
+  /** frames of their own, such as one over a door: absolute x and y extents */
+  over?: { x: [number, number]; y: [number, number] }[];
   limits: {
     maxColumns: number;
     /** cm, null when no fixed column is drawn */
@@ -131,4 +133,96 @@ export function layoutSection(run: [number, number], room: MouldRoom, wall: Moul
       fixedCentre: { min: (cMin - a) * 100, max: (cMax - a) * 100 },
     },
   };
+}
+
+/** the parts of `run` left between `gaps` (each gap an x range the moulding stays clear of), in order */
+export function segments(run: [number, number], gaps: readonly (readonly [number, number])[]): [number, number][] {
+  const out: [number, number][] = [];
+  let x = run[0];
+  for (const [g0, g1] of [...gaps].sort((p, q) => p[0] - q[0])) {
+    if (g1 <= x || g0 >= run[1]) continue;
+    if (g0 > x) out.push([x, g0]);
+    x = Math.max(x, g1);
+  }
+  if (run[1] > x) out.push([x, run[1]]);
+  return out;
+}
+
+/** most columns of at least MIN_COL that fit a segment at spacing s */
+const fits = ([a, b]: [number, number], s: number) => Math.max(0, Math.floor((b - a - s) / (MIN_COL + s)));
+
+/**
+ * Shares `n` columns among the segments: first one for every segment that fits one (longest first), so no stretch of the
+ * wall is left bare while there are columns to give, then each next column to the segment whose columns stay widest.
+ */
+export function shareColumns(segs: [number, number][], s: number, n: number): number[] {
+  const max = segs.map((g) => fits(g, s));
+  const counts = segs.map(() => 0);
+  const width = (i: number, c: number) => (segs[i][1] - segs[i][0] - (c + 1) * s) / c;
+  let left = n;
+  const byLength = segs.map((_, i) => i).sort((p, q) => segs[q][1] - segs[q][0] - (segs[p][1] - segs[p][0]));
+  for (const i of byLength) {
+    if (left > 0 && max[i] > 0) {
+      counts[i] = 1;
+      left--;
+    }
+  }
+  for (; left > 0; left--) {
+    let best = -1;
+    for (let i = 0; i < segs.length; i++) {
+      if (counts[i] < max[i] && (best < 0 || width(i, counts[i] + 1) > width(best, counts[best] + 1) + 1e-9)) best = i;
+    }
+    if (best < 0) break;
+    counts[best]++;
+  }
+  return counts;
+}
+
+/**
+ * Lays out a wall run that the moulding must stay clear of in places (a door): the run splits into segments at the gaps,
+ * the wall's columns are shared among them (shareColumns), and each segment is laid out as a section of its own, with
+ * the one fixed column in whichever segment its number falls. Limits and the custom centre stay measured from the run's
+ * start. With no gaps this is layoutSection.
+ */
+export function layoutWall(
+  run: [number, number], gaps: readonly (readonly [number, number])[], room: MouldRoom, wall: MouldWall, bedX?: number,
+): SectionLayout {
+  const segs = segments(run, gaps);
+  if (segs.length === 1 && segs[0][0] === run[0] && segs[0][1] === run[1]) return layoutSection(run, room, wall, bedX);
+  const s = (wall.spacing ?? room.spacing) / 100;
+  const maxColumns = segs.reduce((t, g) => t + fits(g, s), 0);
+  const n = clamp(Math.floor(wall.columns), 0, maxColumns);
+  const counts = shareColumns(segs, s, n);
+  const k = wall.fixedColumn >= 1 && wall.fixedColumn <= n ? wall.fixedColumn : 0;
+  let before = 0;
+  const parts = segs.map((seg, i) => {
+    const first = before;
+    before += counts[i];
+    const local = k > first && k <= first + counts[i] ? k - first : 0;
+    const offset = (seg[0] - run[0]) * 100;
+    const l = layoutSection(seg, room, { ...wall, columns: counts[i], fixedColumn: local, fixedCentre: wall.fixedCentre - offset }, bedX);
+    return { l, first, offset };
+  });
+  const withFixed = parts.find((p) => p.l.fixed);
+  const shift = (r: { min: number; max: number } | null, by: number) => (r ? { min: r.min + by, max: r.max + by } : null);
+  return {
+    spacing: s,
+    count: parts.reduce((t, p) => t + p.l.count, 0),
+    fixed: withFixed ? { ...withFixed.l.fixed!, index: withFixed.first + withFixed.l.fixed!.index } : null,
+    columns: parts.flatMap((p) => p.l.columns),
+    rows: rows(s, room.dado / 100),
+    limits: {
+      maxColumns,
+      fixedWidth: withFixed?.l.limits.fixedWidth ?? null,
+      fixedCentre: withFixed ? shift(withFixed.l.limits.fixedCentre, withFixed.offset) : null,
+      spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
+    },
+  };
+}
+
+/** a frame over an opening `x` wide whose top is at `top`: S above the opening and S below the ceiling, or null when that
+ * leaves less than MIN_ROW */
+export function frameAbove(x: [number, number], top: number, spacing: number): { x: [number, number]; y: [number, number] } | null {
+  const y = range(top + spacing, CEILING - spacing);
+  return y ? { x, y } : null;
 }

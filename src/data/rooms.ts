@@ -97,8 +97,12 @@ const bedroomWindow = (cz: number): Opening => ({
   kind: 'window', a: [-2.15, cz - 0.575], b: [-2.15, cz + 0.575], y0: 0.8, y1: 2.375 + 0.575, depth: 0, arch: true,
 });
 export const BEDROOM_WINDOWS: Opening[] = [bedroomWindow(0.95), bedroomWindow(-1.05)];
-/* the bedroom's door in its south wall, left of the dresser seen from inside */
-export const BEDROOM_FRONT_DOOR: Opening = { kind: 'door', a: [0.45, 1.975], b: [1.35, 1.975], y0: 0, y1: 2.58, depth: 0 };
+/* the bedroom's door in its south wall, left of the dresser seen from inside: a 122 cm opening whose left edge (seen from
+   inside, +x) is 78 cm from the corner with the east wall */
+const FRONT_DOOR_RIGHT = 2.15 - 0.78;
+export const BEDROOM_FRONT_DOOR: Opening = {
+  kind: 'door', a: [FRONT_DOOR_RIGHT - 1.22, 1.975], b: [FRONT_DOOR_RIGHT, 1.975], y0: 0, y1: 2.58, depth: 0,
+};
 
 export const OPENINGS: Opening[] = [
   BEDROOM_DOOR,
