@@ -47,7 +47,7 @@ export interface SectionLayout {
   columns: [number, number][];
   rows: Rows;
   /** frames of their own, such as one over a door: absolute x and y extents */
-  over?: { x: [number, number]; y: [number, number] }[];
+  over?: { x: [number, number]; y: [number, number]; name?: string }[];
   limits: {
     maxColumns: number;
     /** cm, null when no fixed column is drawn */

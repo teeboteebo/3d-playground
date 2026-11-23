@@ -13,7 +13,7 @@ export interface MouldSectionDef<K extends string> {
   /** x ranges inside the run that the moulding stays clear of, such as a door and its casing */
   gaps?: [number, number][];
   /** openings that get a frame of their own above them, as wide as the opening: its x range and the top of the opening */
-  above?: { x: [number, number]; top: number }[];
+  above?: { name: string; x: [number, number]; top: number }[];
 }
 
 export interface MouldWallDef<K extends string> {
@@ -44,7 +44,7 @@ export const BEDROOM_MOULD_WALLS: MouldWallDef<BedroomSection>[] = [
       { key: 'dresser', label: 'Dresser wall', run: [WINDOW_SIDE, W / 2], minColumns: 1, bedAnchor: false,
         gaps: [[FRONT_DOOR_X0, FRONT_DOOR_X1]],
         /* one frame over the door, as wide as its casing */
-        above: [{ x: [FRONT_DOOR_X0, FRONT_DOOR_X1], top: FRONT_DOOR_TOP }],
+        above: [{ name: 'door', x: [FRONT_DOOR_X0, FRONT_DOOR_X1], top: FRONT_DOOR_TOP }],
       },
     ],
     /* the rail stays broken behind the dresser and at the door */
@@ -81,6 +81,12 @@ export function wallLayouts<K extends string>(
   return def.sections.map((sec) => {
     const l = layoutWall(sec.run, sec.gaps ?? [], room, walls[sec.key], sec.bedAnchor ? bedX : undefined);
     if (!sec.above) return l;
-    return { ...l, over: sec.above.flatMap(({ x, top }) => frameAbove(x, top, l.spacing) ?? []) };
+    return {
+      ...l,
+      over: sec.above.flatMap(({ name, x, top }) => {
+        const f = frameAbove(x, top, l.spacing);
+        return f ? [{ ...f, name }] : [];
+      }),
+    };
   });
 }
