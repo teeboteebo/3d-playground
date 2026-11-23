@@ -19,6 +19,7 @@ import { pick, type Pick } from './pickRoom';
 import type { SceneOption } from './options';
 import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
+import { sideboard } from './sideboard';
 import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { sofaFabric } from './sofaFabric';
@@ -107,7 +108,10 @@ export function createApartmentScene(
   const fabric = sofaFabric(invalidate);
   const furniture = loadFurniture(
     scene,
-    (piece) => (piece.file ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene) : Promise.resolve(quebecRug())),
+    (piece) =>
+      piece.file
+        ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene)
+        : Promise.resolve(piece.id === 'tv-bench' ? sideboard() : quebecRug()),
     invalidate,
     (id, obj) => {
       tagOption([obj], 'living', [id === 'sofa' ? 'sofa' : 'furniture']);

@@ -1,21 +1,23 @@
 import * as THREE from 'three';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FURNITURE, SHELVING_CUT } from '../data/catalog';
 import { loadFurniture, placePiece } from './furniture';
+import { sideboard } from './sideboard';
 
 afterEach(() => vi.restoreAllMocks());
 
 const byFile = (scene: THREE.Object3D, id: string) => scene.children.find((c) => c.name === id)!;
 
 describe('loadFurniture', () => {
-  it('hands the loader each piece, the rug without a model file', async () => {
-    const seen: (string | undefined)[] = [];
+  it('hands the loader each piece, the sideboard and rug without a model file', async () => {
+    const seen = new Map<string, string | undefined>();
     await loadFurniture(new THREE.Scene(), (piece) => {
-      seen.push(piece.file);
+      seen.set(piece.id, piece.file);
       return Promise.resolve(new THREE.Group());
     }).ready;
-    expect(seen).toContain('models/living/sofa.glb');
-    expect(seen).toContain(undefined);
+    expect(seen.get('sofa')).toBe('models/living/sofa.glb');
+    expect(seen.get('tv-bench')).toBeUndefined();
+    expect(seen.get('rug')).toBeUndefined();
   });
 
   it('adds every piece that loads and carries on past one that fails', async () => {
@@ -152,6 +154,56 @@ describe('loadFurniture', () => {
   });
 });
 
+describe('sideboard', () => {
+  /* jsdom has no 2D canvas: the wood texture only needs something that swallows every drawing call (each test, as the
+     file restores every mock after each) */
+  beforeEach(() => {
+    const ctx: unknown = new Proxy(function () {}, {
+      get: (_t, k) => (k === 'createLinearGradient' || k === 'createRadialGradient' ? () => ({ addColorStop() {} }) : ctx),
+      set: () => true,
+      apply: () => ctx,
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => ctx) as never);
+  });
+
+  it('is 160 × 75 × 48 cm (with its top\'s overhang), 126 cm from the hall-side wall, its back on the TV wall', () => {
+    const b = new THREE.Box3().setFromObject(sideboard());
+    expect(b.min.x - 3.69).toBeCloseTo(1.25);
+    expect(b.max.x - b.min.x).toBeCloseTo(1.62);
+    expect([b.min.y, b.max.y]).toEqual([expect.closeTo(0), expect.closeTo(0.75)]);
+    expect(b.max.z).toBeCloseTo(2.709);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.49);
+  });
+
+  it('has two doors and then three drawers from its left, each with a dark pull', () => {
+    const board = sideboard();
+    /* the pulls are the dark slots, merged into one mesh; each is a box of 36 corners */
+    const pulls = board.children.find(
+      (o) => o instanceof THREE.Mesh && (o.material as THREE.MeshStandardMaterial).color.getHexString() !== 'ffffff' && !(o.material as THREE.MeshStandardMaterial).map,
+    ) as THREE.Mesh;
+    const pos = pulls.geometry.getAttribute('position');
+    const centres: [number, number][] = [];
+    for (let i = 0; i < pos.count; i += 36) {
+      let x = 0;
+      let y = 0;
+      for (let j = i; j < i + 36; j++) {
+        x += pos.getX(j) / 36;
+        y += pos.getY(j) / 36;
+      }
+      centres.push([x, y]);
+    }
+    expect(centres).toHaveLength(5);
+    /* seen facing the wall, left is +x: the two door pulls are the furthest left, at one height; the three drawer
+       pulls are in the right-hand column, one above another */
+    const byX = [...centres].sort((a, b) => b[0] - a[0]);
+    expect(byX[0][1]).toBeCloseTo(byX[1][1]);
+    const drawers = byX.slice(2);
+    for (const [x] of drawers) expect(x).toBeCloseTo(drawers[0][0]);
+    expect(new Set(drawers.map(([, y]) => y.toFixed(3))).size).toBe(3);
+    expect(drawers[0][0]).toBeLessThan(byX[1][0]);
+  });
+});
+
 describe('placePiece', () => {
   /** a box spanning min..max, its geometry in scene coordinates like the exported models */
   const piece = (min: [number, number, number], max: [number, number, number]) => {
@@ -162,17 +214,6 @@ describe('placePiece', () => {
     return group;
   };
   const bounds = (o: THREE.Object3D) => new THREE.Box3().setFromObject(o);
-
-  it('makes the bench a 160 × 75 cm sideboard 126 cm from the hall-side wall, keeping its depth on the wall', () => {
-    const bench = piece([4.245, 0, 2.229], [6.645, 0.56, 2.709]);
-    placePiece('tv-bench', bench);
-    const b = bounds(bench);
-    expect(b.min.x - 3.69).toBeCloseTo(1.26);
-    expect(b.max.x - b.min.x).toBeCloseTo(1.6);
-    expect(b.min.y).toBeCloseTo(0);
-    expect(b.max.y).toBeCloseTo(0.75);
-    expect([b.min.z, b.max.z]).toEqual([expect.closeTo(2.229), expect.closeTo(2.709)]);
-  });
 
   it('centres the TV over the bench, 86 cm up, 11 cm above it, at its own size', () => {
     const tv = piece([4.853, 1.002, 2.675], [6.306, 1.832, 2.718]);

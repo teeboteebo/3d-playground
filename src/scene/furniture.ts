@@ -17,23 +17,15 @@ function trimShelving(shelving: THREE.Object3D): void {
 }
 
 /**
- * Moves the TV bench and the TV from their model positions to where they stand (see `TV_BENCH`): the bench is scaled
- * to the sideboard's width and height and keeps its depth against the wall; the TV keeps its size, centred above it.
+ * Moves the TV from its model position to where it hangs: centred over the sideboard (see `TV_BENCH`, which is built
+ * in place), its bottom `TV_BOTTOM` up, at its own size.
  */
 export function placePiece(id: string, obj: THREE.Object3D): void {
-  if (id !== 'tv-bench' && id !== 'tv') return;
+  if (id !== 'tv') return;
   obj.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(obj);
   if (box.isEmpty()) return;
-  const size = box.getSize(new THREE.Vector3());
-  if (id === 'tv-bench') {
-    const sx = TV_BENCH.w / size.x;
-    const sy = TV_BENCH.h / size.y;
-    obj.scale.set(sx, sy, 1);
-    obj.position.set(TV_BENCH.x0 - sx * box.min.x, -sy * box.min.y, 0);
-  } else {
-    obj.position.set(TV_BENCH.x0 + TV_BENCH.w / 2 - (box.min.x + box.max.x) / 2, TV_BOTTOM - box.min.y, 0);
-  }
+  obj.position.set(TV_BENCH.x0 + TV_BENCH.w / 2 - (box.min.x + box.max.x) / 2, TV_BOTTOM - box.min.y, 0);
   obj.updateMatrixWorld(true);
 }
 

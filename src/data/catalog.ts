@@ -326,15 +326,16 @@ export interface FurniturePiece {
 }
 
 /**
- * Living-room furniture: pieces exported from the SketchUp model, in its model positions, plus the
- * ILVA Quebec rug (250 × 350 cm), which is drawn in code.
+ * Living-room furniture: pieces exported from the SketchUp model, in its model positions, plus the TV sideboard and
+ * the ILVA Quebec rug (250 × 350 cm), which are drawn in code. The sideboard keeps the id of the TV bench it replaced,
+ * so saved hidden lists still apply.
  */
 export const FURNITURE: FurniturePiece[] = [
   ...[
     ['sofa', 'Sofa'],
     ['tv', 'Frame TV'],
-    ['tv-bench', 'TV bench'],
   ].map(([id, name]) => ({ id, name, file: `models/living/${id}.glb` })),
+  { id: 'tv-bench', name: 'Sideboard' },
   { id: 'rug', name: 'Quebec rug' },
   ...[
     ['shelving', 'String shelving'],
@@ -343,7 +344,7 @@ export const FURNITURE: FurniturePiece[] = [
 ];
 
 /**
- * The TV bench is a sideboard 160 cm wide and 75 cm tall (its model's 48 cm depth), against the TV wall with 126 cm
+ * The TV sideboard is 160 cm wide, 75 cm tall and 48 cm deep (see sideboard.ts), against the TV wall with 126 cm
  * between it and the wall to its right (seen facing the TV: the hall-side wall, x = 3.69). The TV hangs centred over
  * it, its bottom 86 cm from the floor, which leaves 11 cm above the sideboard. Scene metres.
  */
