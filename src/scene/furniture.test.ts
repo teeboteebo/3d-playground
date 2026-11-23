@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FURNITURE, SHELVING_CUT } from '../data/catalog';
 import { loadFurniture, placePiece } from './furniture';
-import { sideboard } from './sideboard';
+import { sideboard, sideboardLayout } from './sideboard';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -172,35 +172,39 @@ describe('sideboard', () => {
     expect(b.max.x - b.min.x).toBeCloseTo(1.62);
     expect([b.min.y, b.max.y]).toEqual([expect.closeTo(0), expect.closeTo(0.75)]);
     expect(b.max.z).toBeCloseTo(2.709);
-    expect(b.max.z - b.min.z).toBeCloseTo(0.49);
+    /* 48 cm, plus the knobs standing 2.6 cm proud of the fronts (the top overhangs the fronts by 1.5 cm) */
+    expect(b.max.z - b.min.z).toBeCloseTo(0.475 + 0.026);
   });
 
-  it('has two doors and then three drawers from its left, each with a dark pull', () => {
-    const board = sideboard();
-    /* the pulls are the dark slots, merged into one mesh; each is a box of 36 corners */
-    const pulls = board.children.find(
-      (o) => o instanceof THREE.Mesh && (o.material as THREE.MeshStandardMaterial).color.getHexString() !== 'ffffff' && !(o.material as THREE.MeshStandardMaterial).map,
+  it('has two doors and then three drawers from its left, each with one knob', () => {
+    const { fronts, knobs } = sideboardLayout();
+    /* seen facing the wall, left is +x */
+    expect(fronts.map((f) => f.kind)).toEqual(['door', 'door', 'drawer', 'drawer', 'drawer']);
+    expect(fronts[0].x).toBeGreaterThan(fronts[1].x);
+    expect(fronts[1].x).toBeGreaterThan(fronts[2].x);
+    const drawers = fronts.slice(2);
+    for (const d of drawers) expect(d.x).toBeCloseTo(drawers[0].x);
+    expect(new Set(drawers.map((d) => d.y0.toFixed(3))).size).toBe(3);
+    expect(knobs).toHaveLength(5);
+    /* the doors open from the middle: their knobs sit 5 cm either side of the seam, at one height */
+    const seam = (fronts[0].x - fronts[0].w / 2 + fronts[1].x + fronts[1].w / 2) / 2;
+    expect(knobs[0][0] - seam).toBeCloseTo(0.05 - 0.002);
+    expect(seam - knobs[1][0]).toBeCloseTo(0.05 - 0.002);
+    expect(knobs[0][1]).toBeCloseTo(knobs[1][1]);
+    /* each drawer's knob in its centre */
+    drawers.forEach((d, i) => expect(knobs[2 + i]).toEqual([expect.closeTo(d.x), expect.closeTo((d.y0 + d.y1) / 2)]));
+  });
+
+  it('builds a knob for every front, standing out of its face', () => {
+    const knobs = sideboard().children.find(
+      (o) => o instanceof THREE.Mesh && !(o.material as THREE.MeshStandardMaterial).map,
     ) as THREE.Mesh;
-    const pos = pulls.geometry.getAttribute('position');
-    const centres: [number, number][] = [];
-    for (let i = 0; i < pos.count; i += 36) {
-      let x = 0;
-      let y = 0;
-      for (let j = i; j < i + 36; j++) {
-        x += pos.getX(j) / 36;
-        y += pos.getY(j) / 36;
-      }
-      centres.push([x, y]);
-    }
-    expect(centres).toHaveLength(5);
-    /* seen facing the wall, left is +x: the two door pulls are the furthest left, at one height; the three drawer
-       pulls are in the right-hand column, one above another */
-    const byX = [...centres].sort((a, b) => b[0] - a[0]);
-    expect(byX[0][1]).toBeCloseTo(byX[1][1]);
-    const drawers = byX.slice(2);
-    for (const [x] of drawers) expect(x).toBeCloseTo(drawers[0][0]);
-    expect(new Set(drawers.map(([, y]) => y.toFixed(3))).size).toBe(3);
-    expect(drawers[0][0]).toBeLessThan(byX[1][0]);
+    const b = new THREE.Box3().setFromObject(knobs);
+    const { knobs: at } = sideboardLayout();
+    expect(b.max.x).toBeCloseTo(Math.max(...at.map(([x]) => x)) + 0.016);
+    expect(b.min.x).toBeCloseTo(Math.min(...at.map(([x]) => x)) - 0.016);
+    expect(2.709 - b.max.z).toBeCloseTo(0.475);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.026);
   });
 });
 
