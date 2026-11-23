@@ -57,10 +57,10 @@ const click3d = async (room: string | null, path?: string[]) => {
   const onPick = createApartmentScene.mock.calls.at(-1)![3] as (p: unknown) => void;
   await act(async () => onPick({ room, option: room && path ? { room, path } : null }));
 };
-/** the mouse over an option in 3D, or off every option (null) */
+/** the mouse over an option of the selected room (a path), over another room as a whole (no path), or over nothing */
 const hover3d = async (room?: string, path?: string[]) => {
   const onHover = createApartmentScene.mock.calls.at(-1)![4] as (h: unknown) => void;
-  await act(async () => onHover(room && path ? { option: { room, path }, x: 10, y: 20 } : null));
+  await act(async () => onHover(room ? { room, option: path ? { room, path } : null, x: 10, y: 20 } : null));
 };
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
@@ -696,5 +696,15 @@ describe('clicking options in 3D', () => {
     expect(label).toHaveTextContent('Pillows and throw');
     await hover3d();
     expect(label).not.toBeVisible();
+  });
+
+  it('names the room a click would select', async () => {
+    const { container } = await renderIn('bedroom');
+    const label = container.querySelector<HTMLElement>('.pick-label')!;
+    await hover3d('living');
+    expect(label).toBeVisible();
+    expect(label).toHaveTextContent('Living room');
+    await hover3d('office');
+    expect(label).toHaveTextContent('Office');
   });
 });

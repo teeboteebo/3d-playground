@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { mainView, viewsFor } from '../data/catalog';
+import { roomById } from '../data/rooms';
 import type { ApartmentScene } from '../scene/createScene';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
@@ -60,7 +61,7 @@ export function Stage({ settings, update, onOption }: Props) {
             if (!label) return;
             label.hidden = !hover;
             if (!hover) return;
-            label.textContent = optionLabel(hover.option.path);
+            label.textContent = hover.option ? optionLabel(hover.option.path) : roomById(hover.room).name;
             label.style.transform = `translate(${Math.round(hover.x + 14)}px, ${Math.round(hover.y + 16)}px)`;
           },
         );

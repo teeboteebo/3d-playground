@@ -97,6 +97,29 @@ describe('pick', () => {
 });
 
 describe('highlighter', () => {
+  it('highlights a whole room by its walls and floor, and nothing of another room', () => {
+    const root = new THREE.Group();
+    const mesh = (name = '') => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+      m.name = name;
+      root.add(m);
+      return m;
+    };
+    const wall = mesh();
+    tagOption([wall], 'hall', ['walls']);
+    const floor = mesh('hall-floor');
+    const rug = mesh();
+    tagOption([rug], 'hall', ['rug']);
+    const otherWall = mesh();
+    tagOption([otherWall], 'living', ['walls']);
+    const own = new Map([wall, floor, rug, otherWall].map((m) => [m, m.material]));
+    const h = highlighter(root, () => {});
+    h.set({ kind: 'room', room: 'hall' });
+    expect([wall, floor, rug, otherWall].map((m) => m.material !== own.get(m))).toEqual([true, true, false, false]);
+    h.set(null);
+    expect([wall, floor].every((m) => m.material === own.get(m))).toBe(true);
+  });
+
   it('tints copies of the option\'s materials, leaves shared materials alone, and puts them back', () => {
     const root = new THREE.Group();
     const shared = new THREE.MeshStandardMaterial({ color: 0xffffff });
@@ -106,13 +129,13 @@ describe('highlighter', () => {
     tagOption([a], 'bedroom', ['rug']);
     let drawn = 0;
     const h = highlighter(root, () => drawn++);
-    h.set({ room: 'bedroom', path: ['rug'] });
+    h.set({ kind: 'option', option: { room: 'bedroom', path: ['rug'] } });
     expect(a.material).not.toBe(shared);
     expect((a.material as THREE.MeshStandardMaterial).color.equals(shared.color)).toBe(false);
     expect(b.material).toBe(shared);
     expect(shared.color.getHex()).toBe(0xffffff);
     expect(drawn).toBe(1);
-    h.set({ room: 'bedroom', path: ['rug'] });
+    h.set({ kind: 'option', option: { room: 'bedroom', path: ['rug'] } });
     expect(drawn).toBe(1);
     h.set(null);
     expect(a.material).toBe(shared);
@@ -125,7 +148,7 @@ describe('highlighter', () => {
     root.add(mesh);
     tagOption([mesh], 'living', ['sofa']);
     const h = highlighter(root, () => {});
-    h.set({ room: 'living', path: ['sofa'] });
+    h.set({ kind: 'option', option: { room: 'living', path: ['sofa'] } });
     const fabric = new THREE.MeshStandardMaterial();
     mesh.material = fabric;
     h.set(null);

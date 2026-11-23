@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
-import { ROOMS, type RoomSelection } from '../data/rooms';
+import { ROOMS, type RoomId, type RoomSelection } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
 import { buildApartment } from './buildApartment';
@@ -32,9 +32,13 @@ export interface ApartmentScene {
   dispose(): void;
 }
 
-/** a menu option under the mouse, and where the mouse is in the container (px) */
+/**
+ * What a click would do under the mouse, and where the mouse is in the container (px): open `option` in the selected
+ * room, or (option null) select `room`
+ */
 export interface Hover {
-  option: SceneOption;
+  room: RoomId;
+  option: SceneOption | null;
   x: number;
   y: number;
 }
@@ -136,8 +140,8 @@ export function createApartmentScene(
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
     roomLamps.apply(s);
     roomLights.apply(s);
-    /* a room change leaves options of the old room under the mouse; settings may rebuild or recolour parts */
-    if (lastHover && lastHover.option.room !== selected) setHover(null);
+    /* a room change makes what is under the mouse mean something else; settings may rebuild or recolour parts */
+    if (lastHover && (lastHover.room === selected) !== !!lastHover.option) setHover(null);
     highlight.refresh();
   }
 
@@ -150,10 +154,11 @@ export function createApartmentScene(
     onPick?.(pick(ndc, camera, scene.children, ROOMS));
   });
 
-  /* hovering with a mouse (not touch, not while dragging) points at the selected room's options */
+  /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
+     rooms a click would select */
   let lastHover: Hover | null = null;
   function setHover(h: Hover | null) {
-    highlight.set(h?.option ?? null);
+    highlight.set(!h ? null : h.option ? { kind: 'option', option: h.option } : { kind: 'room', room: h.room });
     canvas.classList.toggle('pointing', !!h);
     if (h || lastHover) onHover?.(h);
     lastHover = h;
@@ -162,11 +167,13 @@ export function createApartmentScene(
   let hoverFrame = 0;
   function checkHover() {
     hoverFrame = 0;
-    if (!hoverAt || selected === 'all') return setHover(null);
-    const { option } = pick(ndcOf(hoverAt), camera, scene.children, ROOMS);
-    if (!option || option.room !== selected) return setHover(null);
+    if (!hoverAt) return setHover(null);
+    const { room, option } = pick(ndcOf(hoverAt), camera, scene.children, ROOMS);
+    const inSelected = room !== null && room === selected;
+    /* in the selected room only its options react; any other room reacts as a whole */
+    if (!room || (inSelected && option?.room !== selected)) return setHover(null);
     const r = container.getBoundingClientRect();
-    setHover({ option, x: hoverAt.clientX - r.left, y: hoverAt.clientY - r.top });
+    setHover({ room, option: inSelected ? option : null, x: hoverAt.clientX - r.left, y: hoverAt.clientY - r.top });
   }
   const onHoverMove = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse' || e.buttons) {

@@ -1,24 +1,39 @@
 import * as THREE from 'three';
 import { lin } from './materials';
+import type { RoomId } from '../data/rooms';
 import { optionOf, sameOption, type SceneOption } from './options';
+
+/** what to highlight: one menu option, or a whole room (its walls and floor), for the click that selects it */
+export type HighlightTarget = { kind: 'option'; option: SceneOption } | { kind: 'room'; room: RoomId };
+
+const sameTarget = (a: HighlightTarget | null, b: HighlightTarget | null): boolean =>
+  a === b ||
+  (!!a && !!b && (a.kind === 'room' ? b.kind === 'room' && a.room === b.room : b.kind === 'option' && sameOption(a.option, b.option)));
+
+/** whether `o` is part of the target: a mesh of the option, or a room's walls and floor */
+function partOf(o: THREE.Object3D, t: HighlightTarget): boolean {
+  const option = optionOf(o);
+  if (t.kind === 'option') return sameOption(option, t.option);
+  return o.name === `${t.room}-floor` || (option?.room === t.room && option.path[0] === 'walls');
+}
 
 /** the tint a hovered option takes on: the UI's accent, so it reads on white moulding and dark furniture alike */
 const TINT = lin('#E39577');
 
 export interface Highlight {
-  /** tints every object of `option` (none when null) */
-  set(option: SceneOption | null): void;
+  /** tints every object of the target (none when null) */
+  set(target: HighlightTarget | null): void;
   /** tints again after the scene changed (a setting rebuilt or recoloured parts) */
   refresh(): void;
   dispose(): void;
 }
 
 /**
- * Highlights the objects of one menu option under `root`. Each object gets a tinted copy of its material while it is
+ * Highlights the objects of one menu option, or one room, under `root`. Each object gets a tinted copy of its material while it is
  * highlighted and its own back afterwards, so materials shared with other objects are never changed.
  */
 export function highlighter(root: THREE.Object3D, invalidate: () => void): Highlight {
-  let current: SceneOption | null = null;
+  let current: HighlightTarget | null = null;
   /* each tinted mesh: its own material and the tinted copy it shows instead */
   const swapped = new Map<THREE.Mesh, { own: THREE.Material | THREE.Material[]; shown: THREE.Material | THREE.Material[] }>();
   const copies: THREE.Material[] = [];
@@ -50,7 +65,7 @@ export function highlighter(root: THREE.Object3D, invalidate: () => void): Highl
   function paint() {
     if (!current) return;
     root.traverse((o) => {
-      if (!(o instanceof THREE.Mesh) || !sameOption(optionOf(o), current)) return;
+      if (!(o instanceof THREE.Mesh) || !partOf(o, current!)) return;
       const own = o.material;
       o.material = Array.isArray(own) ? own.map(tinted) : tinted(own);
       swapped.set(o, { own, shown: o.material });
@@ -58,10 +73,10 @@ export function highlighter(root: THREE.Object3D, invalidate: () => void): Highl
   }
 
   return {
-    set(option) {
-      if (sameOption(option, current)) return;
+    set(target) {
+      if (sameTarget(target, current)) return;
       clear();
-      current = option;
+      current = target;
       paint();
       invalidate();
     },
