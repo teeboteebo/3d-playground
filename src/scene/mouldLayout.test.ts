@@ -35,21 +35,31 @@ describe('rows', () => {
 });
 
 describe('layoutSection rules', () => {
-  const cases: [number[], number, number, number, number, string, number][] = [];
+  type Pos = [pos: 'even' | 'custom' | 'bed', centre: number, bedX: 'in' | 'out' | 'none'];
+  const positions: Pos[] = [['even', 0, 'none']];
+  for (const pc of [-0.1, 0, 0.25, 0.5, 0.75, 1, 1.1]) positions.push(['custom', pc, 'none']);
+  positions.push(['bed', 0, 'in'], ['bed', 0, 'out']);
+  const cases: [number[], number, number, number, number, ...Pos][] = [];
   for (const run of [[0, 3.72], [0, 1.59]])
     for (const s of [4, 8, 15, 30])
       for (let n = 1; n <= 10; n++)
-        for (const f of [0, 1, n])
+        for (const f of [...new Set([0, 1, 2, Math.ceil(n / 2), n])])
           for (const w of [20, 100, 500])
-            for (const [pos, pc] of [['even', 0], ['custom', 0], ['custom', 0.5], ['custom', 1]] as const)
-              cases.push([run, s, n, f, w, pos, pc] as never);
-  it.each(cases)('run %j S %i n %i fixed %i w %i %s %f', (run, s, n, f, w, pos, pc) => {
-    const [a, b] = run as unknown as [number, number];
+            for (const p of positions) cases.push([run, s, n, f, w, ...p]);
+  it.each(cases)('run %j S %i n %i fixed %i w %i %s %f bed %s', (run, s, n, f, w, pos, pc, bed) => {
+    const [a, b] = run;
+    const bedX = bed === 'in' ? a + (b - a) * 0.4 : bed === 'out' ? b + 1 : undefined;
     const l = layoutSection(
       [a, b],
       { spacing: s, dado: 77 },
-      wall({ columns: n, fixedColumn: f, fixedWidth: w, fixedPosition: pos as 'even' | 'custom', fixedCentre: pc * (b - a) * 100 }),
+      wall({ columns: n, fixedColumn: f, fixedWidth: w, fixedPosition: pos, fixedCentre: pc * (b - a) * 100 }),
+      bedX,
     );
+    if (l.fixed && l.limits.fixedCentre) {
+      const rel = (l.fixed.centre - a) * 100;
+      expect(rel).toBeGreaterThanOrEqual(l.limits.fixedCentre.min - 1e-6);
+      expect(rel).toBeLessThanOrEqual(l.limits.fixedCentre.max + 1e-6);
+    }
     const S = s / 100;
     expect(l.spacing).toBeCloseTo(S, 12);
     if (l.count > 0) {
