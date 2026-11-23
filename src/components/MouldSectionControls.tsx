@@ -39,6 +39,8 @@ export function MouldSectionControls({ def, label, wall, layout, roomSpacing, on
   const width = fixed && limits.fixedWidth ? span(limits.fixedWidth.min, limits.fixedWidth.max) : null;
   const centre = fixed && limits.fixedCentre ? span(limits.fixedCentre.min, limits.fixedCentre.max) : null;
   const drawnCentre = fixed ? Math.round((fixed.centre - def.run[0]) * 100) : 0;
+  const centreForced = !!limits.fixedCentre && limits.fixedCentre.min >= limits.fixedCentre.max - 1e-6;
+  const shown = (v: number, r: { min: number; max: number }) => Math.min(r.max, Math.max(r.min, Math.round(v)));
   const positions = POSITIONS.filter((p) => p.id !== 'bed' || def.bedAnchor);
   return (
     <div className={on ? 'grp' : 'grp off'} data-testid={`mould-${def.key}`} role="group" aria-labelledby={id}>
@@ -73,9 +75,9 @@ export function MouldSectionControls({ def, label, wall, layout, roomSpacing, on
       </label>
       {width && fixed && (
         <label className="sl">
-          Fixed width <b>{Math.round(fixed.width * 100)} cm</b>
+          Fixed width <b>{shown(fixed.width * 100, width)} cm</b>
           <input
-            type="range" min={width.min} max={width.max} step={1} value={Math.round(fixed.width * 100)}
+            type="range" min={width.min} max={width.max} step={1} value={shown(fixed.width * 100, width)}
             disabled={!on || width.min >= width.max} onChange={(e) => set({ fixedWidth: Number(e.target.value) })}
           />
         </label>
@@ -84,7 +86,7 @@ export function MouldSectionControls({ def, label, wall, layout, roomSpacing, on
         <div className="chips mt6" role="group" aria-label="Position">
           {positions.map((p) => (
             <button
-              key={p.id} type="button" className="chip" disabled={!on} aria-pressed={wall.fixedPosition === p.id}
+              key={p.id} type="button" className="chip" disabled={!on || centreForced} aria-pressed={wall.fixedPosition === p.id}
               onClick={() => set(p.id === 'custom' ? { fixedPosition: 'custom', ...(fixed ? { fixedCentre: drawnCentre } : {}) } : { fixedPosition: p.id })}
             >
               <span>{p.name}</span>
@@ -94,9 +96,9 @@ export function MouldSectionControls({ def, label, wall, layout, roomSpacing, on
       )}
       {wall.fixedPosition === 'custom' && centre && (
         <label className="sl">
-          Centre <b>{drawnCentre} cm</b>
+          Centre <b>{shown(drawnCentre, centre)} cm</b>
           <input
-            type="range" min={centre.min} max={centre.max} step={1} value={drawnCentre}
+            type="range" min={centre.min} max={centre.max} step={1} value={shown(drawnCentre, centre)}
             disabled={!on || centre.min >= centre.max} onChange={(e) => set({ fixedCentre: Number(e.target.value) })}
           />
         </label>

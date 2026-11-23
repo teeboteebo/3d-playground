@@ -155,6 +155,16 @@ describe('App', () => {
     expect(screen.getAllByRole('button', { name: 'Centred on bed' })).toHaveLength(1);
   });
 
+  it('disables the position chips while the fixed column\'s centre is forced', async () => {
+    await renderIn('bedroom');
+    const win = within(screen.getByTestId('mould-dresserWindow'));
+    fireEvent.change(win.getByRole('combobox'), { target: { value: '1' } });
+    for (const name of ['Even', 'Custom']) expect(win.getByRole('button', { name })).toBeDisabled();
+    // a middle column of the bed wall can still move
+    const bed = within(screen.getByTestId('mould-bed'));
+    expect(bed.getByRole('button', { name: 'Custom' })).toBeEnabled();
+  });
+
   it('disables a section\'s controls with its wall', async () => {
     const user = userEvent.setup();
     await renderIn('bedroom');
