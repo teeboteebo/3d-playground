@@ -9,6 +9,7 @@ import { lin } from './materials';
 import { mergeMeshes } from './merge';
 import { drawRail, drawSection } from './mouldStrips';
 import { LIVING_MOULD_WALLS, wallLayouts, type MouldWallDef } from './mouldWalls';
+import { tagOption } from './options';
 
 export interface LivingMoulding {
   apply(s: Settings): void;
@@ -46,6 +47,7 @@ export function buildLivingMoulding(
     material.name = spec.name;
     const wrapper = new THREE.Group();
     wrapper.name = spec.name;
+    tagOption([wrapper], 'living', ['moulding', spec.def.sections[0].key]);
     const inner = new THREE.Group();
     wrapper.add(inner);
     parent.add(wrapper);

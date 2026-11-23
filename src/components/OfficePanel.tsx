@@ -4,7 +4,7 @@ import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
-import { Menu, type Topic } from './Menu';
+import { Menu, type MenuNav, type Topic } from './Menu';
 import { ReadingCornerSection } from './ReadingCornerSection';
 import { lightingTopic, wallsTopic, type RoomExit } from './roomTopics';
 
@@ -12,12 +12,13 @@ interface Props {
   settings: Settings;
   update: Update;
   exit: RoomExit;
+  menu: MenuNav;
 }
 
 /** the first part of a product name, before its colour or finish */
 const short = (name: string) => name.split(',')[0];
 
-export function OfficePanel({ settings, update, exit }: Props) {
+export function OfficePanel({ settings, update, exit, menu }: Props) {
   const { readingChair, dresser, roundRug } = settings.office;
   const corner = [
     readingChair !== 'none' && findById(READING_CHAIRS, readingChair).name,
@@ -55,5 +56,5 @@ export function OfficePanel({ settings, update, exit }: Props) {
       },
     ],
   };
-  return <Menu root={root} exit={exit} />;
+  return <Menu root={root} exit={exit} nav={menu} />;
 }

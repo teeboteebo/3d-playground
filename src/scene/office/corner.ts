@@ -13,6 +13,7 @@ import { getRoundRugCanvases } from '../canvas';
 import { std } from '../materials';
 import { canvasTexture } from '../textures';
 import { CORNER, LIFT, placeReadingChair } from './dimensions';
+import { tagOption } from '../options';
 
 export interface Corner {
   apply(s: Settings): void;
@@ -187,6 +188,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
     remove(name);
     const piece = build(shape);
     piece.group.name = name;
+    tagOption([piece.group], 'office', ['corner']);
     parent.add(piece.group);
     placed.set(name, { id, piece });
     return piece.group;

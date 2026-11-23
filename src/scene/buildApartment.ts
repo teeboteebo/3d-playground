@@ -3,6 +3,7 @@ import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, outset, type Opening, type 
 import { roomWalls, type Wall } from './apartment';
 import { windowSpot } from './daylight';
 import { mergeMeshes } from './merge';
+import { tagOption } from './options';
 
 export interface ApartmentMaterials {
   trim: THREE.Material;
@@ -88,6 +89,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     for (const wall of roomWalls(room)) {
       const m = mesh(wallGeometry(wall), wallMat);
       m.name = `${room.id}-wall`;
+      tagOption([m], room.id, ['walls']);
       const n0 = group.children.length;
       /* skirting along the wall, broken by doorways */
       let u = 0;

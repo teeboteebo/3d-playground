@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
 
 /** One page of the side panel: its own controls, and deeper pages listed as rows under them. */
 export interface Topic {
@@ -20,19 +20,27 @@ export interface Topic {
   footer?: ReactNode;
 }
 
+/** where a menu is: the ids of the topics opened from the first page, and the way to open another page */
+export interface MenuNav {
+  path: readonly string[];
+  go(path: readonly string[]): void;
+}
+
 interface Props {
   /** the first page: a summary of every topic */
   root: Topic;
+  /** the open page, kept by the app so a click in 3D can open one */
+  nav: MenuNav;
   /** the way out of the first page */
   exit: { text: string; label: string; onExit: () => void };
 }
 
 /**
  * A drill-down menu: the first page lists its topics with a summary of each, and choosing one opens its page with a way
- * back. The open page is kept only while the menu is mounted, so it starts over at the first page for each room.
+ * back. A path that names no page (any more) stops at the last page it finds.
  */
-export function Menu({ root, exit }: Props) {
-  const [path, setPath] = useState<string[]>([]);
+export function Menu({ root, exit, nav }: Props) {
+  const { path, go: setPath } = nav;
   const trail: Topic[] = [root];
   for (const id of path) {
     const next = trail.at(-1)!.topics?.find((t) => t.id === id);

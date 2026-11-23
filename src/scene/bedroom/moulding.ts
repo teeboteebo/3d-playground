@@ -7,6 +7,7 @@ import { BEDROOM_MOULD_WALLS, wallLayouts, type MouldWallDef } from '../mouldWal
 import type { Kit } from './kit';
 import { BEDX, FRAME_T, L } from './dimensions';
 import type { BedroomMaterials } from './materials';
+import { tagOption } from '../options';
 
 export interface MouldWallParts {
   readonly parts: readonly THREE.Object3D[];
@@ -49,6 +50,7 @@ function mouldWall(
       for (const l of layouts) drawSection(strip, l, FRAME_T);
       drawRail(strip, def.rail, layouts[0].rows.rail, railDepth);
       parts = mergeMeshes(parts);
+      tagOption(parts, 'bedroom', ['moulding', def.sections[0].key]);
     },
   };
 }

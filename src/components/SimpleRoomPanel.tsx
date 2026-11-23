@@ -2,7 +2,7 @@ import { roomById, roomSize, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
-import { Menu } from './Menu';
+import { Menu, type MenuNav } from './Menu';
 import { wallsTopic, type RoomExit } from './roomTopics';
 
 const BLURB: Partial<Record<RoomId, string>> = {
@@ -14,14 +14,16 @@ interface Props {
   settings: Settings;
   update: Update;
   exit: RoomExit;
+  menu: MenuNav;
 }
 
 /** A room without furniture of its own yet: just its finishes. */
-export function SimpleRoomPanel({ room, settings, update, exit }: Props) {
+export function SimpleRoomPanel({ room, settings, update, exit, menu }: Props) {
   const info = roomById(room);
   return (
     <Menu
       exit={exit}
+      nav={menu}
       root={{
         id: room,
         title: info.name,
