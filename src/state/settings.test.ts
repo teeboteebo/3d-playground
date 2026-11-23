@@ -199,6 +199,12 @@ describe('moulding spacing settings', () => {
     expect(b.mouldSpacing).toBe(12);
     expect(b.mouldWalls).toEqual(DEFAULTS.bedroom.mouldWalls);
   });
+  it('caps a legacy gap so the lower row survives, but never caps a saved spacing', () => {
+    expect(sanitizeSettings({ version: 2, bedroom: { mouldGap: 30 } }).bedroom.mouldSpacing).toBe(22);
+    expect(sanitizeSettings({ mgap: 30 }).bedroom.mouldSpacing).toBe(22);
+    expect(sanitizeSettings({ version: 2, living: { mouldSofaGap: 30 } }).living.mouldSpacing).toBe(22);
+    expect(sanitizeSettings({ version: 2, bedroom: { mouldSpacing: 30 } }).bedroom.mouldSpacing).toBe(30);
+  });
   it('maps legacy sofa gap and columns', () => {
     const l = sanitizeSettings({ version: 2, living: { mouldSofaGap: 14, mouldSofaColumns: 7 } }).living;
     expect(l.mouldSpacing).toBe(14);

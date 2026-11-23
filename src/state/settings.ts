@@ -6,7 +6,7 @@ import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
-import type { MouldWall } from '../scene/mouldLayout';
+import { spacingMax, type MouldWall } from '../scene/mouldLayout';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
 } from './mould';
@@ -199,9 +199,15 @@ function sanitizeMouldRoom(raw: Raw, legacyGap: unknown, d: { mouldSpacing: numb
     const x = typeof v === 'string' && v.trim() === '' ? NaN : Number(v);
     return clamp(v !== undefined && v !== null && Number.isFinite(x) ? x : fallback, s.min, s.max);
   };
+  const mouldDado = n(raw.mouldDado, d.mouldDado, MOULD_SLIDERS.dado);
+  /* a legacy gap ran 4 to 30 cm: keep it as far as the lower row still fits, so no row vanishes in the migration */
+  const legacyCap = Math.floor(spacingMax(mouldDado / 100) * 100 + 1e-6);
   return {
-    mouldSpacing: n(raw.mouldSpacing ?? legacy, d.mouldSpacing, MOULD_SLIDERS.spacing),
-    mouldDado: n(raw.mouldDado, d.mouldDado, MOULD_SLIDERS.dado),
+    mouldSpacing:
+      raw.mouldSpacing !== undefined && raw.mouldSpacing !== null
+        ? n(raw.mouldSpacing, d.mouldSpacing, MOULD_SLIDERS.spacing)
+        : Math.min(n(legacy, d.mouldSpacing, MOULD_SLIDERS.spacing), Math.max(MOULD_SLIDERS.spacing.min, legacyCap)),
+    mouldDado,
   };
 }
 
