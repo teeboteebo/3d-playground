@@ -2,8 +2,6 @@
 const HALF_SPAN = 1.84;
 const MIN_GAP = 0.04;
 const MIN_SIDE = 0.3;
-/** Bedside tables never move closer to the bed centre than this. */
-const MIN_TABLE_OFFSET = 1.115;
 
 export interface WallLayout {
   /** half-width of the centre column */
@@ -12,11 +10,6 @@ export interface WallLayout {
   sideWidth: number;
   /** [x0, x1] of the three columns, relative to the centre line */
   columns: [number, number][];
-}
-
-export interface BedWallLayout extends WallLayout {
-  /** distance of each bedside table/lamp from the bed centre */
-  tableOffset: number;
 }
 
 /**
@@ -54,8 +47,7 @@ export function gridLayout(x0: number, x1: number, count: number, gapCm: number)
   });
 }
 
-/** Bed-wall layout: `wallLayout` over the bed wall's span, plus where the bedside tables go. */
-export function bedWallLayout(mcenCm: number, mgapCm: number, mswCm: number): BedWallLayout {
-  const l = wallLayout(mcenCm, mgapCm, mswCm, HALF_SPAN);
-  return { ...l, tableOffset: Math.max(l.centreHalf + l.gap + l.sideWidth / 2, MIN_TABLE_OFFSET) };
+/** Bed-wall layout: `wallLayout` over the bed wall's span. */
+export function bedWallLayout(mcenCm: number, mgapCm: number, mswCm: number): WallLayout {
+  return wallLayout(mcenCm, mgapCm, mswCm, HALF_SPAN);
 }

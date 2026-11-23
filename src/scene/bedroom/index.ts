@@ -51,10 +51,7 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const windows = windowLights(parent);
   const lamp = dresserLamp(parent);
   const dresserMould = mergeMeshes(dresserWallMoulding(k, m));
-  const bedMould = bedWallMoulding(k, m, (left, right) => {
-    bedside.moveTo(0, left);
-    bedside.moveTo(1, right);
-  });
+  const bedMould = bedWallMoulding(k, m);
   const painting = paintingApplier(m);
   let current: BedroomSettings | null = null;
 

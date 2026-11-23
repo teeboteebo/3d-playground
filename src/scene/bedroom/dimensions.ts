@@ -5,8 +5,16 @@ export const W = BEDROOM_HALF.x * 2;
 export const L = BEDROOM_HALF.z * 2;
 export const H = CEILING;
 
-/** the bed's centre line: halfway between the window wall and the wardrobes' fronts */
-export const BEDX = (-W / 2 + (W / 2 - 0.58)) / 2;
+/** where the two built-in wardrobes' fronts stand */
+export const WARD_FRONT = W / 2 - 0.58;
+
+/** wall-hung nightstand (AC Design Cholet, scaled): width, height, depth out from the wall, and its bottom height */
+export const NIGHTSTAND = { w: 0.4, h: 0.23, d: 0.3, y0: 0.48 };
+/** centre x of the left and right nightstand: 0.47 m from the window wall, and 0.55 m from the wardrobe fronts */
+export const NIGHTSTAND_X: readonly [number, number] = [-W / 2 + 0.47 + 0.2, WARD_FRONT - 0.55 - 0.2];
+
+/** the bed's centre line: halfway between the two nightstands */
+export const BEDX = (NIGHTSTAND_X[0] + NIGHTSTAND_X[1]) / 2;
 
 /* the doorway to the hall, on the east wall (z range and height) */
 export const DOOR_Z0 = BEDROOM_DOOR.a[1];

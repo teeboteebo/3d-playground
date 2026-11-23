@@ -21,9 +21,9 @@ function frameOf(strip: Strip, x0: number, x1: number, y0: number, y1: number) {
 
 /**
  * Bed-wall moulding: a rail at 75 cm and three columns of panels, big above the rail and small below. The layout
- * follows the moulding sliders, and the bedside tables ride in the side columns (`onTables` gets their x).
+ * follows the moulding sliders.
  */
-export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTables: (left: number, right: number) => void) {
+export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials) {
   let parts: THREE.Object3D[] = [];
   let lastLayout = '';
   const strip = (w: number, h: number, x: number, y: number, d = 0.014) => {
@@ -49,7 +49,6 @@ export function bedWallMoulding({ box, parent }: Kit, m: BedroomMaterials, onTab
         frameOf(strip, BEDX + x0, BEDX + x1, RAIL_Y + 0.08, 3.0);
       }
       parts = mergeMeshes(parts);
-      onTables(BEDX - layout.tableOffset, BEDX + layout.tableOffset);
     },
   };
 }
