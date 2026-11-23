@@ -19,10 +19,6 @@ export interface BedroomSettings {
   mouldColour: 'white' | 'tone';
   mouldBedWall: OnOff;
   mouldDresserWall: OnOff;
-  /** bed-wall moulding layout, in cm: gap between columns, centre column width, side column width */
-  mouldGap: number;
-  mouldCentre: number;
-  mouldSide: number;
   /** room-wide moulding spacing and dado (rail top) height, cm; the walls hold their own columns */
   mouldSpacing: number;
   mouldDado: number;
@@ -48,23 +44,13 @@ export interface OfficeSettings extends LampSettings {
   roundRug: string;
 }
 
-/** Wall moulding layout, in cm: gap between columns, centre column width, side column width. */
-export interface MouldLayout {
-  mouldGap: number;
-  mouldCentre: number;
-  mouldSide: number;
-}
-
 /** What can be changed in the living room. */
-export interface LivingSettings extends LampSettings, MouldLayout {
+export interface LivingSettings extends LampSettings {
   /** furniture ids switched off */
   hidden: string[];
   mouldColour: 'white' | 'tone';
   mouldSofaWall: OnOff;
   mouldTvWall: OnOff;
-  /** sofa-wall grid: number of equal columns, and the gap between them and at both wall ends (cm) */
-  mouldSofaColumns: number;
-  mouldSofaGap: number;
   mouldSpacing: number;
   mouldDado: number;
   mouldWalls: Record<LivingSection, MouldWall>;
@@ -110,9 +96,6 @@ export const DEFAULTS: Settings = {
     mouldColour: 'white',
     mouldBedWall: 'on',
     mouldDresserWall: 'on',
-    mouldGap: 8,
-    mouldCentre: 180,
-    mouldSide: 68,
     mouldSpacing: 8,
     mouldDado: 77,
     mouldWalls: BEDROOM_MOULD_DEFAULTS,
@@ -130,11 +113,6 @@ export const DEFAULTS: Settings = {
     mouldColour: 'white',
     mouldSofaWall: 'on',
     mouldTvWall: 'on',
-    mouldGap: 8,
-    mouldCentre: 180,
-    mouldSide: 68,
-    mouldSofaColumns: 5,
-    mouldSofaGap: 8,
     mouldSpacing: 8,
     mouldDado: 77,
     mouldWalls: LIVING_MOULD_DEFAULTS,
@@ -150,21 +128,8 @@ export const DEFAULTS: Settings = {
   },
 };
 
-export const SLIDERS = {
-  mouldGap: { min: 4, max: 30, step: 1 },
-  mouldCentre: { min: 150, max: 200, step: 2 },
-  mouldSide: { min: 50, max: 90, step: 1 },
-  mouldSofaColumns: { min: 2, max: 10, step: 1 },
-  mouldSofaGap: { min: 4, max: 30, step: 1 },
-} as const;
-
 type Raw = Record<string, unknown>;
 const obj = (v: unknown): Raw => (v && typeof v === 'object' ? v : {}) as Raw;
-
-function num(v: unknown, fallback: number, min: number, max: number): number {
-  const n = Number(v);
-  return clamp(Number.isFinite(n) && n !== 0 ? n : fallback, min, max);
-}
 
 function oneOf<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
   return allowed.includes(v as T) ? (v as T) : fallback;
@@ -196,8 +161,6 @@ function fromVersion1(s: Raw): Raw {
       mouldBedWall: legacyOff ? 'off' : s.mouldB,
       mouldDresserWall: s.mouldF,
       mouldGap: s.mgap,
-      mouldCentre: s.mcen,
-      mouldSide: s.msw,
       pendant: s.pendant,
       wardrobes: s.ward,
       rug: s.rug,
@@ -226,14 +189,6 @@ function sanitizeOffice(raw: unknown): OfficeSettings {
     readingChair: oneOf(o.readingChair, ids(READING_CHAIRS), d.readingChair),
     dresser: oneOf(o.dresser, ids(DRESSERS), d.dresser),
     roundRug: oneOf(o.roundRug, ids(ROUND_RUGS), d.roundRug),
-  };
-}
-
-function sanitizeMouldLayout(raw: Raw, d: MouldLayout): MouldLayout {
-  return {
-    mouldGap: num(raw.mouldGap, d.mouldGap, SLIDERS.mouldGap.min, SLIDERS.mouldGap.max),
-    mouldCentre: num(raw.mouldCentre, d.mouldCentre, SLIDERS.mouldCentre.min, SLIDERS.mouldCentre.max),
-    mouldSide: num(raw.mouldSide, d.mouldSide, SLIDERS.mouldSide.min, SLIDERS.mouldSide.max),
   };
 }
 
@@ -270,11 +225,6 @@ function sanitizeLiving(raw: unknown): LivingSettings {
     mouldColour: oneOf(l.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldSofaWall: onOff(l.mouldSofaWall),
     mouldTvWall: onOff(l.mouldTvWall),
-    ...sanitizeMouldLayout(l, d),
-    mouldSofaColumns: Math.round(
-      num(l.mouldSofaColumns, d.mouldSofaColumns, SLIDERS.mouldSofaColumns.min, SLIDERS.mouldSofaColumns.max),
-    ),
-    mouldSofaGap: num(l.mouldSofaGap, d.mouldSofaGap, SLIDERS.mouldSofaGap.min, SLIDERS.mouldSofaGap.max),
     ...sanitizeMouldRoom(l, l.mouldSofaGap, d),
     mouldWalls: sanitizeWalls(
       l.mouldWalls, LIVING_MOULD_DEFAULTS,
@@ -293,7 +243,6 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
     mouldColour: oneOf(b.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldBedWall: onOff(b.mouldBedWall),
     mouldDresserWall: onOff(b.mouldDresserWall),
-    ...sanitizeMouldLayout(b, d),
     ...sanitizeMouldRoom(b, b.mouldGap, d),
     mouldWalls: sanitizeWalls(
       b.mouldWalls, BEDROOM_MOULD_DEFAULTS,

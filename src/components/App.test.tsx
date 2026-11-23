@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS, RUGS, VIEWS, mainView } from '../data/catalog';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { fabricPrice, fabricUrl } from '../data/fabrics';
+import { BEDX } from '../scene/bedroom/dimensions';
+import { layoutSection } from '../scene/mouldLayout';
+import { BEDROOM_MOULD_WALLS } from '../scene/mouldWalls';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
@@ -106,58 +109,100 @@ describe('App', () => {
     expect(accentPillow.querySelector('.dot')).toHaveStyle({ background: '#C49A3A' });
   });
 
-  it('disables the bed-wall layout sliders when bed-wall moulding is hidden', async () => {
+  it('sets the room spacing and dado height', async () => {
+    await renderIn('bedroom');
+    const room = within(screen.getByTestId('bedroom-mould-room'));
+    fireEvent.change(room.getByRole('slider', { name: /^Spacing/ }), { target: { value: '12' } });
+    expect(lastApplied().bedroom.mouldSpacing).toBe(12);
+    fireEvent.change(room.getByRole('slider', { name: /^Dado height/ }), { target: { value: '90' } });
+    expect(lastApplied().bedroom.mouldDado).toBe(90);
+  });
+
+  it('overrides a wall spacing and goes back to the room spacing', async () => {
     const user = userEvent.setup();
     await renderIn('bedroom');
-    const slider = screen.getByRole('slider', { name: /Column spacing/ });
-    expect(slider).toBeEnabled();
-    await user.click(screen.getByRole('button', { name: 'Bed wall' }));
-    expect(slider).toBeDisabled();
-    expect(screen.getByTestId('bed-wall-layout')).toHaveClass('off');
+    const bed = within(screen.getByTestId('mould-bed'));
+    expect(bed.queryByRole('button', { name: 'Use room spacing' })).toBeNull();
+    fireEvent.change(bed.getByRole('slider', { name: /^Spacing/ }), { target: { value: '14' } });
+    expect(lastApplied().bedroom.mouldWalls.bed.spacing).toBe(14);
+    await user.click(bed.getByRole('button', { name: 'Use room spacing' }));
+    expect(lastApplied().bedroom.mouldWalls.bed.spacing).toBeNull();
+    expect(bed.queryByRole('button', { name: 'Use room spacing' })).toBeNull();
+  });
+
+  it('clears the fixed column when the count drops below it, and leaves it when only the room spacing moves', async () => {
+    await renderIn('living');
+    const tv = within(screen.getByTestId('mould-tv'));
+    expect(lastApplied().living.mouldWalls.tv.fixedColumn).toBe(2);
+    const roomSpacing = within(screen.getByTestId('living-mould-room')).getByRole('slider', { name: /^Spacing/ });
+    fireEvent.change(roomSpacing, { target: { value: (roomSpacing as HTMLInputElement).max } });
+    expect(lastApplied().living.mouldSpacing).toBeGreaterThan(8);
+    expect(lastApplied().living.mouldWalls.tv.fixedColumn).toBe(2);
+    fireEvent.change(tv.getByRole('slider', { name: /^Columns/ }), { target: { value: '1' } });
+    expect(lastApplied().living.mouldWalls.tv.fixedColumn).toBe(0);
+    expect(lastApplied().living.mouldWalls.tv.columns).toBe(1);
+  });
+
+  it('offers "Centred on bed" on the bed wall only', async () => {
+    await renderIn('bedroom');
+    expect(within(screen.getByTestId('mould-bed')).getByRole('button', { name: 'Centred on bed' })).toBeInTheDocument();
+    expect(screen.getByTestId('mould-dresserWindow')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Centred on bed' })).toHaveLength(1);
+  });
+
+  it('disables a section\'s controls with its wall', async () => {
+    const user = userEvent.setup();
+    await renderIn('bedroom');
+    const bed = screen.getByTestId('mould-bed');
+    expect(bed).not.toHaveClass('off');
+    expect(within(bed).getByRole('slider', { name: /^Columns/ })).toBeEnabled();
+    await user.click(within(screen.getByRole('group', { name: 'Show moulding on' })).getByRole('button', { name: 'Bed wall' }));
+    expect(bed).toHaveClass('off');
+    expect(within(bed).getByRole('slider', { name: /^Columns/ })).toBeDisabled();
+    expect(within(bed).getByRole('combobox')).toBeDisabled();
+    expect(screen.getByTestId('mould-dresserWindow')).not.toHaveClass('off');
     expect(lastApplied().bedroom.mouldBedWall).toBe('off');
   });
 
-  it('changes the living-room moulding', async () => {
+  it('labels each section and shows how many columns fit', async () => {
+    await renderIn('bedroom');
+    expect(screen.getByRole('group', { name: 'Dresser wall: By the window' })).toBe(screen.getByTestId('mould-dresserWindow'));
+    expect(screen.getByRole('group', { name: 'Bed wall' })).toBe(screen.getByTestId('mould-bed'));
+    const win = within(screen.getByTestId('mould-dresserWindow'));
+    fireEvent.change(win.getByRole('slider', { name: /^Columns/ }), { target: { value: '10' } });
+    expect(win.getByText(/10 \(\d+ fit\)/)).toBeInTheDocument();
+  });
+
+  it('seeds a custom position with the drawn centre', async () => {
     const user = userEvent.setup();
-    await renderIn('living');
-    await user.click(within(screen.getByRole('group', { name: 'Show moulding on' })).getByRole('button', { name: /TV wall/ }));
-    expect(lastApplied().living.mouldTvWall).toBe('off');
-    fireEvent.change(screen.getByRole('slider', { name: /Centre width/ }), { target: { value: '160' } });
-    expect(lastApplied().living.mouldCentre).toBe(160);
-    expect(
-      within(screen.getByRole('group', { name: 'TV wall layout' })).getByRole('slider', { name: /Column spacing/ }),
-    ).toBeInTheDocument();
+    await renderIn('bedroom');
+    const s = lastApplied().bedroom;
+    const sec = BEDROOM_MOULD_WALLS[0].sections[0];
+    const drawn = layoutSection(sec.run, { spacing: s.mouldSpacing, dado: s.mouldDado }, s.mouldWalls.bed, BEDX).fixed!;
+    const bed = within(screen.getByTestId('mould-bed'));
+    expect(bed.queryByRole('slider', { name: /^Centre/ })).toBeNull();
+    await user.click(bed.getByRole('button', { name: 'Custom' }));
+    const w = lastApplied().bedroom.mouldWalls.bed;
+    expect(w.fixedPosition).toBe('custom');
+    expect(w.fixedCentre).toBe(Math.round((drawn.centre - sec.run[0]) * 100));
+    expect(bed.getByRole('slider', { name: /^Centre/ })).toBeInTheDocument();
   });
 
-  it('sizes the sofa-wall grid', async () => {
-    await renderIn('living');
-    const columns = screen.getByRole('slider', { name: /Columns/ });
-    expect(columns).toHaveValue('5');
-    fireEvent.change(columns, { target: { value: '7' } });
-    expect(lastApplied().living.mouldSofaColumns).toBe(7);
-    fireEvent.change(screen.getByRole('slider', { name: /^Column gap/ }), { target: { value: '12' } });
-    expect(lastApplied().living.mouldSofaGap).toBe(12);
-    expect(within(screen.getByTestId('living-sofa-layout')).getByText('7')).toBeInTheDocument();
-  });
-
-  it('greys out each living layout group with its own wall', async () => {
+  it('changes the living-room moulding walls and greys each section with its own wall', async () => {
     const user = userEvent.setup();
     await renderIn('living');
     const walls = within(screen.getByRole('group', { name: 'Show moulding on' }));
-    const sofa = screen.getByTestId('living-sofa-layout');
-    const tv = screen.getByTestId('living-tv-layout');
-    expect(sofa).not.toHaveClass('off');
-    expect(tv).not.toHaveClass('off');
-    await user.click(walls.getByRole('button', { name: /Sofa wall/ }));
-    expect(sofa).toHaveClass('off');
-    expect(within(sofa).getByRole('slider', { name: /Columns/ })).toBeDisabled();
-    expect(tv).not.toHaveClass('off');
-    expect(within(tv).getByRole('slider', { name: /Column spacing/ })).toBeEnabled();
-    await user.click(walls.getByRole('button', { name: /Sofa wall/ }));
+    const sofa = screen.getByTestId('mould-sofa');
+    const tv = screen.getByTestId('mould-tv');
     await user.click(walls.getByRole('button', { name: /TV wall/ }));
-    expect(sofa).not.toHaveClass('off');
+    expect(lastApplied().living.mouldTvWall).toBe('off');
     expect(tv).toHaveClass('off');
-    expect(within(tv).getByRole('slider', { name: /Column spacing/ })).toBeDisabled();
+    expect(sofa).not.toHaveClass('off');
+    expect(within(sofa).getByRole('slider', { name: /^Columns/ })).toBeEnabled();
+    expect(within(tv).getByRole('slider', { name: /^Columns/ })).toBeDisabled();
+    fireEvent.change(within(sofa).getByRole('slider', { name: /^Columns/ }), { target: { value: '7' } });
+    expect(lastApplied().living.mouldWalls.sofa.columns).toBe(7);
+    expect(lastApplied().living.mouldWalls.tv).toEqual(DEFAULTS.living.mouldWalls.tv);
   });
 
   it('offers the Sofa wall view in the living room', async () => {
