@@ -1,9 +1,12 @@
 import * as THREE from 'three';
-import { OAK, TV_BENCH } from '../data/catalog';
+import { TV_BENCH } from '../data/catalog';
 import { kit } from './bedroom/kit';
 import { std } from './materials';
 import { mergeMeshes } from './merge';
 import { woodTexture } from './textures';
+
+/** the String shelving's beige: its shelves' wood colour in shelving.glb ("string furniture hout"), here with grain */
+const SHELF_BEIGE = '#C1AA8F';
 
 /** the sideboard's depth, and the z of its back: 16 mm off the TV wall, where the old bench model stood */
 const DEPTH = 0.48;
@@ -17,16 +20,17 @@ const GAP = 0.004;
 const INSET = 0.015;
 
 /**
- * The living room's TV sideboard (see `TV_BENCH`), in the bedroom dresser's style: oak legs, a deeper-toned oak body,
- * an oak top that overhangs by a centimetre, and oak fronts with a dark slot to pull each one. Seen from the front,
- * three columns: a door, a door, and three drawers. Built in scene coordinates, its front facing the room (−z).
+ * The living room's TV sideboard (see `TV_BENCH`), in the bedroom dresser's style, in the String shelving's beige
+ * with a wood grain: legs, a slightly deeper-toned body, a top that overhangs by a centimetre, and fronts with a dark
+ * slot to pull each one. Seen from the front, three columns: a door, a door, and three drawers. Built in scene
+ * coordinates, its front facing the room (−z).
  */
 export function sideboard(): THREE.Group {
   const g = new THREE.Group();
   const k = kit(g);
-  const wood = woodTexture(OAK.hex);
+  const wood = woodTexture(SHELF_BEIGE);
   const oak = new THREE.MeshStandardMaterial({ roughness: 0.6, map: wood });
-  const oakDeep = new THREE.MeshStandardMaterial({ roughness: 0.65, color: new THREE.Color(0.8, 0.8, 0.8), map: wood });
+  const oakDeep = new THREE.MeshStandardMaterial({ roughness: 0.65, color: new THREE.Color(0.9, 0.9, 0.9), map: wood });
   const slot = std('#3A2D20', 1);
 
   const { x0, w, h } = TV_BENCH;
