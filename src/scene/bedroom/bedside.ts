@@ -6,6 +6,7 @@ import type { Kit } from './kit';
 import { ADINA_SHADE_Y, ADINA_STEM_OUT, L, NIGHTSTAND, NIGHTSTAND_X } from './dimensions';
 import { bulb, glowShade, type Bulb } from './lamps';
 import type { BedroomMaterials } from './materials';
+import { BED_WALL_STRIP_DEPTH } from './moulding';
 
 export interface Bedside {
   setEvening(on: boolean): void;
@@ -25,12 +26,13 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
   const { w, h, d, y0 } = NIGHTSTAND;
   mergeMeshes(NIGHTSTAND_X.flatMap((x) =>
     collect(() => {
-      const zc = -L / 2 + d / 2;
+      const back = -L / 2 + BED_WALL_STRIP_DEPTH; // the carcass stands off the wall, in front of the moulding strips
+      const zc = back + d / 2;
       const TOP = y0 + h;
       box(w, 0.02, d, m.oak, x, TOP - 0.01, zc);
       box(w, 0.02, d, m.oak, x, y0 + 0.01, zc);
       for (const o of [-(w / 2 - 0.01), w / 2 - 0.01]) box(0.02, h - 0.04, d, m.oak, x + o, y0 + h / 2, zc);
-      box(w - 0.04, h - 0.04, 0.01, m.oakDeep, x, y0 + h / 2, -L / 2 + 0.005);
+      box(w - 0.04, h - 0.04, 0.01, m.oakDeep, x, y0 + h / 2, back + 0.005);
       box(w - 0.04, 0.07, 0.02, m.oak, x, TOP - 0.055, zc + d / 2 - 0.01);
       box(w - 0.04, 0.015, d - 0.03, m.oak, x, y0 + h / 2 - 0.0075, zc);
       add(new THREE.SphereGeometry(0.012, 12, 10), m.brass, x, TOP - 0.055, zc + d / 2 + 0.01);

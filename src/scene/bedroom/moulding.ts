@@ -14,6 +14,9 @@ export interface MouldWallParts {
   layout(s: BedroomSettings): void;
 }
 
+/** how far the bed-wall strips stand out of the wall, m */
+export const BED_WALL_STRIP_DEPTH = 0.014;
+
 /** a wall's strips stand `depth` out of the wall at `wallZ`, towards `face` (+1 = +z) */
 function mouldWall(
   { box, parent }: Kit,
@@ -54,7 +57,7 @@ function mouldWall(
 export function bedroomMoulding(k: Kit, m: BedroomMaterials): { bed: MouldWallParts; dresser: MouldWallParts } {
   const [bed, dresser] = BEDROOM_MOULD_WALLS;
   return {
-    bed: mouldWall(k, bed, m.mouldBed, -L / 2, 1, 0.014, 0.02),
+    bed: mouldWall(k, bed, m.mouldBed, -L / 2, 1, BED_WALL_STRIP_DEPTH, 0.02),
     dresser: mouldWall(k, dresser, m.mouldDresser, L / 2, -1, 0.009, 0.012),
   };
 }

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { buildBed } from './bed';
-import { BEDX, NIGHTSTAND, NIGHTSTAND_X, W, WARD_FRONT } from './dimensions';
+import { BEDX, NIGHTSTAND, L, NIGHTSTAND_X, W, WARD_FRONT } from './dimensions';
 import { kit } from './kit';
 import { bedroomMaterials } from './materials';
 import { buildBedside } from './bedside';
+import { BED_WALL_STRIP_DEPTH } from './moulding';
 
 /* jsdom has no 2D canvas: the textures only need something that swallows every drawing call */
 beforeAll(() => {
@@ -52,6 +53,8 @@ describe('nightstands', () => {
       expect(s.y).toBeCloseTo(NIGHTSTAND.h, 2);
       expect(s.z).toBeCloseTo(NIGHTSTAND.d, 2);
       expect(box.min.y).toBeCloseTo(0.48, 2);
+      // the back panel stands in front of the bed-wall moulding strips
+      expect(box.min.z - -L / 2).toBeGreaterThanOrEqual(BED_WALL_STRIP_DEPTH - 1e-9);
     }
     expect(left.min.x - -W / 2).toBeCloseTo(0.47, 2);
     expect(WARD_FRONT - right.max.x).toBeCloseTo(0.55, 2);
