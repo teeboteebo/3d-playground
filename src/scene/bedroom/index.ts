@@ -10,7 +10,7 @@ import { L, W } from './dimensions';
 import { buildDresser, buildMirror, buildPainting, dresserLamp, paintingApplier } from './dresser';
 import { kit, setVisible } from './kit';
 import { bedroomMaterials } from './materials';
-import { bedWallMoulding, dresserWallMoulding } from './moulding';
+import { bedroomMoulding } from './moulding';
 import { buildPendant } from './pendant';
 import { buildRug } from './rug';
 import { buildFrontDoor, buildHallDoorway } from './doors';
@@ -50,8 +50,7 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const rug = buildRug(k, m);
   const windows = windowLights(parent);
   const lamp = dresserLamp(parent);
-  const dresserMould = mergeMeshes(dresserWallMoulding(k, m));
-  const bedMould = bedWallMoulding(k, m);
+  const mould = bedroomMoulding(k, m);
   const painting = paintingApplier(m);
   let current: BedroomSettings | null = null;
 
@@ -68,7 +67,8 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
         mat.color.copy(lin(mouldHex));
         if (s.mouldColour === 'tone') mat.color.multiplyScalar(0.82);
       }
-      bedMould.layout(s);
+      mould.bed.layout(s);
+      mould.dresser.layout(s);
       m.wardrobe.color.copy(lin(s.wardrobes === 'trim' ? TRIM.hex : s.wardrobes === 'ink' ? INK : wallHex));
 
       const pl = pillowColours(s.pillows, s.accent);
@@ -89,8 +89,8 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       setVisible(frontParts, fv);
       setVisible(paintParts, fv);
       mirror.visible = fv;
-      setVisible(bedMould.parts, cam.z > -L / 2 - 0.05 && current?.mouldBedWall !== 'off');
-      setVisible(dresserMould, fv && current?.mouldDresserWall !== 'off');
+      setVisible(mould.bed.parts, cam.z > -L / 2 - 0.05 && current?.mouldBedWall !== 'off');
+      setVisible(mould.dresser.parts, fv && current?.mouldDresserWall !== 'off');
     },
     dispose() {
       rug.dispose();
