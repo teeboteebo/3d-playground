@@ -37,6 +37,7 @@ export function buildPendant({ add, collect, parent }: Kit, m: BedroomMaterials)
   light.shadow.bias = -0.002;
   parent.add(light);
   return {
+    parts,
     /** hung or taken down; lit (with shadows) only in the evening */
     set(hung: boolean, evening: boolean) {
       for (const p of parts) p.visible = hung;

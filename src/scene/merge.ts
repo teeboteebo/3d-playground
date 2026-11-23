@@ -15,7 +15,9 @@ export function mergeMeshes(objects: readonly THREE.Object3D[]): THREE.Object3D[
       result.push(o);
       continue;
     }
-    const key = `${o.parent.uuid}|${o.material.uuid}|${o.castShadow}|${o.receiveShadow}|${o.visible}`;
+    /* meshes that open different menu pages (see options.ts) stay apart */
+    const option = o.userData.option ? JSON.stringify(o.userData.option) : '';
+    const key = `${o.parent.uuid}|${o.material.uuid}|${o.castShadow}|${o.receiveShadow}|${o.visible}|${option}`;
     const b = buckets.get(key);
     if (b) b.push(o);
     else buckets.set(key, [o]);
@@ -37,6 +39,7 @@ export function mergeMeshes(objects: readonly THREE.Object3D[]): THREE.Object3D[
     merged.castShadow = first.castShadow;
     merged.receiveShadow = first.receiveShadow;
     merged.visible = first.visible;
+    if (first.userData.option) merged.userData.option = first.userData.option;
     first.parent!.add(merged);
     for (const g of geos) g.dispose();
     for (const o of meshes) {

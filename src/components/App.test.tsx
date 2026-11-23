@@ -52,6 +52,16 @@ const goTo = (...titles: string[]) => {
 };
 /** go up one page of a room's menu */
 const up = (to: string) => fireEvent.click(screen.getByRole('button', { name: `Back to ${to}` }));
+/** a click in 3D as the scene reports it: the room it landed in, and the menu option of what it hit (a path in that room) */
+const click3d = async (room: string | null, path?: string[]) => {
+  const onPick = createApartmentScene.mock.calls.at(-1)![3] as (p: unknown) => void;
+  await act(async () => onPick({ room, option: room && path ? { room, path } : null }));
+};
+/** the mouse over an option of the selected room (a path), over another room as a whole (no path), or over nothing */
+const hover3d = async (room?: string, path?: string[]) => {
+  const onHover = createApartmentScene.mock.calls.at(-1)![4] as (h: unknown) => void;
+  await act(async () => onHover(room ? { room, option: path ? { room, path } : null, x: 10, y: 20 } : null));
+};
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
@@ -332,41 +342,37 @@ describe('App', () => {
 
   it('selects the room clicked in 3D, and deselects on a click outside', async () => {
     await renderApp();
-    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
-    await act(async () => onPick('hall'));
+    await click3d('hall');
     expect(lastApplied().room).toBe('hall');
     expect(screen.getByRole('heading', { name: 'Hall' })).toBeInTheDocument();
-    await act(async () => onPick(null));
+    await click3d(null);
     expect(lastApplied().room).toBe('all');
   });
 
   it('moves only the pivot, not the rotation or zoom, when a room is picked in 3D', async () => {
     await renderApp();
-    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     const pivot = (sel: 'hall' | 'all') => {
       const { tx, ty, tz } = mainView(sel).pose;
       return { tx, ty, tz };
     };
-    await act(async () => onPick('hall'));
+    await click3d('hall');
     expect(scene.setView).toHaveBeenLastCalledWith(pivot('hall'));
-    await act(async () => onPick(null));
+    await click3d(null);
     expect(lastApplied().room).toBe('all');
     expect(scene.setView).toHaveBeenLastCalledWith(pivot('all'));
   });
 
   it('leaves the camera alone when a 3D pick changes nothing', async () => {
     await renderApp();
-    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
     scene.setView.mockClear();
-    await act(async () => onPick(null)); // already at all rooms
+    await click3d(null); // already at all rooms
     expect(scene.setView).not.toHaveBeenCalled();
   });
 
   it('still flies from the sidebar after a 3D pick that changed nothing', async () => {
     const user = userEvent.setup();
     await renderApp();
-    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
-    await act(async () => onPick(null)); // already at all rooms
+    await click3d(null); // already at all rooms
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
   });
@@ -611,11 +617,94 @@ describe('room menu', () => {
     await renderIn('bedroom');
     goTo('Wall moulding', 'Bed wall');
     expect(screen.queryByRole('button', { name: 'Back to all rooms' })).toBeNull();
-    const onPick = createApartmentScene.mock.calls[0][3] as (room: string | null) => void;
-    await act(async () => onPick('living'));
+    await click3d('living');
     expect(screen.getByRole('heading', { level: 1, name: 'Living room' })).toBeInTheDocument();
-    await act(async () => onPick('bedroom'));
+    await click3d('bedroom');
     expect(screen.getByRole('heading', { level: 1, name: 'Bedroom' })).toBeInTheDocument();
     expect(back()).toBeInTheDocument();
+  });
+});
+
+describe('clicking options in 3D', () => {
+  const h1 = () => screen.getByRole('heading', { level: 1 }).textContent;
+
+  it('opens the page of what was clicked in the selected room', async () => {
+    await renderIn('bedroom');
+    await click3d('bedroom', ['moulding', 'bed']);
+    expect(h1()).toBe('Bed wall');
+    expect(screen.getByTestId('mould-bed')).toBeInTheDocument();
+    up('Wall moulding');
+    expect(h1()).toBe('Wall moulding');
+  });
+
+  it('goes back to the summary on a click at something with no option of its own', async () => {
+    await renderIn('bedroom');
+    goTo('Painting');
+    await click3d('bedroom');
+    expect(h1()).toBe('Bedroom');
+    expect(lastApplied().room).toBe('bedroom');
+  });
+
+  it('only selects the room from the apartment overview', async () => {
+    await renderApp();
+    await click3d('bedroom', ['moulding', 'bed']);
+    expect(lastApplied().room).toBe('bedroom');
+    expect(h1()).toBe('Bedroom');
+  });
+
+  it('switches to another room clicked from inside one, at its summary', async () => {
+    await renderIn('bedroom');
+    goTo('Rug');
+    await click3d('living', ['sofa']);
+    expect(lastApplied().room).toBe('living');
+    expect(h1()).toBe('Living room');
+  });
+
+  it.each([
+    ['bedroom', ['walls'], 'Walls'],
+    ['bedroom', ['pendant'], 'Ceiling pendant'],
+    ['bedroom', ['accent'], 'Accent colour'],
+    ['bedroom', ['moulding', 'dresser'], 'Dresser wall'],
+    ['bedroom', ['wardrobes'], 'Wardrobes'],
+    ['bedroom', ['pillows'], 'Pillows and throw'],
+    ['bedroom', ['painting'], 'Painting'],
+    ['bedroom', ['rug'], 'Rug'],
+    ['hall', ['walls'], 'Walls'],
+    ['living', ['lighting'], 'Lighting'],
+    ['living', ['sofa'], 'Sofa fabric'],
+    ['living', ['moulding', 'sofa'], 'Sofa wall'],
+    ['living', ['moulding', 'tv'], 'TV wall'],
+    ['living', ['furniture'], 'Furniture'],
+    ['office', ['lighting'], 'Lighting'],
+    ['office', ['corner'], 'Reading corner'],
+    ['office', ['furniture'], 'Furniture'],
+  ] as const)('opens %s › %j as the "%s" page', async (room, path, title) => {
+    await renderIn(room);
+    await click3d(room, [...path]);
+    expect(h1()).toBe(title);
+  });
+
+  it('names the option under the mouse and hides the name off it', async () => {
+    const { container } = await renderIn('bedroom');
+    const label = container.querySelector<HTMLElement>('.pick-label')!;
+    expect(label).not.toBeVisible();
+    await hover3d('bedroom', ['moulding', 'bed']);
+    expect(label).toBeVisible();
+    expect(label).toHaveTextContent('Wall moulding · Bed wall');
+    expect(label.style.transform).toBe('translate(24px, 36px)');
+    await hover3d('bedroom', ['pillows']);
+    expect(label).toHaveTextContent('Pillows and throw');
+    await hover3d();
+    expect(label).not.toBeVisible();
+  });
+
+  it('names the room a click would select', async () => {
+    const { container } = await renderIn('bedroom');
+    const label = container.querySelector<HTMLElement>('.pick-label')!;
+    await hover3d('living');
+    expect(label).toBeVisible();
+    expect(label).toHaveTextContent('Living room');
+    await hover3d('office');
+    expect(label).toHaveTextContent('Office');
   });
 });

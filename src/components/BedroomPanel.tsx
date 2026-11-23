@@ -6,7 +6,7 @@ import { AccentPicker } from './AccentPicker';
 import { ChipGroup } from './ChipGroup';
 import { FinishSection } from './FinishSection';
 import { Icon } from './Icon';
-import { Menu, type Topic } from './Menu';
+import { Menu, type MenuNav, type Topic } from './Menu';
 import { mouldingTopic } from './mouldingTopic';
 import { RugList } from './RugList';
 import { wallsTopic, type RoomExit } from './roomTopics';
@@ -15,9 +15,10 @@ interface Props {
   settings: Settings;
   update: Update;
   exit: RoomExit;
+  menu: MenuNav;
 }
 
-export function BedroomPanel({ settings, update, exit }: Props) {
+export function BedroomPanel({ settings, update, exit, menu }: Props) {
   const b = settings.bedroom;
   const set = (patch: Partial<typeof b>) => update({ bedroom: patch });
   const strip: [string, string][] = [
@@ -132,5 +133,5 @@ export function BedroomPanel({ settings, update, exit }: Props) {
     ),
     topics,
   };
-  return <Menu root={root} exit={exit} />;
+  return <Menu root={root} exit={exit} nav={menu} />;
 }

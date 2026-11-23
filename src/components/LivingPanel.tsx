@@ -5,7 +5,7 @@ import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
-import { Menu, type Topic } from './Menu';
+import { Menu, type MenuNav, type Topic } from './Menu';
 import { mouldingTopic } from './mouldingTopic';
 import { SofaFabricSection } from './SofaFabricSection';
 import { lightingTopic, wallsTopic, type RoomExit } from './roomTopics';
@@ -14,9 +14,10 @@ interface Props {
   settings: Settings;
   update: Update;
   exit: RoomExit;
+  menu: MenuNav;
 }
 
-export function LivingPanel({ settings, update, exit }: Props) {
+export function LivingPanel({ settings, update, exit, menu }: Props) {
   const { hidden, sofaFabric } = settings.living;
   const toggle = (id: string) => update({ living: { hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id] } });
   const fabric = BEMZ_FABRICS.find((f) => f.code === sofaFabric);
@@ -56,5 +57,5 @@ export function LivingPanel({ settings, update, exit }: Props) {
       },
     ],
   };
-  return <Menu root={root} exit={exit} />;
+  return <Menu root={root} exit={exit} nav={menu} />;
 }

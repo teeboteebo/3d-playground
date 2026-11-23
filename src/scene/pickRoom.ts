@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { RoomId, XZ } from '../data/rooms';
+import { optionOf, type SceneOption } from './options';
 
 /** furthest a pointer may travel during a press and still count as a click, in px */
 const CLICK_SLOP = 5;
@@ -42,10 +43,34 @@ export function pickRoom(
   targets: THREE.Object3D[],
   rooms: readonly { id: RoomId; poly: readonly XZ[] }[],
 ): RoomId | null {
+  return pick(ndc, camera, targets, rooms).room;
+}
+
+/** what a click or hover lands on: the room it stands in, and the menu option of the thing hit, if it has one */
+export interface Pick {
+  room: RoomId | null;
+  option: SceneOption | null;
+}
+
+/** like pickRoom, and also the option (see options.ts) of the first visible thing the pointer hits */
+export function pick(
+  ndc: { x: number; y: number },
+  camera: THREE.Camera,
+  targets: THREE.Object3D[],
+  rooms: readonly { id: RoomId; poly: readonly XZ[] }[],
+): Pick {
   camera.updateMatrixWorld();
   ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
-  const hit = ray.intersectObjects(targets, true).find((h) => shown(h.object));
-  return hit ? roomAt(hit.point.x, hit.point.z, rooms) : null;
+  const hit = ray.intersectObjects(targets, true).find((h) => shown(h.object) && drawn(h.object));
+  if (!hit) return { room: null, option: null };
+  return { room: roomAt(hit.point.x, hit.point.z, rooms), option: optionOf(hit.object) };
+}
+
+/** draws something you can see: not a mesh like the ceilings, which only block light (they write no colour) */
+function drawn(o: THREE.Object3D): boolean {
+  const m = (o as THREE.Mesh).material;
+  const mats = Array.isArray(m) ? m : m ? [m] : [];
+  return mats.length === 0 || mats.some((x) => x.colorWrite !== false);
 }
 
 /** visible all the way up its parents */

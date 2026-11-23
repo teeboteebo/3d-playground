@@ -9,6 +9,7 @@ import { buildCabinets } from './cabinets';
 import { buildChair } from './chair';
 import { buildCorner } from './corner';
 import { buildDesk, buildDrawers } from './desk';
+import { tagOption } from '../options';
 
 export interface Office {
   apply(s: Settings): void;
@@ -29,6 +30,8 @@ export function buildOffice(parent: THREE.Object3D): Office {
   const piece = (name: string, build: (k: Kit) => void) => {
     const g = new THREE.Group();
     g.name = name;
+    /* the cabinets, desk, drawers and chair are described on the Furniture page */
+    tagOption([g], 'office', ['furniture']);
     parent.add(g);
     const k = kit(g);
     mergeMeshes(k.collect(() => build(k)));

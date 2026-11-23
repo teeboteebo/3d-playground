@@ -3,6 +3,7 @@ import { FLOOR_LAMPS, PENDANTS, findById } from '../data/catalog';
 import { CEILING, centroid, roomById } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildLamp, type BuiltLamp } from './lamps';
+import { tagOption } from './options';
 
 type LampRoom = 'living' | 'office';
 const LAMP_ROOMS: LampRoom[] = ['living', 'office'];
@@ -93,6 +94,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
           CEILING - PENDANT_HEIGHT,
         );
         if (pendant) {
+          tagOption([pendant.lamp.group], room, ['lighting']);
           const [x, z] = centroid(roomById(room).poly);
           pendant.lamp.group.position.set(x, CEILING, z);
         }
@@ -104,6 +106,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
           undefined,
         );
         if (floor) {
+          tagOption([floor.lamp.group], room, ['lighting']);
           const { x, z, rotY } = FLOOR_LAMP_SPOT[room];
           floor.lamp.group.position.set(x, 0, z);
           floor.lamp.group.rotation.y = rotY;

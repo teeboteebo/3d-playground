@@ -23,6 +23,7 @@ export function buildRug({ parent }: Kit, m: BedroomMaterials) {
     return t ?? null;
   };
   return {
+    mesh,
     set(rug: string) {
       const tex = rug === 'none' ? null : texture(rug);
       mesh.visible = !!tex;

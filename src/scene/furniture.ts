@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FURNITURE, SHELVING_CUT, type FurniturePiece } from '../data/catalog';
+import { FURNITURE, SHELVING_CUT, TV_BENCH, TV_BOTTOM, type FurniturePiece } from '../data/catalog';
 import { disposeTree } from './dispose';
 import { trimAbove } from './trimGeometry';
 
@@ -14,6 +14,19 @@ function trimShelving(shelving: THREE.Object3D): void {
       old.dispose();
     }
   });
+}
+
+/**
+ * Moves the TV from its model position to where it hangs: centred over the sideboard (see `TV_BENCH`, which is built
+ * in place), its bottom `TV_BOTTOM` up, at its own size.
+ */
+export function placePiece(id: string, obj: THREE.Object3D): void {
+  if (id !== 'tv') return;
+  obj.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(obj);
+  if (box.isEmpty()) return;
+  obj.position.set(TV_BENCH.x0 + TV_BENCH.w / 2 - (box.min.x + box.max.x) / 2, TV_BOTTOM - box.min.y, 0);
+  obj.updateMatrixWorld(true);
 }
 
 export interface Furniture {
@@ -53,6 +66,7 @@ export function loadFurniture(
           }
           const { id } = piece;
           if (id === 'shelving') trimShelving(obj);
+          placePiece(id, obj);
           obj.name = id;
           obj.visible = !hidden.includes(id);
           obj.traverse((o) => {

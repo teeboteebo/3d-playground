@@ -16,6 +16,7 @@ import { buildRug } from './rug';
 import { buildFrontDoor, buildHallDoorway } from './doors';
 import { buildWardrobes } from './wardrobes';
 import { buildWindows, windowLights } from './windows';
+import { tagOption } from '../options';
 
 export interface Bedroom {
   /** materials the rest of the apartment shares, so trim and glass match the bedroom's */
@@ -39,19 +40,28 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   /* each group of parts that is shown, hidden or moved together is merged into one mesh per material */
   const windowParts = mergeMeshes(buildWindows(k, m));
   const doorParts = mergeMeshes(buildHallDoorway(k, m));
-  mergeMeshes(buildBed(k, m));
+  const bedParts = mergeMeshes(buildBed(k, m));
   const frontParts = mergeMeshes(buildFrontDoor(k, m));
-  mergeMeshes(k.collect(() => buildDresser(k, m)));
+  const dresserParts = mergeMeshes(k.collect(() => buildDresser(k, m)));
   const mirror = buildMirror(k, m);
   const bedside = buildBedside(k, m);
   const pendant = buildPendant(k, m);
-  mergeMeshes(k.collect(() => buildWardrobes(k, m)));
+  const wardrobeParts = mergeMeshes(k.collect(() => buildWardrobes(k, m)));
   const paintParts = mergeMeshes(buildPainting(k, m));
   const rug = buildRug(k, m);
   const windows = windowLights(parent);
   const lamp = dresserLamp(parent);
   const mould = bedroomMoulding(k, m);
   const painting = paintingApplier(m);
+  /* what each click opens in the bedroom's menu; the moulding tags its own parts as it rebuilds them */
+  const made = (parts: THREE.Object3D[], ...mats: THREE.Material[]) =>
+    parts.filter((p) => p instanceof THREE.Mesh && mats.includes(p.material as THREE.Material));
+  tagOption(made(bedParts, ...m.pillows, m.throwBlanket), 'bedroom', ['pillows']);
+  tagOption(made(dresserParts, m.vase), 'bedroom', ['accent']);
+  tagOption(wardrobeParts, 'bedroom', ['wardrobes']);
+  tagOption(paintParts, 'bedroom', ['painting']);
+  tagOption(pendant.parts, 'bedroom', ['pendant']);
+  tagOption([rug.mesh], 'bedroom', ['rug']);
   let current: BedroomSettings | null = null;
 
   return {

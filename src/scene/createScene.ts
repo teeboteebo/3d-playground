@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { FLOOR, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
-import { ROOMS, type RoomId } from '../data/rooms';
+import { FLOOR, OAK, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
+import { ROOMS, type RoomId, type RoomSelection } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
 import { buildApartment } from './buildApartment';
@@ -14,19 +14,34 @@ import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
-import { pickRoom } from './pickRoom';
+import { highlighter } from './highlight';
+import { pick, type Pick } from './pickRoom';
+import type { SceneOption } from './options';
 import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
+import { sideboard } from './sideboard';
 import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { sofaFabric } from './sofaFabric';
-import { floorTexture } from './textures';
+import { floorTexture, woodTexture } from './textures';
+import { tagOption } from './options';
 
 export interface ApartmentScene {
   apply(settings: Settings): void;
   /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
   dispose(): void;
+}
+
+/**
+ * What a click would do under the mouse, and where the mouse is in the container (px): open `option` in the selected
+ * room, or (option null) select `room`
+ */
+export interface Hover {
+  room: RoomId;
+  option: SceneOption | null;
+  x: number;
+  y: number;
 }
 
 export class WebGLUnavailableError extends Error {
@@ -45,8 +60,10 @@ export function createApartmentScene(
   canvas: HTMLCanvasElement,
   container: HTMLElement,
   initial: Settings,
-  /** called with the room under a click (not a drag), or null for a click outside the apartment */
-  onPick?: (room: RoomId | null) => void,
+  /** called with what a click (not a drag) lands on: its room (null outside the apartment) and menu option */
+  onPick?: (pick: Pick) => void,
+  /** called as the mouse moves onto, along and off a menu option of the selected room (null when off) */
+  onHover?: (hover: Hover | null) => void,
 ): ApartmentScene {
   applyLegacyLook();
   let renderer: THREE.WebGLRenderer;
@@ -70,6 +87,7 @@ export function createApartmentScene(
     trim: bedroom.shared.trim,
     glass: bedroom.shared.glass,
     floor: () => new THREE.MeshStandardMaterial({ roughness: 0.42 }),
+    threshold: new THREE.MeshStandardMaterial({ roughness: 0.55, map: woodTexture(OAK.hex) }),
   });
   /* every room has the bedroom's floor; each gets the parquet sized to its own outline */
   for (const r of Object.values(apartment.rooms)) r.floor.material.map = floorTexture(FLOOR.hex, r.width, r.depth);
@@ -91,9 +109,15 @@ export function createApartmentScene(
   const fabric = sofaFabric(invalidate);
   const furniture = loadFurniture(
     scene,
-    (piece) => (piece.file ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene) : Promise.resolve(quebecRug())),
+    (piece) =>
+      piece.file
+        ? gltf.loadAsync(import.meta.env.BASE_URL + piece.file).then((g) => g.scene)
+        : Promise.resolve(piece.id === 'tv-bench' ? sideboard() : quebecRug()),
     invalidate,
-    (id, obj) => id === 'sofa' && fabric.attach(obj),
+    (id, obj) => {
+      tagOption([obj], 'living', [id === 'sofa' ? 'sofa' : 'furniture']);
+      if (id === 'sofa') fabric.attach(obj);
+    },
   );
   let furnitureReady = false;
   void furniture.ready.then(() => (furnitureReady = true));
@@ -102,8 +126,13 @@ export function createApartmentScene(
   const sky = addSkyAndSun(scene);
   const pipeline = renderPipeline(renderer, scene, camera);
 
+  /* the selected room: hovering highlights only its options */
+  let selected: RoomSelection = initial.room;
+  const highlight = highlighter(scene, invalidate);
+
   function apply(s: Settings) {
     invalidate();
+    selected = s.room;
     const evening = s.time === 'eve';
     bedroom.apply(s);
     office.apply(s);
@@ -116,9 +145,56 @@ export function createApartmentScene(
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
     roomLamps.apply(s);
     roomLights.apply(s);
+    /* a room change makes what is under the mouse mean something else; settings may rebuild or recolour parts */
+    if (lastHover && (lastHover.room === selected) !== !!lastHover.option) setHover(null);
+    highlight.refresh();
   }
 
-  const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => onPick?.(pickRoom(ndc, camera, scene.children, ROOMS)));
+  const ndcOf = (e: { clientX: number; clientY: number }) => {
+    const r = canvas.getBoundingClientRect();
+    return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
+  };
+  const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => {
+    setHover(null);
+    onPick?.(pick(ndc, camera, scene.children, ROOMS));
+  });
+
+  /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
+     rooms a click would select */
+  let lastHover: Hover | null = null;
+  function setHover(h: Hover | null) {
+    highlight.set(!h ? null : h.option ? { kind: 'option', option: h.option } : { kind: 'room', room: h.room });
+    canvas.classList.toggle('pointing', !!h);
+    if (h || lastHover) onHover?.(h);
+    lastHover = h;
+  }
+  let hoverAt: { clientX: number; clientY: number } | null = null;
+  let hoverFrame = 0;
+  function checkHover() {
+    hoverFrame = 0;
+    if (!hoverAt) return setHover(null);
+    const { room, option } = pick(ndcOf(hoverAt), camera, scene.children, ROOMS);
+    const inSelected = room !== null && room === selected;
+    /* in the selected room only its options react; any other room reacts as a whole */
+    if (!room || (inSelected && option?.room !== selected)) return setHover(null);
+    const r = container.getBoundingClientRect();
+    setHover({ room, option: inSelected ? option : null, x: hoverAt.clientX - r.left, y: hoverAt.clientY - r.top });
+  }
+  const onHoverMove = (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse' || e.buttons) {
+      hoverAt = null;
+      setHover(null);
+      return;
+    }
+    hoverAt = e;
+    if (!hoverFrame) hoverFrame = requestAnimationFrame(checkHover);
+  };
+  const onHoverLeave = () => {
+    hoverAt = null;
+    setHover(null);
+  };
+  canvas.addEventListener('pointermove', onHoverMove);
+  canvas.addEventListener('pointerleave', onHoverLeave);
 
   /* the pending animation frame; 0 until the first frame */
   let raf = 0;
@@ -175,6 +251,10 @@ export function createApartmentScene(
       window.removeEventListener('resize', fit);
       canvas.removeEventListener('webglcontextrestored', invalidate);
       orbit.dispose();
+      cancelAnimationFrame(hoverFrame);
+      canvas.removeEventListener('pointermove', onHoverMove);
+      canvas.removeEventListener('pointerleave', onHoverLeave);
+      highlight.dispose();
       furniture.dispose();
       fabric.dispose();
       disposeTree(scene);

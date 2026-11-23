@@ -4,21 +4,24 @@ import { AllRoomsPanel } from './AllRoomsPanel';
 import { BedroomPanel } from './BedroomPanel';
 import { LivingPanel } from './LivingPanel';
 import { OfficePanel } from './OfficePanel';
+import type { MenuNav } from './Menu';
 import { SimpleRoomPanel } from './SimpleRoomPanel';
 
 interface Props {
   settings: Settings;
   update: Update;
+  /** the room menu's open page and the way to open another */
+  menu: MenuNav;
 }
 
 /**
  * The side panel: the apartment's controls and room list when no room is selected, otherwise the selected room's menu —
  * a summary of its options, each opening a page of its own — under a way back to all rooms.
  */
-export function Panel({ settings, update }: Props) {
+export function Panel({ settings, update, menu }: Props) {
   const room = settings.room;
   const exit = { text: 'All rooms', label: 'Back to all rooms', onExit: () => update({ room: 'all' }) };
-  const props = { settings, update, exit };
+  const props = { settings, update, exit, menu };
   return (
     <aside className="panel">
       {room === 'all' ? (

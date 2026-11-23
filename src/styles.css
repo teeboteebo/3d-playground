@@ -23,6 +23,9 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-
 .stage-wrap{position:relative;background:var(--stage);min-height:0;overflow:hidden}
 .stage-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 .stage-canvas:active{cursor:grabbing}
+.stage-canvas.pointing{cursor:pointer}
+.pick-label{position:absolute;left:0;top:0;pointer-events:none;font:500 12px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--accent);border-radius:6px;padding:4px 8px;white-space:nowrap;z-index:2}
+.pick-label[hidden]{display:none}
 .viewbar{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:16px;bottom:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .viewbar button{font:500 12px var(--body);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
 .viewbar button:hover{border-color:var(--accent)}

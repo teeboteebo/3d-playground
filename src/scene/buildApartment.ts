@@ -3,13 +3,20 @@ import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, outset, type Opening, type 
 import { roomWalls, type Wall } from './apartment';
 import { windowSpot } from './daylight';
 import { mergeMeshes } from './merge';
+import { tagOption } from './options';
 
 export interface ApartmentMaterials {
   trim: THREE.Material;
   glass: THREE.Material;
   /** floor material for a room; the scene swaps its map when the floor tone changes */
   floor: (room: Room) => THREE.MeshStandardMaterial;
+  /** the oak thresholds across the doorways between rooms; plain oak colour when left out */
+  threshold?: THREE.Material;
 }
+
+/** an oak threshold: 12 mm proud of the floors, and 1 cm onto the floor of each room past the wall's faces */
+const THRESHOLD_H = 0.012;
+const THRESHOLD_LIP = 0.01;
 
 export interface Apartment {
   group: THREE.Group;
@@ -88,6 +95,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     for (const wall of roomWalls(room)) {
       const m = mesh(wallGeometry(wall), wallMat);
       m.name = `${room.id}-wall`;
+      tagOption([m], room.id, ['walls']);
       const n0 = group.children.length;
       /* skirting along the wall, broken by doorways */
       let u = 0;
@@ -109,6 +117,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
       wallParts.push({ wall, parts: group.children.slice(n0), attached: [] });
     }
   }
+  const threshold = mats.threshold ?? new THREE.MeshStandardMaterial({ color: new THREE.Color('#C19A6B').convertSRGBToLinear(), roughness: 0.6 });
   /* linings across the wall thickness of each passage, built once per passage */
   for (const o of OPENINGS.filter((p) => p.kind === 'passage')) addLining(o);
 
@@ -157,6 +166,12 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     piece(0.01, o.y1 / 2, 0.02, o.y1);
     piece(len - 0.01, o.y1 / 2, 0.02, o.y1);
     piece(len / 2, o.y1 - 0.01, len, 0.02);
+    /* the threshold: the floor through the wall, so the doorway shows oak instead of the gap between two floors */
+    const sill = mesh(new THREE.BoxGeometry(len, THRESHOLD_H, o.depth + 2 * THRESHOLD_LIP), threshold, false);
+    const [x, z] = at(len / 2);
+    sill.position.set(x, THRESHOLD_H / 2, z);
+    sill.rotation.y = angle;
+    sill.name = 'threshold';
   }
 
   /* nothing here moves: draw each wall's parts, and everything else, as one mesh per material (floors keep their own) */
