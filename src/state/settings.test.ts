@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
 import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
+import { SHOP_DEFAULTS } from './mouldShop';
 
 const v2 = (patch: Record<string, unknown>) => ({ version: 2, ...patch });
 
@@ -239,5 +240,18 @@ describe('moulding spacing settings', () => {
     expect(Object.keys(b)).toEqual(['bed', 'dresser']);
     expect(b.dresser).toEqual(DEFAULTS.bedroom.mouldWalls.dresser);
     expect(b.bed.columns).toBe(5);
+  });
+});
+
+describe('moulding shop settings', () => {
+  it('starts from the shop defaults', () => {
+    expect(sanitizeSettings({ version: 2 }).mouldShop).toEqual(SHOP_DEFAULTS);
+    expect(DEFAULTS.mouldShop).toEqual(SHOP_DEFAULTS);
+  });
+  it('keeps a saved shop through save and load', () => {
+    const shop = { ...SHOP_DEFAULTS, joins: true, panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 89 }] } };
+    const s = { ...DEFAULTS, mouldShop: shop };
+    saveSettings(s);
+    expect(loadSettings().mouldShop).toEqual(shop);
   });
 });
