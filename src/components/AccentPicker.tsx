@@ -22,7 +22,6 @@ export function AccentPicker({ value, onChange }: Props) {
 
   return (
     <section>
-      <h2>Accent colour</h2>
       <div className="accent">
         <input
           type="color"

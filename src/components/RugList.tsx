@@ -10,7 +10,6 @@ interface Props {
 export function RugList({ value, onChange }: Props) {
   return (
     <section>
-      <h2>Rug</h2>
       <ProductList
         label="Rug"
         items={RUGS}

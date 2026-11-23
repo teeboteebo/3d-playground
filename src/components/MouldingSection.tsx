@@ -1,26 +1,16 @@
 import { useId } from 'react';
 import { MOULD_COLOURS } from '../data/catalog';
-import { BEDX } from '../scene/bedroom/dimensions';
 import { dadoRange, spacingMax } from '../scene/mouldLayout';
-import type { MouldWall } from '../scene/mouldLayout';
-import { wallLayouts, type MouldWallDef } from '../scene/mouldWalls';
+import type { MouldWall, SectionLayout } from '../scene/mouldLayout';
+import type { MouldWallDef } from '../scene/mouldWalls';
 import { MOULD_SLIDERS } from '../state/mould';
-import type { Settings } from '../state/settings';
-import type { Update } from '../state/useSettings';
 import { ChipGroup } from './ChipGroup';
 import { Icon } from './Icon';
-import { MouldSectionControls } from './MouldSectionControls';
 
-interface Props {
-  room: 'bedroom' | 'living';
-  /** The walls that can carry moulding: their toggles, labels and sections. */
-  walls: MouldWallDef<string>[];
-  settings: Settings;
-  update: Update;
-}
+export type MouldRoom = 'bedroom' | 'living';
 
 /** the moulding fields the two rooms have between them */
-interface Fields {
+export interface MouldFields {
   mouldColour: 'white' | 'tone';
   mouldSpacing: number;
   mouldDado: number;
@@ -31,12 +21,17 @@ interface Fields {
   mouldTvWall?: 'on' | 'off';
 }
 
-export function MouldingSection({ room, walls, settings, update }: Props) {
+interface RoomProps {
+  room: MouldRoom;
+  walls: MouldWallDef<string>[];
+  b: MouldFields;
+  layouts: SectionLayout[][];
+  set: (patch: Partial<MouldFields>) => void;
+}
+
+/** what applies to the whole room: colour, the walls that show moulding, the room's spacing and dado height */
+export function MouldingRoomControls({ room, walls, b, layouts, set }: RoomProps) {
   const headingId = useId();
-  const b: Fields = settings[room];
-  const set = (patch: Partial<Fields>) => update({ [room]: patch } as Parameters<Update>[0]);
-  const roomCm = { spacing: b.mouldSpacing, dado: b.mouldDado };
-  const layouts = walls.map((def) => wallLayouts(def, roomCm, b.mouldWalls, room === 'bedroom' ? BEDX : undefined));
   const largestS = Math.max(...layouts.flatMap((ls) => ls.map((l) => l.spacing)));
   const maxSpacing = Math.max(MOULD_SLIDERS.spacing.min, Math.floor(Math.min(MOULD_SLIDERS.spacing.max, spacingMax(b.mouldDado / 100) * 100)));
   const dado = dadoRange(largestS);
@@ -45,7 +40,6 @@ export function MouldingSection({ room, walls, settings, update }: Props) {
   const roomId = `${headingId}-room`;
   return (
     <section>
-      <h2>Wall moulding</h2>
       <div className="grp">
         <h3>Colour</h3>
         <ChipGroup
@@ -86,20 +80,6 @@ export function MouldingSection({ room, walls, settings, update }: Props) {
           />
         </label>
       </div>
-      {walls.map((def, wi) =>
-        def.sections.map((sec, si) => (
-          <MouldSectionControls
-            key={sec.key}
-            def={sec}
-            label={def.sections.length === 1 ? def.label : `${def.label}: ${sec.label}`}
-            wall={b.mouldWalls[sec.key]}
-            layout={layouts[wi][si]}
-            roomSpacing={b.mouldSpacing}
-            on={b[def.toggle] === 'on'}
-            onChange={(w) => set({ mouldWalls: { ...b.mouldWalls, [sec.key]: w } })}
-          />
-        )),
-      )}
     </section>
   );
 }

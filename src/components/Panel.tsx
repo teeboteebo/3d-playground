@@ -12,30 +12,25 @@ interface Props {
 }
 
 /**
- * The side panel: the apartment's controls and room list when no room is selected, otherwise the selected room's
- * controls under a way back to all rooms.
+ * The side panel: the apartment's controls and room list when no room is selected, otherwise the selected room's menu —
+ * a summary of its options, each opening a page of its own — under a way back to all rooms.
  */
 export function Panel({ settings, update }: Props) {
   const room = settings.room;
+  const exit = { text: 'All rooms', label: 'Back to all rooms', onExit: () => update({ room: 'all' }) };
+  const props = { settings, update, exit };
   return (
     <aside className="panel">
       {room === 'all' ? (
         <AllRoomsPanel settings={settings} update={update} />
+      ) : room === 'bedroom' ? (
+        <BedroomPanel key={room} {...props} />
+      ) : room === 'living' ? (
+        <LivingPanel key={room} {...props} />
+      ) : room === 'office' ? (
+        <OfficePanel key={room} {...props} />
       ) : (
-        <>
-          <button type="button" className="back" aria-label="Back to all rooms" onClick={() => update({ room: 'all' })}>
-            <span aria-hidden="true">←</span> All rooms
-          </button>
-          {room === 'bedroom' ? (
-            <BedroomPanel settings={settings} update={update} />
-          ) : room === 'living' ? (
-            <LivingPanel settings={settings} update={update} />
-          ) : room === 'office' ? (
-            <OfficePanel settings={settings} update={update} />
-          ) : (
-            <SimpleRoomPanel room={room} settings={settings} update={update} />
-          )}
-        </>
+        <SimpleRoomPanel key={room} room={room} {...props} />
       )}
     </aside>
   );
