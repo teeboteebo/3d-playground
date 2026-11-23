@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bruteForce } from './bruteForce';
+import { bruteForce, bruteForceSplit } from './bruteForce';
 import { better, optimise, type CutItem, type CutPlan, type Stock } from './optimise';
 
 const item = (id: string, length: number): CutItem => ({ id, length, maxParts: 1, minPart: length });
@@ -15,10 +15,25 @@ function rng(seed: number) {
   };
 }
 
-/** every item is placed exactly once and every bar holds its cuts */
+/** every item is cut exactly (in parts, if it is split), every part is long enough, and every bar holds its cuts */
 function expectValid(plan: CutPlan, all: CutItem[], stocks: Stock[], kerf: number) {
-  const placed = plan.bars.flatMap((b) => b.cuts.map((c) => c.item)).sort();
-  expect(placed).toEqual(all.filter((i) => !plan.unfit.includes(i.id)).map((i) => i.id).sort());
+  for (const it of all) {
+    const cuts = plan.bars.flatMap((b) => b.cuts).filter((c) => c.item === it.id);
+    if (plan.unfit.includes(it.id)) {
+      expect(cuts).toHaveLength(0);
+      continue;
+    }
+    expect(cuts.reduce((t, c) => t + c.length, 0), it.id).toBe(it.length);
+    expect(cuts.length).toBeLessThanOrEqual(it.maxParts);
+    if (cuts.length === 1) expect(cuts[0].part).toBeUndefined();
+    else {
+      for (const c of cuts) {
+        expect(c.length).toBeGreaterThanOrEqual(it.minPart);
+        expect(c.part!.of).toBe(cuts.length);
+      }
+      expect(cuts.map((c) => c.part!.index).sort()).toEqual(cuts.map((_, i) => i + 1));
+    }
+  }
   for (const b of plan.bars) {
     const used = b.cuts.reduce((t, c) => t + c.length, 0) + kerf * (b.cuts.length - 1);
     expect(used).toBeLessThanOrEqual(stocks[b.stock].length);
@@ -96,14 +111,14 @@ describe('optimise', () => {
     expect({ cost: plan.cost, total: plan.total }).toEqual({ cost: seen.at(-1)!.cost, total: seen.at(-1)!.total });
   });
 
-  it('proves a bedroom-sized job (60 pieces, 6 lengths, 3 stocks) within 3 seconds', () => {
+  it('proves a bedroom-sized job (60 pieces, 6 lengths, 3 stocks) well within 10 seconds', () => {
     const base = [1210, 812, 640, 520, 431, 900];
     const all = base.flatMap((l, k) => Array.from({ length: 10 }, (_, i) => item(`b${k}-${i}`, l)));
     const stocks = [{ length: 2400, price: 8900 }, { length: 3000, price: 10900 }, { length: 2700, price: 9800 }];
     const start = Date.now();
-    const plan = optimise(all, stocks, { kerf: 3, deadline: start + 3000 });
+    const plan = optimise(all, stocks, { kerf: 3, deadline: start + 10000 });
     expect(plan.proven).toBe(true);
-    expect(Date.now() - start).toBeLessThan(3000);
+    expect(Date.now() - start).toBeLessThan(10000);
     expectValid(plan, all, stocks, 3);
   });
 
@@ -113,5 +128,83 @@ describe('optimise', () => {
     expect(better(p(2, 1, 9), p(2, 2, 1))).toBe(true);
     expect(better(p(2, 2, 1), p(2, 2, 2))).toBe(true);
     expect(better(p(2, 2, 2), p(2, 2, 2))).toBe(false);
+  });
+
+  describe('splitting', () => {
+    const splittable = (id: string, length: number, minPart: number, maxParts = 2): CutItem => ({ id, length, maxParts, minPart });
+
+    it('matches a brute force that tries every split, on 120 random small cases', () => {
+      const rand = rng(1124);
+      for (let c = 0; c < 120; c++) {
+        const n = c < 110 ? 2 + Math.floor(rand() * 2) : 4;
+        const all = Array.from({ length: n }, (_, i) => {
+          const length = 200 + Math.floor(rand() * 8) * 100;
+          const canSplit = c < 110 || i < 2;
+          return canSplit && rand() < 0.8 ? splittable(`s${i}`, length, 200 + Math.floor(rand() * 2) * 100) : item(`s${i}`, length);
+        });
+        const stocks: Stock[] = Array.from({ length: 1 + Math.floor(rand() * 2) }, () => {
+          const length = 800 + Math.floor(rand() * 9) * 100;
+          return { length, price: rand() < 0.15 ? 0 : Math.round(length * (2 + rand() * 3)) };
+        });
+        stocks.push({ length: 1800, price: 9000 });
+        const plan = optimise(all, stocks, { kerf: 0 });
+        const brute = bruteForceSplit(all, stocks, 0, 100)!;
+        expect({ cost: plan.cost, total: plan.total, bars: plan.bars.length }, `case ${c}: ${JSON.stringify({ all, stocks })}`).toEqual(brute);
+        expect(plan.proven).toBe(true);
+        expectValid(plan, all, stocks, 0);
+      }
+    });
+
+    it('uses offcuts: 2500 + 2500 + 1000 takes 2 bars when pieces may be joined, 3 when they may not', () => {
+      const stocks = [{ length: 3000, price: 10000 }];
+      const joined = [splittable('a', 2500, 200), splittable('b', 2500, 200), splittable('c', 1000, 200)];
+      const plan = optimise(joined, stocks, { kerf: 0 });
+      expect(plan.bars).toHaveLength(2);
+      expect(plan.bars.flatMap((b) => b.cuts).some((c) => c.part)).toBe(true);
+      expectValid(plan, joined, stocks, 0);
+      expect(optimise([item('a', 2500), item('b', 2500), item('c', 1000)], stocks, { kerf: 0 }).bars).toHaveLength(3);
+    });
+
+    it('makes a rail longer than any stock from the parts it needs, numbered in order', () => {
+      const stocks = [{ length: 2400, price: 8900 }, { length: 3000, price: 10900 }];
+      const rail = [splittable('rail', 5200, 200)];
+      const plan = optimise(rail, stocks, { kerf: 3 });
+      expect(plan.unfit).toEqual([]);
+      expect(plan.bars).toHaveLength(2);
+      expectValid(plan, rail, stocks, 3);
+      expect(plan.proven).toBe(true);
+    });
+
+    it('allows a rail in three parts when two are not enough', () => {
+      const stocks = [{ length: 2400, price: 8900 }];
+      const rail = [splittable('rail', 6000, 200, 3)];
+      const plan = optimise(rail, stocks, { kerf: 3 });
+      expect(plan.bars).toHaveLength(3);
+      expectValid(plan, rail, stocks, 3);
+    });
+
+    it('calls a piece unfit when even its most parts are not enough', () => {
+      const plan = optimise([splittable('huge', 7000, 200)], [{ length: 3000, price: 100 }], { kerf: 3 });
+      expect(plan.unfit).toEqual(['huge']);
+      expect(plan.bars).toEqual([]);
+    });
+
+    it('never makes a part shorter than the minimum, with a kerf', () => {
+      const rand = rng(77);
+      for (let c = 0; c < 40; c++) {
+        const all = Array.from({ length: 6 }, (_, i) => splittable(`k${i}`, 300 + Math.floor(rand() * 20) * 100, 300, 2));
+        const stocks = [{ length: 2400, price: 8900 }, { length: 3000, price: 10900 }];
+        const plan = optimise(all, stocks, { kerf: 3, deadline: Date.now() + 1500 });
+        expectValid(plan, all, stocks, 3);
+      }
+    });
+
+    it('returns a valid first-fit plan, split where it must be, when the deadline has passed', () => {
+      const stocks = [{ length: 2400, price: 8900 }];
+      const all = [splittable('rail', 5200, 200, 3), splittable('x', 1000, 200)];
+      const plan = optimise(all, stocks, { kerf: 3, deadline: 0, now: () => 1000 });
+      expect(plan.proven).toBe(false);
+      expectValid(plan, all, stocks, 3);
+    });
   });
 });

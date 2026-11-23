@@ -51,3 +51,39 @@ export function bruteForce(items: readonly CutItem[], stocks: readonly Stock[], 
   place(0);
   return best;
 }
+
+/** the whole piece, and every way to cut `length` into 2 to `maxParts` parts of at least `minPart`, on a grid */
+function splits(length: number, maxParts: number, minPart: number, grid: number): number[][] {
+  const out: number[][] = [[length]];
+  const go = (left: number, parts: number[], lo: number) => {
+    if (left === 0) {
+      if (parts.length >= 2) out.push(parts);
+      return;
+    }
+    if (parts.length === maxParts) return;
+    for (let p = Math.max(lo, minPart); p <= left; p += grid) if (left - p === 0 || left - p >= p) go(left - p, [...parts, p], p);
+  };
+  go(length, [], grid);
+  return out;
+}
+
+/**
+ * Like bruteForce, but an item with maxParts above 1 may also be cut into parts (on `grid` mm steps), the parts going
+ * into bars like any other piece. For tests: use few items.
+ */
+export function bruteForceSplit(items: readonly CutItem[], stocks: readonly Stock[], kerf: number, grid: number): Best | null {
+  let best: Best | null = null;
+  const choose = (i: number, pieces: CutItem[]) => {
+    if (i === items.length) {
+      const r = bruteForce(pieces, stocks, kerf);
+      if (r && (!best || lexLess(r, best))) best = r;
+      return;
+    }
+    const it = items[i];
+    for (const parts of splits(it.length, it.maxParts, it.minPart, grid)) {
+      choose(i + 1, [...pieces, ...parts.map((length, k) => ({ id: `${it.id}.${k}`, length, maxParts: 1, minPart: length }))]);
+    }
+  };
+  choose(0, []);
+  return best;
+}
