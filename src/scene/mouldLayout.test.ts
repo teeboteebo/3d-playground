@@ -27,6 +27,14 @@ describe('rows', () => {
     expect(r.lower).toBeNull();
     expect(r.upper).not.toBeNull();
   });
+  it('takes the rail height from the product', () => {
+    const r = rows(0.08, 0.77, 0.028);
+    expect(r.rail[0]).toBeCloseTo(0.742);
+    expect(r.rail[1]).toBeCloseTo(0.77);
+    expect(r.lower![1]).toBeCloseTo(0.662);
+    expect(spacingMax(0.77, 0.028)).toBeCloseTo(0.231);
+    expect(dadoRange(0.08, 0.028).min).toBeCloseTo(0.468);
+  });
   it('derives the spacing and dado limits from the minimum row height', () => {
     expect(spacingMax(0.77)).toBeCloseTo(0.225);
     expect(dadoRange(0.08).min).toBeCloseTo(0.48);
@@ -77,6 +85,23 @@ describe('layoutSection rules', () => {
       expect(upper[0] - rail[1]).toBeCloseTo(S, 9);
       expect(CEILING - upper[1]).toBeCloseTo(S, 9);
     }
+  });
+});
+
+describe('layoutSection rules at another rail height', () => {
+  const cases: [number, number, number][] = [];
+  for (const rail of [2.8, 4, 6]) for (const s of [4, 8, 20]) for (const n of [1, 3, 6]) cases.push([rail, s, n]);
+  it.each(cases)('rail %f cm S %i n %i keeps S on every side', (rail, s, n) => {
+    const l = layoutSection([0, 3.72], { spacing: s, dado: 77, rail }, wall({ columns: n }));
+    const S = s / 100;
+    const { rail: r, lower, upper } = l.rows;
+    expect(r[1] - r[0]).toBeCloseTo(rail / 100, 9);
+    if (lower) {
+      expect(lower[0] - SKIRTING).toBeCloseTo(S, 9);
+      expect(r[0] - lower[1]).toBeCloseTo(S, 9);
+    }
+    if (upper) expect(upper[0] - r[1]).toBeCloseTo(S, 9);
+    expect(l.limits.spacingMax).toBeLessThanOrEqual(Math.floor(spacingMax(0.77, rail / 100) * 100));
   });
 });
 

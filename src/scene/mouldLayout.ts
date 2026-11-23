@@ -23,7 +23,12 @@ export interface MouldWall {
 export interface MouldRoom {
   spacing: number;
   dado: number;
+  /** rail height; defaults to RAIL_H */
+  rail?: number;
 }
+
+/** the room's rail height, metres */
+const railOf = (room: MouldRoom) => (room.rail === undefined ? RAIL_H : room.rail / 100);
 
 export interface Rows {
   rail: [number, number];
@@ -57,8 +62,8 @@ export interface SectionLayout {
 const range = (lo: number, hi: number): [number, number] | null => (hi - lo >= MIN_ROW - 1e-9 ? [lo, hi] : null);
 
 /** Rail, lower and upper rows for spacing S and dado D (top of the rail), metres; a row shorter than MIN_ROW is null. */
-export function rows(spacing: number, dado: number): Rows {
-  const railBottom = dado - RAIL_H;
+export function rows(spacing: number, dado: number, railH: number = RAIL_H): Rows {
+  const railBottom = dado - railH;
   return {
     rail: [railBottom, dado],
     lower: range(SKIRTING + spacing, railBottom - spacing),
@@ -67,13 +72,13 @@ export function rows(spacing: number, dado: number): Rows {
 }
 
 /** Largest S (metres) that still leaves the lower row MIN_ROW tall at this dado. */
-export function spacingMax(dado: number): number {
-  return (dado - RAIL_H - SKIRTING - MIN_ROW) / 2;
+export function spacingMax(dado: number, railH: number = RAIL_H): number {
+  return (dado - railH - SKIRTING - MIN_ROW) / 2;
 }
 
 /** Dado range (metres) that leaves both rows MIN_ROW tall at this spacing. */
-export function dadoRange(spacing: number): { min: number; max: number } {
-  return { min: SKIRTING + RAIL_H + 2 * spacing + MIN_ROW, max: CEILING - 2 * spacing - MIN_ROW };
+export function dadoRange(spacing: number, railH: number = RAIL_H): { min: number; max: number } {
+  return { min: SKIRTING + railH + 2 * spacing + MIN_ROW, max: CEILING - 2 * spacing - MIN_ROW };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -99,9 +104,9 @@ export function layoutSection(run: [number, number], room: MouldRoom, wall: Moul
     maxColumns,
     fixedWidth: null as { min: number; max: number } | null,
     fixedCentre: null as { min: number; max: number } | null,
-    spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
+    spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100, railOf(room)) * 100)),
   };
-  const base = { spacing: s, count: n, rows: rows(s, room.dado / 100), limits };
+  const base = { spacing: s, count: n, rows: rows(s, room.dado / 100, railOf(room)), limits };
   if (n === 0) return { ...base, fixed: null, columns: [] };
   if (k === 0) return { ...base, fixed: null, columns: split(a + s, b - s, n, s) };
 
@@ -210,12 +215,12 @@ export function layoutWall(
     count: parts.reduce((t, p) => t + p.l.count, 0),
     fixed: withFixed ? { ...withFixed.l.fixed!, index: withFixed.first + withFixed.l.fixed!.index } : null,
     columns: parts.flatMap((p) => p.l.columns),
-    rows: rows(s, room.dado / 100),
+    rows: rows(s, room.dado / 100, railOf(room)),
     limits: {
       maxColumns,
       fixedWidth: withFixed?.l.limits.fixedWidth ?? null,
       fixedCentre: withFixed ? shift(withFixed.l.limits.fixedCentre, withFixed.offset) : null,
-      spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
+      spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100, railOf(room)) * 100)),
     },
   };
 }
