@@ -1,4 +1,5 @@
 import { BEDX } from '../scene/bedroom/dimensions';
+import { mouldProfile, mouldRoom } from '../scene/mouldProfile';
 import { wallLayouts, type MouldWallDef } from '../scene/mouldWalls';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
@@ -15,14 +16,14 @@ const COLOUR_SHORT: Record<MouldFields['mouldColour'], string> = { white: 'White
 export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], settings: Settings, update: Update): Topic {
   const b: MouldFields = settings[room];
   const set = (patch: Partial<MouldFields>) => update({ [room]: patch } as Parameters<Update>[0]);
-  const layouts = walls.map((def) => wallLayouts(def, { spacing: b.mouldSpacing, dado: b.mouldDado }, b.mouldWalls, room === 'bedroom' ? BEDX : undefined));
+  const layouts = walls.map((def) => wallLayouts(def, mouldRoom(b, settings.mouldShop), b.mouldWalls, room === 'bedroom' ? BEDX : undefined));
   const onWalls = walls.filter((w) => b[w.toggle] === 'on').map((w) => w.label);
   return {
     id: 'moulding',
     title: 'Wall moulding',
     summary: onWalls.length ? `${COLOUR_SHORT[b.mouldColour]} · ${onWalls.join(', ')}` : 'Off',
     sub: 'Panel moulding split by a rail at dado height. Each wall section has its own spacing and columns.',
-    content: <MouldingRoomControls room={room} walls={walls} b={b} layouts={layouts} set={set} />,
+    content: <MouldingRoomControls room={room} walls={walls} b={b} layouts={layouts} railHeight={mouldProfile(settings.mouldShop).railHeight} set={set} />,
     topicsTitle: 'Walls',
     topics: walls.flatMap((def, wi) =>
       def.sections.map((sec, si): Topic => {

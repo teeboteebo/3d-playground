@@ -32,8 +32,6 @@ export const FRONT_DOOR_X = (BEDROOM_FRONT_DOOR.a[0] + BEDROOM_FRONT_DOOR.b[0]) 
 export const FRONT_DOOR_W = Math.abs(BEDROOM_FRONT_DOOR.b[0] - BEDROOM_FRONT_DOOR.a[0]);
 export const FRONT_DOOR_H = BEDROOM_FRONT_DOOR.y1;
 
-/* wall moulding: the thickness of a frame's strips */
-export const FRAME_T = 0.028;
 
 /* Mio Adina wall lamp: centre height of its shade, and how far its stem (and the shade's axis) stands off the wall */
 export const ADINA_SHADE_Y = 1.35;

@@ -26,15 +26,17 @@ interface RoomProps {
   walls: MouldWallDef<string>[];
   b: MouldFields;
   layouts: SectionLayout[][];
+  /** the rail's height, m */
+  railHeight: number;
   set: (patch: Partial<MouldFields>) => void;
 }
 
 /** what applies to the whole room: colour, the walls that show moulding, the room's spacing and dado height */
-export function MouldingRoomControls({ room, walls, b, layouts, set }: RoomProps) {
+export function MouldingRoomControls({ room, walls, b, layouts, railHeight, set }: RoomProps) {
   const headingId = useId();
   const largestS = Math.max(...layouts.flatMap((ls) => ls.map((l) => l.spacing)));
-  const maxSpacing = Math.max(MOULD_SLIDERS.spacing.min, Math.floor(Math.min(MOULD_SLIDERS.spacing.max, spacingMax(b.mouldDado / 100) * 100)));
-  const dado = dadoRange(largestS);
+  const maxSpacing = Math.max(MOULD_SLIDERS.spacing.min, Math.floor(Math.min(MOULD_SLIDERS.spacing.max, spacingMax(b.mouldDado / 100, railHeight) * 100)));
+  const dado = dadoRange(largestS, railHeight);
   const dadoMin = Math.max(MOULD_SLIDERS.dado.min, Math.ceil(dado.min * 100 - 1e-6));
   const dadoMax = Math.max(dadoMin, Math.min(MOULD_SLIDERS.dado.max, Math.floor(dado.max * 100 + 1e-6)));
   const roomId = `${headingId}-room`;

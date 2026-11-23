@@ -34,7 +34,7 @@ export const BEDROOM_MOULD_WALLS: MouldWallDef<BedroomSection>[] = [
     toggle: 'mouldBedWall',
     label: 'Bed wall',
     sections: [{ key: 'bed', label: 'Bed wall', run: [WINDOW_SIDE, WARD_FRONT], minColumns: 1, bedAnchor: true }],
-    rail: [[WINDOW_SIDE, W / 2]],
+    rail: [[WINDOW_SIDE, WARD_FRONT]],
   },
   {
     toggle: 'mouldDresserWall',
