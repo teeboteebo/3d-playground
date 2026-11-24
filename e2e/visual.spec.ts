@@ -48,7 +48,7 @@ for (const time of ['day', 'eve'] as const) {
 for (const time of ['day', 'eve'] as const) {
   for (const [room, view] of [['living', 'Living room'], ['office', 'Office']] as const) {
     test(`${view}, with lamps, ${time}`, async ({ page }) => {
-      await openWith(page, { room, time, [room]: { pendant: PENDANTS[1].id, floorLamp: FLOOR_LAMPS[1].id } });
+      await openWith(page, { room, time, [room]: { pendant: PENDANTS[0].id, floorLamp: FLOOR_LAMPS[0].id } });
       await settled(page);
       await expect(page.locator('canvas.stage-canvas')).toHaveScreenshot(`${view}-lamps-${time}.png`.replace(/ /g, '-').toLowerCase(), overlays(page));
     });

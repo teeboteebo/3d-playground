@@ -21,7 +21,7 @@ describe('buildLamp', () => {
   });
 
   it('glows only when asked', () => {
-    const built = buildLamp(PENDANTS[1].shape!, 1.2);
+    const built = buildLamp(PENDANTS[0].shape!, 1.2);
     const glow = () => {
       let e = 0;
       built.group.traverse((o) => {
@@ -36,7 +36,7 @@ describe('buildLamp', () => {
   });
 
   it('frees its geometry on dispose', () => {
-    const built = buildLamp(FLOOR_LAMPS[1].shape!);
+    const built = buildLamp(FLOOR_LAMPS[0].shape!);
     const spies: ReturnType<typeof vi.spyOn>[] = [];
     built.group.traverse((o) => {
       if (o instanceof THREE.Mesh) spies.push(vi.spyOn(o.geometry, 'dispose'));

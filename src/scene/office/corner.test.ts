@@ -17,7 +17,7 @@ const settings = (o: Pieces): Settings => {
   const components = { ...DEFAULTS.office.components };
   for (const [key, id] of Object.entries(IDS) as [keyof Pieces, (typeof IDS)[keyof Pieces]][]) {
     const v = o[key];
-    components[id] = v === undefined || v === 'none' ? { ...components[id], shown: false } : { shown: true, variant: v };
+    components[id] = v === undefined ? { ...components[id], shown: false } : { shown: true, variant: v, options: {} };
   }
   return { ...DEFAULTS, office: { components } };
 };
@@ -77,7 +77,7 @@ function quadHitsBox(q: THREE.Vector3[], b: THREE.Box3): boolean {
 }
 
 describe('buildCorner', () => {
-  it.each(ROUND_RUGS.slice(1).map((r) => [r.id]))('fits rug %s inside the office, clear of desk and cabinets', (id) => {
+  it.each(ROUND_RUGS.map((r) => [r.id]))('fits rug %s inside the office, clear of desk and cabinets', (id) => {
     const g = build({ roundRug: id });
     const rug = g.getObjectByName('office-round-rug')!;
     const b = boxOf(g, 'office-round-rug');
@@ -101,7 +101,7 @@ describe('buildCorner', () => {
     });
   });
 
-  const chairs = READING_CHAIRS.slice(1).map((c) => [c.id]);
+  const chairs = READING_CHAIRS.map((c) => [c.id]);
   it.each(chairs)('stands chair %s inside the office, clear of the desk and lamp spot', (id) => {
     const g = build({ readingChair: id });
     const corners = footprint(g, 'office-reading-chair');
@@ -120,7 +120,7 @@ describe('buildCorner', () => {
     });
   });
 
-  it.each(DRESSERS.slice(1).map((d) => [d.id]))('stands dresser %s against the angled wall, inside the office', (id) => {
+  it.each(DRESSERS.map((d) => [d.id]))('stands dresser %s against the angled wall, inside the office', (id) => {
     const g = build({ dresser: id });
     const corners = footprint(g, 'office-dresser');
     for (const p of corners) expect(inOffice(p.x, p.z)).toBe(true);
@@ -136,7 +136,7 @@ describe('buildCorner', () => {
     expect(sorted[1] - sorted[0]).toBeLessThan(0.001);
   });
 
-  const pairs = READING_CHAIRS.slice(1).flatMap((c) => DRESSERS.slice(1).map((d) => [c.id, d.id]));
+  const pairs = READING_CHAIRS.flatMap((c) => DRESSERS.map((d) => [c.id, d.id]));
   it.each(pairs)('keeps chair %s and dresser %s from overlapping', (chair, dresser) => {
     const g = build({ readingChair: chair, dresser });
     const c = footprint(g, 'office-reading-chair');
@@ -158,7 +158,7 @@ describe('buildCorner', () => {
   it('swaps pieces without leaking', () => {
     const g = new THREE.Group();
     const corner = buildCorner(g);
-    const [a, b] = [READING_CHAIRS[1].id, READING_CHAIRS[2].id];
+    const [a, b] = [READING_CHAIRS[0].id, READING_CHAIRS[1].id];
     corner.apply(settings({ readingChair: a }));
     const disposed = new Set<THREE.BufferGeometry>();
     const geos: THREE.BufferGeometry[] = [];
@@ -185,10 +185,10 @@ describe('buildCorner', () => {
     expect(g.children.filter((c) => c.name === 'office-reading-chair')).toHaveLength(1);
   });
 
-  it('shows nothing for none', () => {
+  it('shows nothing for a hidden piece', () => {
     const g = new THREE.Group();
     const corner = buildCorner(g);
-    corner.apply(settings({ readingChair: READING_CHAIRS[1].id, dresser: DRESSERS[1].id, roundRug: ROUND_RUGS[1].id }));
+    corner.apply(settings({ readingChair: READING_CHAIRS[0].id, dresser: DRESSERS[0].id, roundRug: ROUND_RUGS[0].id }));
     for (const n of NAMES) expect(g.getObjectByName(n)).toBeDefined();
     corner.apply(settings({}));
     for (const n of NAMES) expect(g.getObjectByName(n)).toBeUndefined();

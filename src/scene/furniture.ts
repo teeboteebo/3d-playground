@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FURNITURE, SHELVING_CUT, TV_BENCH, TV_BOTTOM, type FurniturePiece } from '../data/catalog';
 import { disposeTree } from './dispose';
+import { tagOption } from './options';
 import { trimAbove } from './trimGeometry';
 
 /** cuts the String shelving's two left columns to about half height (see `SHELVING_CUT`), in place */
@@ -30,8 +31,8 @@ export function placePiece(id: string, obj: THREE.Object3D): void {
 }
 
 export interface Furniture {
-  /** hide these furniture ids, show the rest (also applies to pieces still loading) */
-  setHidden(ids: readonly string[]): void;
+  /** show the pieces `shown` says yes to, hide the rest (also applies to pieces still loading) */
+  setShown(shown: (id: string) => boolean): void;
   /** settles once every piece has loaded or failed; never rejects */
   ready: Promise<void>;
   /** stop adding pieces: any that finish loading later are freed instead (the scene owns the ones already added) */
@@ -50,7 +51,7 @@ export function loadFurniture(
   /** called with each piece once it is in the scene (not for pieces that arrive after dispose) */
   onPiece?: (id: string, obj: THREE.Object3D) => void,
 ): Furniture {
-  let hidden: readonly string[] = [];
+  let shown: (id: string) => boolean = () => true;
   const loaded = new Map<string, THREE.Object3D>();
   let warned = false;
   let pieceWarned = false;
@@ -68,7 +69,9 @@ export function loadFurniture(
           if (id === 'shelving') trimShelving(obj);
           placePiece(id, obj);
           obj.name = id;
-          obj.visible = !hidden.includes(id);
+          obj.visible = shown(id);
+          /* clicking a piece opens its own page in the living room's menu */
+          tagOption([obj], 'living', [id]);
           obj.traverse((o) => {
             o.castShadow = true;
             o.receiveShadow = true;
@@ -92,9 +95,9 @@ export function loadFurniture(
   ).then(() => undefined);
 
   return {
-    setHidden(ids) {
-      hidden = ids;
-      for (const [id, obj] of loaded) obj.visible = !hidden.includes(id);
+    setShown(fn) {
+      shown = fn;
+      for (const [id, obj] of loaded) obj.visible = shown(id);
       onAdded();
     },
     ready,

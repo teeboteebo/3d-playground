@@ -1,18 +1,18 @@
 import * as THREE from 'three';
 import { FLOOR_LAMPS, PENDANTS, findById } from '../data/catalog';
 import { CEILING, centroid, roomById } from '../data/rooms';
-import { drawn } from '../state/components';
 import type { Settings } from '../state/settings';
 import { buildLamp, type BuiltLamp } from './lamps';
-import type { OfficeComponentId } from '../data/office';
+import { ROOM_DEFS, type ComponentRoom } from '../data/roomDefs';
+import type { ComponentState } from '../data/components';
 import { tagOption } from './options';
 
-type LampRoom = 'living' | 'office';
-const LAMP_ROOMS: LampRoom[] = ['living', 'office'];
+/** the rooms with a ceiling light and a floor lamp among their components */
+const LAMP_ROOMS = Object.keys(ROOM_DEFS) as ComponentRoom[];
 
 /** Where each room's floor lamp stands, and the turn about y that points an arc lamp's reach (along +x at 0). */
 export const FLOOR_LAMP_SPOT: Record<
-  LampRoom,
+  ComponentRoom,
   { x: number; z: number; rotY: number }
 > = {
   /* between the sofa's east end (x 7.24) and the plant pot (x 7.96); rotY π points an arc lamp's reach back over
@@ -27,13 +27,6 @@ export const FLOOR_LAMP_SPOT: Record<
 const PENDANT_HEIGHT = 2.1;
 const PENDANT_INTENSITY = 0.9;
 const FLOOR_INTENSITY = 0.6;
-
-/** the catalog ids of a room's pendant and floor lamp, 'none' for no lamp */
-export function lampIds(s: Settings, room: LampRoom): { pendant: string; floorLamp: string } {
-  if (room === 'living') return s.living;
-  const c = s.office.components;
-  return { pendant: drawn(c.pendant), floorLamp: drawn(c['floor-lamp']) };
-}
 
 export interface RoomLamps {
   apply(s: Settings): void;
@@ -62,11 +55,12 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
 
   function place(
     name: string,
-    id: string,
+    lampState: Pick<ComponentState, 'shown' | 'variant'>,
     list: typeof PENDANTS,
     drop: number | undefined,
   ) {
-    const shape = findById(list, id).shape;
+    const id = lampState.variant;
+    const shape = lampState.shown ? findById(list, id).shape : null;
     if (!shape) {
       remove(name);
       return;
@@ -95,32 +89,28 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
     apply(s) {
       const evening = s.time === 'eve';
       for (const room of LAMP_ROOMS) {
-        const ids = lampIds(s, room);
-        const tags: { pendant: string; floor: string } =
-          room === 'living'
-            ? { pendant: 'ceiling', floor: 'floorLamp' }
-            : ({ pendant: 'pendant', floor: 'floor-lamp' } satisfies Record<'pendant' | 'floor', OfficeComponentId>);
+        const lamps: Record<string, ComponentState> = s[room].components;
         const pendantName = `${room}-pendant`;
         const pendant = place(
           pendantName,
-          ids.pendant,
+          lamps['ceiling-light'],
           PENDANTS,
           CEILING - PENDANT_HEIGHT,
         );
         if (pendant) {
-          tagOption([pendant.lamp.group], room, [tags.pendant]);
+          tagOption([pendant.lamp.group], room, ['ceiling-light']);
           const [x, z] = centroid(roomById(room).poly);
           pendant.lamp.group.position.set(x, CEILING, z);
         }
         const floorName = `${room}-floor-lamp`;
         const floor = place(
           floorName,
-          ids.floorLamp,
+          lamps['floor-lamp'],
           FLOOR_LAMPS,
           undefined,
         );
         if (floor) {
-          tagOption([floor.lamp.group], room, [tags.floor]);
+          tagOption([floor.lamp.group], room, ['floor-lamp']);
           const { x, z, rotY } = FLOOR_LAMP_SPOT[room];
           floor.lamp.group.position.set(x, 0, z);
           floor.lamp.group.rotation.y = rotY;

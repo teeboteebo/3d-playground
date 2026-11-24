@@ -14,7 +14,7 @@ import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
-import { highlighter } from './highlight';
+import { highlighter, type HighlightTarget } from './highlight';
 import { pick, type Pick } from './pickRoom';
 import type { SceneOption } from './options';
 import { renderPipeline } from './pipeline';
@@ -24,12 +24,13 @@ import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { sofaFabric } from './sofaFabric';
 import { floorTexture, woodTexture } from './textures';
-import { tagOption } from './options';
 
 export interface ApartmentScene {
   apply(settings: Settings): void;
   /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
+  /** highlights the option a menu row points at, and every option under it (null for none); the mouse over the 3D view wins */
+  pointAt(option: SceneOption | null): void;
   dispose(): void;
 }
 
@@ -117,7 +118,6 @@ export function createApartmentScene(
         : Promise.resolve(piece.id === 'tv-bench' ? sideboard() : quebecRug()),
     invalidate,
     (id, obj) => {
-      tagOption([obj], 'living', [id === 'sofa' ? 'sofa' : 'furniture']);
       if (id === 'sofa') fabric.attach(obj);
     },
   );
@@ -140,8 +140,9 @@ export function createApartmentScene(
     office.apply(s);
     livingMoulding.apply(s);
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
-    furniture.setHidden(s.living.hidden);
-    fabric.set(s.living.sofaFabric);
+    const living = s.living.components;
+    furniture.setShown((id) => living[id as keyof typeof living]?.shown ?? true);
+    fabric.set(living.sofa.options.fabric ?? 'original');
     sky.setEvening(evening);
     pipeline.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
@@ -164,8 +165,12 @@ export function createApartmentScene(
   /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
      rooms a click would select */
   let lastHover: Hover | null = null;
+  /* what a menu row points at, shown while the mouse points at nothing in 3D */
+  let pointed: HighlightTarget | null = null;
+  const hoverTarget = (h: Hover | null): HighlightTarget | null =>
+    !h ? null : h.option ? { kind: 'option', option: h.option } : { kind: 'room', room: h.room };
   function setHover(h: Hover | null) {
-    highlight.set(!h ? null : h.option ? { kind: 'option', option: h.option } : { kind: 'room', room: h.room });
+    highlight.set(hoverTarget(h) ?? pointed);
     canvas.classList.toggle('pointing', !!h);
     if (h || lastHover) onHover?.(h);
     lastHover = h;
@@ -246,6 +251,10 @@ export function createApartmentScene(
     setView(pose) {
       orbit.setView(pose);
       canvas.dataset.settled = 'false';
+    },
+    pointAt(option) {
+      pointed = option ? { kind: 'option', option, within: true } : null;
+      highlight.set(hoverTarget(lastHover) ?? pointed);
     },
     dispose() {
       cancelAnimationFrame(raf);

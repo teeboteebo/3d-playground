@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FURNITURE, SHELVING_CUT } from '../data/catalog';
+import { LIVING } from '../data/living';
 import { loadFurniture, placePiece } from './furniture';
+import { optionOf } from './options';
 import { sideboard, sideboardLayout } from './sideboard';
 
 afterEach(() => vi.restoreAllMocks());
@@ -20,6 +22,14 @@ describe('loadFurniture', () => {
     expect(seen.get('rug')).toBeUndefined();
   });
 
+  it('tags each piece with its own component', async () => {
+    const scene = new THREE.Scene();
+    await loadFurniture(scene, () => Promise.resolve(new THREE.Group())).ready;
+    for (const piece of FURNITURE) expect(optionOf(byFile(scene, piece.id))).toEqual({ room: 'living', path: [piece.id] });
+    const ids = FURNITURE.map((f) => f.id).sort();
+    expect(ids).toEqual(LIVING.components.filter((c) => c.category !== 'lighting').map((c) => c.id).sort());
+  });
+
   it('adds every piece that loads and carries on past one that fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const scene = new THREE.Scene();
@@ -29,23 +39,23 @@ describe('loadFurniture', () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
-  it('hides the pieces switched off and shows the rest', async () => {
+  it('shows only the pieces switched on', async () => {
     const scene = new THREE.Scene();
     const f = loadFurniture(scene, () => Promise.resolve(new THREE.Group()));
     await f.ready;
-    f.setHidden(['sofa']);
+    f.setShown((id) => id !== 'sofa');
     expect(byFile(scene, 'sofa').visible).toBe(false);
     expect(byFile(scene, 'plant').visible).toBe(true);
-    f.setHidden([]);
+    f.setShown(() => true);
     expect(byFile(scene, 'sofa').visible).toBe(true);
   });
 
-  it('applies the hidden list to a piece that arrives late', async () => {
+  it('applies the shown predicate to a piece that arrives late', async () => {
     const scene = new THREE.Scene();
     let release!: (o: THREE.Object3D) => void;
     const late = new Promise<THREE.Object3D>((r) => (release = r));
     const f = loadFurniture(scene, (piece) => (piece.id === 'sofa' ? late : Promise.resolve(new THREE.Group())));
-    f.setHidden(['sofa']);
+    f.setShown((id) => id !== 'sofa');
     release(new THREE.Group());
     await f.ready;
     expect(byFile(scene, 'sofa').visible).toBe(false);
@@ -83,9 +93,9 @@ describe('loadFurniture', () => {
     const [middle, leftmost] = SHELVING_CUT;
     expect(middle.y).toBeGreaterThan(leftmost.y);
     expect(ladderTop).toBeCloseTo(middle.y, 5);
-    f.setHidden(['shelving']);
+    f.setShown((id) => id !== 'shelving');
     expect(piece.visible).toBe(false);
-    f.setHidden([]);
+    f.setShown(() => true);
     expect(piece.visible).toBe(true);
   });
 
@@ -148,8 +158,8 @@ describe('loadFurniture', () => {
     const sofa = new THREE.Group().add(mesh);
     const f = loadFurniture(scene, (piece) => Promise.resolve(piece.id === 'sofa' ? sofa : new THREE.Group()));
     await f.ready;
-    f.setHidden(['sofa']);
-    f.setHidden([]);
+    f.setShown((id) => id !== 'sofa');
+    f.setShown(() => true);
     expect(mesh.material).toBe(material);
   });
 });

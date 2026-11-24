@@ -53,6 +53,8 @@ const childTopics = (page: Topic): Topic[] => [...(page.topics ?? []), ...(page.
 export interface MenuNav {
   path: readonly string[];
   go(path: readonly string[]): void;
+  /** the page a row under the mouse or keyboard focus would open, as a path (null when none), so the 3D view can show it */
+  point?(path: readonly string[] | null): void;
 }
 
 interface Props {
@@ -87,6 +89,9 @@ export function Menu({ root, exit, nav }: Props) {
   const rows = useRef<HTMLDivElement>(null);
   /* where focus goes after a move: the new page's heading, or the row of the page just left */
   const focusAfter = useRef<string | null>(null);
+  /* a row under the mouse or focus points at its page in 3D; nothing is pointed at once the page changes */
+  const point = (id: string | null) => nav.point?.(id === null ? null : trail.slice(1).map((t) => t.id).concat(id));
+  useEffect(() => () => nav.point?.(null), [at]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = (id: string) => {
     focusAfter.current = null;
     setPath(trail.slice(1).map((t) => t.id).concat(id));
@@ -137,12 +142,12 @@ export function Menu({ root, exit, nav }: Props) {
       {page.content}
       <div ref={rows}>
         {page.groups?.map((g) => (
-          <GroupSection key={g.title} group={g} level={2} open={open} />
+          <GroupSection key={g.title} group={g} level={2} open={open} point={point} />
         ))}
         {sectioned(page).map((group, gi) => (
           <section key={group.title ?? `rest-${gi}`}>
             {group.title && <h2>{group.title}</h2>}
-            <RowList title={group.title ?? `${page.title} options`} topics={group.topics} open={open} swatches={swatches} />
+            <RowList title={group.title ?? `${page.title} options`} topics={group.topics} open={open} point={point} swatches={swatches} />
           </section>
         ))}
       </div>
@@ -159,12 +164,27 @@ export function Menu({ root, exit, nav }: Props) {
 }
 
 /** a list of rows; they keep their titles in line: a list with any swatch (or `swatches`, for lists that line up with each other) leaves room for one on every row */
-function RowList({ title, topics, open, swatches = topics.some((t) => t.swatch) }: { title: string; topics: Topic[]; open: (id: string) => void; swatches?: boolean }) {
+interface RowActions {
+  open: (id: string) => void;
+  /** the row under the mouse or focus, or null when it leaves */
+  point: (id: string | null) => void;
+}
+
+function RowList({ title, topics, open, point, swatches = topics.some((t) => t.swatch) }: { title: string; topics: Topic[]; swatches?: boolean } & RowActions) {
   return (
     <ul className="topics" aria-label={title}>
       {topics.map((t) => (
         <li key={t.id}>
-          <button type="button" className="topic" data-topic={t.id} onClick={() => open(t.id)}>
+          <button
+            type="button"
+            className="topic"
+            data-topic={t.id}
+            onClick={() => open(t.id)}
+            onMouseEnter={() => point(t.id)}
+            onMouseLeave={() => point(null)}
+            onFocus={() => point(t.id)}
+            onBlur={() => point(null)}
+          >
             {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
             <span>
               <strong>{t.title}</strong> <small>{t.summary}</small>
@@ -180,14 +200,14 @@ function RowList({ title, topics, open, swatches = topics.some((t) => t.swatch) 
 }
 
 /** a heading over its rows, then its sub-groups under smaller headings */
-function GroupSection({ group, level, open }: { group: TopicGroup; level: 2 | 3; open: (id: string) => void }) {
+function GroupSection({ group, level, open, point }: { group: TopicGroup; level: 2 | 3 } & RowActions) {
   const Heading = level === 2 ? 'h2' : 'h3';
   return (
-    <section>
+    <section className="group">
       <Heading>{group.title}</Heading>
-      {group.topics.length > 0 && <RowList title={group.title} topics={group.topics} open={open} />}
+      {group.topics.length > 0 && <RowList title={group.title} topics={group.topics} open={open} point={point} />}
       {group.groups?.map((g) => (
-        <GroupSection key={g.title} group={g} level={3} open={open} />
+        <GroupSection key={g.title} group={g} level={3} open={open} point={point} />
       ))}
     </section>
   );

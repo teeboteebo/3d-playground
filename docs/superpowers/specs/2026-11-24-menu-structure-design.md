@@ -339,11 +339,53 @@ The model is introduced in the simplest room first, then each room is moved over
    The bedroom and living room keep #21's sections. Steps 2 and 3 should decide whether the office's headings or #21's
    sections become the one structure for every room.
 2. **The living room.** The checklist becomes a switch on each piece's page, and the sofa fabric becomes an option.
+
+   **Done** (`docs/superpowers/plans/2026-11-24-living-components.md`).
+   - **Living room as components.** Its lamps, sofa (with its fabric as an option), Frame TV, sideboard, shelving,
+     plant and rug are components.
+   - **Settings version 4,** migrated from versions 1–3.
+   - **One structure for every room,** chosen with the user: Room · Lighting · Furniture · Textiles and decor, then
+     About. A single `roomPage` builder draws every component room's page, and the bedroom's #21 sections take the
+     same names.
+   - **Rugs are decor everywhere,** so the office's round rug left the Reading corner group.
+   - **Shared lamp ids:** both rooms use `ceiling-light` "Ceiling light" and `floor-lamp` "Floor lamp". The office's
+     "Ceiling pendant" was renamed, and saved choices carry over.
+   - **No `'none'` entries left in the product catalogs.**
+
+   **Done ahead of the living room**, on the office and shared by every room:
+   - **Menu hover in 3D:** a menu row under the mouse or keyboard focus lights up what it opens in 3D, with the same
+     tint as hovering in 3D. A row such as "Wall moulding" lights up everything under it, and the mouse over the 3D view
+     still wins.
+   - **The Show in room switch** is a full-width row at the top of a piece's page: name and state on the left, a
+     sliding switch on the right.
+   - **"Show or hide pieces"** (`ROWS.furniture`, renamed from "Show or hide furniture"):
+     - one page per room listing every piece under the room's headings, each with its own switch;
+     - Show all and Hide all, each a single undo step;
+     - Reset back to how the room starts.
+
+     The office has it under Room. The living room's checklist uses the same switch rows.
 3. **The bedroom.** It has the most hand-wiring:
    - splitting the bench from the bed, and the wall lamps from the tables;
    - moving the pillows onto the bed as an option;
    - the vase's link to the accent colour;
    - the pendant.
+
+   **Carried over from the step 2 reviews.** Do these first:
+   - **Lamp rooms:** `roomLamps` loops over every room in `ROOM_DEFS` and expects catalog lamps. Derive the lamp rooms
+     from the definitions (or mark lamp components) before the bedroom joins, so its own pendant isn't doubled and a
+     missing floor lamp doesn't crash. `roomLights` should read the same list.
+   - **`SettingsPatch` and `applyPatch`:** collapse them into the mapped per-room type once the bedroom is a component
+     room. Guard unknown component ids.
+   - **One source for an option's default:** `componentDefaults` uses `initial.options`, while sanitising uses
+     `OptionDef.initial`.
+   - **Bedroom ids:** the bedroom's `ceiling` row id becomes `ceiling-light`, like the other rooms.
+   - **`roomPage` types:** type its component state as plain `ComponentState`, not the office's.
+   - **Options undo key:** key it per option id.
+   - **Decide with the user:**
+     - should "Show or hide pieces" count against the room's starting state (the default reads "6 of 8 shown" because
+       the lamps start hidden)?
+     - should pointing at that row highlight every piece?
+   - **Swatch column:** keep a list's swatch column when its only swatch row is hidden, so the rows don't shift.
 
 When the last room is moved, the old per-room panels and settings fields are removed.
 

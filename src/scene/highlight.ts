@@ -3,17 +3,30 @@ import { lin } from './materials';
 import type { RoomId } from '../data/rooms';
 import { optionOf, sameOption, type SceneOption } from './options';
 
-/** what to highlight: one menu option, or a whole room (its walls and floor), for the click that selects it */
-export type HighlightTarget = { kind: 'option'; option: SceneOption } | { kind: 'room'; room: RoomId };
+/**
+ * what to highlight: one menu option, or a whole room (its walls and floor), for the click that selects it. An option
+ * with `within` set also takes in every option under it (the menu's "Wall moulding" row takes in each wall's moulding).
+ */
+export type HighlightTarget = { kind: 'option'; option: SceneOption; within?: boolean } | { kind: 'room'; room: RoomId };
 
 const sameTarget = (a: HighlightTarget | null, b: HighlightTarget | null): boolean =>
   a === b ||
-  (!!a && !!b && (a.kind === 'room' ? b.kind === 'room' && a.room === b.room : b.kind === 'option' && sameOption(a.option, b.option)));
+  (!!a &&
+    !!b &&
+    (a.kind === 'room'
+      ? b.kind === 'room' && a.room === b.room
+      : b.kind === 'option' && sameOption(a.option, b.option) && !a.within === !b.within));
+
+/** whether `option` is `under`, or (for `within`) any option whose path starts with its path */
+function matches(option: SceneOption | null, under: SceneOption, within: boolean): boolean {
+  if (!within) return sameOption(option, under);
+  return !!option && option.room === under.room && under.path.every((id, i) => option.path[i] === id);
+}
 
 /** whether `o` is part of the target: a mesh of the option, or a room's walls and floor */
 function partOf(o: THREE.Object3D, t: HighlightTarget): boolean {
   const option = optionOf(o);
-  if (t.kind === 'option') return sameOption(option, t.option);
+  if (t.kind === 'option') return matches(option, t.option, !!t.within);
   return o.name === `${t.room}-floor` || (option?.room === t.room && option.path[0] === 'walls');
 }
 

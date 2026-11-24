@@ -13,9 +13,11 @@ interface Props {
   update: Update;
   /** opens a page of the selected room's menu, from a click on one of its options in 3D ([] for its summary) */
   onOption: (path: readonly string[]) => void;
+  /** the selected room's menu page a row points at, highlighted in 3D (null for none) */
+  pointed?: readonly string[] | null;
 }
 
-export function Stage({ settings, update, onOption }: Props) {
+export function Stage({ settings, update, onOption, pointed = null }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<ApartmentScene | null>(null);
@@ -105,6 +107,13 @@ export function Stage({ settings, update, onOption }: Props) {
     settingsRef.current = settings;
     sceneRef.current?.apply(settings);
   }, [settings]);
+
+  /* a menu row under the mouse or focus lights up what it opens */
+  const pointedKey = pointed ? pointed.join('/') : '';
+  useEffect(() => {
+    const room = settingsRef.current.room;
+    sceneRef.current?.pointAt(pointedKey && room !== 'all' ? { room, path: pointedKey.split('/') } : null);
+  }, [pointedKey]);
 
   /* selecting a room from the panel flies the camera to its view; picking it in 3D only moves the pivot to the
      room, keeping the rotation and zoom the user had */

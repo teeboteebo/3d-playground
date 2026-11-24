@@ -1,23 +1,20 @@
 import { useMemo, useState } from 'react';
 import { BEMZ_CHECKED, BEMZ_FABRICS } from '../data/bemzFabrics';
 import { coverName, fabricPrice, fabricUrl, searchFabrics, swatchUrl } from '../data/fabrics';
-import type { Settings } from '../state/settings';
-import type { Update } from '../state/useSettings';
 
 interface Props {
-  settings: Settings;
-  update: Update;
+  /** the chosen fabric's code, or 'original' */
+  value: string;
+  onChange(code: string): void;
 }
 
 const PAGE = 24;
 
-export function SofaFabricSection({ settings, update }: Props) {
-  const { sofaFabric } = settings.living;
+export function SofaFabricSection({ value, onChange }: Props) {
   const [query, setQuery] = useState('');
   const [shown, setShown] = useState(PAGE);
   const results = useMemo(() => searchFabrics(BEMZ_FABRICS, query), [query]);
-  const selected = BEMZ_FABRICS.find((f) => f.code === sofaFabric);
-  const pick = (code: string) => update({ living: { sofaFabric: code } });
+  const selected = BEMZ_FABRICS.find((f) => f.code === value);
   return (
     <section>
       <input
@@ -32,7 +29,7 @@ export function SofaFabricSection({ settings, update }: Props) {
         }}
       />
       <div className="fabrics" role="group" aria-label="Sofa fabrics">
-        <button type="button" className="fabric fabric-own" aria-pressed={sofaFabric === 'original'} aria-label="Original fabric" onClick={() => pick('original')}>
+        <button type="button" className="fabric fabric-own" aria-pressed={value === 'original'} aria-label="Original fabric" onClick={() => onChange('original')}>
           Original
         </button>
         {results.slice(0, shown).map((f) => (
@@ -41,9 +38,9 @@ export function SofaFabricSection({ settings, update }: Props) {
             type="button"
             className="fabric"
             style={{ background: f.hex }}
-            aria-pressed={sofaFabric === f.code}
+            aria-pressed={value === f.code}
             aria-label={`${f.family}, ${f.colour}`}
-            onClick={() => pick(f.code)}
+            onClick={() => onChange(f.code)}
           >
             <img loading="lazy" src={swatchUrl(f, 160)} alt="" />
           </button>

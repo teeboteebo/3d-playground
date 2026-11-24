@@ -1,5 +1,5 @@
 import type { RoomDef } from '../data/components';
-import { OFFICE } from '../data/office';
+import { ROOM_DEFS } from '../data/roomDefs';
 import type { RoomId } from '../data/rooms';
 import { BEDROOM_MOULD_WALLS, LIVING_MOULD_WALLS } from '../scene/mouldWalls';
 import { ROWS } from './menuStructure';
@@ -13,12 +13,12 @@ const SECTIONS: Record<string, string> = Object.fromEntries(
 );
 
 /** the rooms described as components, whose first path id is a component's name */
-const ROOM_DEFS: Partial<Record<RoomId, RoomDef>> = { office: OFFICE };
+const DEFS: Partial<Record<RoomId, RoomDef>> = ROOM_DEFS;
 
 /** what a menu path is called, for the label that follows the mouse in 3D: "Wall moulding · Bed wall" */
 export function optionLabel(room: RoomId, path: readonly string[]): string {
   const [topic, sub] = path;
-  const component = ROOM_DEFS[room]?.components.find((c) => c.id === topic);
+  const component = DEFS[room]?.components.find((c) => c.id === topic);
   const title = component?.name ?? TITLES[topic] ?? topic;
   return sub ? `${title} · ${(topic === 'moulding' ? SECTIONS[sub] : undefined) ?? sub}` : title;
 }

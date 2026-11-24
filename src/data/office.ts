@@ -8,16 +8,14 @@ import {
   ROUND_RUGS,
 } from './catalog';
 import type { ComponentDef, RoomDef, Variant } from './components';
-
-/** a catalog's products, without its "leave it out" entry */
-const real = (items: readonly Variant[]): readonly Variant[] => items.filter((i) => i.id !== 'none');
+import type { ComponentId } from './roomDefs';
 
 const cornerNote = `A simplified shape. Prices and stock were checked on ${CORNER_CHECKED} and change often.`;
 const lampNote = `A simplified shape. Prices and stock were checked on ${LAMPS_CHECKED} and change often.`;
 
 const fixed = (id: string, name: string): readonly Variant[] => [{ id, name }];
 
-export const OFFICE: RoomDef = {
+export const OFFICE = {
   id: 'office',
   groups: [
     { id: 'workspace', name: 'Workspace' },
@@ -65,8 +63,8 @@ export const OFFICE: RoomDef = {
       category: 'furniture',
       group: 'corner',
       note: cornerNote,
-      variants: real(READING_CHAIRS),
-      initial: { shown: true, variant: READING_CHAIRS[1].id },
+      variants: READING_CHAIRS,
+      initial: { shown: true, variant: READING_CHAIRS[0].id },
     },
     {
       id: 'dresser',
@@ -74,47 +72,37 @@ export const OFFICE: RoomDef = {
       category: 'furniture',
       group: 'corner',
       note: cornerNote,
-      variants: real(DRESSERS),
-      initial: { shown: true, variant: DRESSERS[1].id },
+      variants: DRESSERS,
+      initial: { shown: true, variant: DRESSERS[0].id },
     },
     {
       id: 'round-rug',
       name: 'Round rug',
-      category: 'furniture',
-      group: 'corner',
+      category: 'decor',
       note: cornerNote,
-      variants: real(ROUND_RUGS),
-      initial: { shown: true, variant: ROUND_RUGS[1].id },
+      variants: ROUND_RUGS,
+      initial: { shown: true, variant: ROUND_RUGS[0].id },
     },
     {
-      id: 'pendant',
-      name: 'Ceiling pendant',
+      id: 'ceiling-light',
+      name: 'Ceiling light',
       category: 'lighting',
       note: lampNote,
-      variants: real(PENDANTS),
-      initial: { shown: false, variant: PENDANTS[1].id },
+      variants: PENDANTS,
+      initial: { shown: false, variant: PENDANTS[0].id },
     },
     {
       id: 'floor-lamp',
       name: 'Floor lamp',
       category: 'lighting',
       note: lampNote,
-      variants: real(FLOOR_LAMPS),
-      initial: { shown: false, variant: FLOOR_LAMPS[1].id },
+      variants: FLOOR_LAMPS,
+      initial: { shown: false, variant: FLOOR_LAMPS[0].id },
     },
   ],
-};
+} as const satisfies RoomDef;
 
-export type OfficeComponentId =
-  | 'cabinets'
-  | 'desk'
-  | 'drawers'
-  | 'desk-chair'
-  | 'reading-chair'
-  | 'dresser'
-  | 'round-rug'
-  | 'pendant'
-  | 'floor-lamp';
+export type OfficeComponentId = ComponentId<'office'>;
 
 export const officeDef = (id: OfficeComponentId): ComponentDef => {
   const def = OFFICE.components.find((c) => c.id === id);

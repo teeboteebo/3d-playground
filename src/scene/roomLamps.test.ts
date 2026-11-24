@@ -3,23 +3,32 @@ import { describe, expect, it, vi } from 'vitest';
 import { FLOOR_LAMPS, PENDANTS } from '../data/catalog';
 import { ROOMS, centroid, roomById, type RoomId } from '../data/rooms';
 import { DEFAULTS, type Settings } from '../state/settings';
+import { optionOf } from './options';
 import { DESK, DESK_X, DESK_Z } from './office/dimensions';
 import { roomAt } from './pickRoom';
 import { FLOOR_LAMP_SPOT, addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 
-const P = PENDANTS[1].id,
-  P2 = PENDANTS[2].id,
-  F = FLOOR_LAMPS[1].id;
+const P = PENDANTS[0].id,
+  P2 = PENDANTS[1].id,
+  F = FLOOR_LAMPS[0].id;
 const withLamps = (over: Partial<Settings>): Settings => ({
   ...DEFAULTS,
   ...over,
 });
-const office = (pendant: string, floorLamp: string): Settings['office'] => ({
+const office = (pendant: string | null, floorLamp: string | null): Settings['office'] => ({
   components: {
     ...DEFAULTS.office.components,
-    pendant: { shown: pendant !== 'none', variant: pendant === 'none' ? P : pendant },
-    'floor-lamp': { shown: floorLamp !== 'none', variant: floorLamp === 'none' ? F : floorLamp },
+    'ceiling-light': { shown: pendant !== null, variant: pendant ?? P, options: {} },
+    'floor-lamp': { shown: floorLamp !== null, variant: floorLamp ?? F, options: {} },
+  },
+});
+const living = (pendant: string | null, floorLamp: string | null): Settings['living'] => ({
+  ...DEFAULTS.living,
+  components: {
+    ...DEFAULTS.living.components,
+    'ceiling-light': { shown: pendant !== null, variant: pendant ?? P, options: {} },
+    'floor-lamp': { shown: floorLamp !== null, variant: floorLamp ?? F, options: {} },
   },
 });
 const names = (g: THREE.Object3D) => g.children.map((c) => c.name).sort();
@@ -35,7 +44,7 @@ describe('addRoomLamps', () => {
   it('hangs the pendant at the room centre, 2.1 m above the floor', () => {
     const g = new THREE.Group();
     addRoomLamps(g).apply(
-      withLamps({ office: office(P, 'none') }),
+      withLamps({ office: office(P, null) }),
     );
     const p = g.getObjectByName('office-pendant')!;
     const [cx, cz] = centroid(roomById('office').poly);
@@ -46,10 +55,10 @@ describe('addRoomLamps', () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
     lamps.apply(
-      withLamps({ living: { ...DEFAULTS.living, pendant: P, floorLamp: F } }),
+      withLamps({ living: living(P, F) }),
     );
     lamps.apply(
-      withLamps({ living: { ...DEFAULTS.living, pendant: P2, floorLamp: F } }),
+      withLamps({ living: living(P2, F) }),
     );
     expect(names(g)).toEqual([
       'living-floor-lamp',
@@ -98,17 +107,31 @@ describe('addRoomLamps', () => {
   it("turns off a hidden office lamp's light in the evening", () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
-    lamps.apply(withLamps({ time: 'eve', office: office(P, 'none') }));
+    lamps.apply(withLamps({ time: 'eve', office: office(P, null) }));
     expect(g.getObjectByName('office-pendant')).toBeDefined();
     expect(light(g, 'office-pendant-light').visible).toBe(true);
-    lamps.apply(withLamps({ time: 'eve', office: office('none', 'none') }));
+    lamps.apply(withLamps({ time: 'eve', office: office(null, null) }));
     expect(g.getObjectByName('office-pendant')).toBeUndefined();
     expect(g.getObjectByName('office-pendant-light')).toBeUndefined();
+  });
+  it('tags the lamps of both rooms as the ceiling light and the floor lamp', () => {
+    const g = new THREE.Group();
+    addRoomLamps(g).apply(withLamps({ living: living(P, F), office: office(P, F) }));
+    for (const room of ['living', 'office']) {
+      expect(optionOf(g.getObjectByName(`${room}-pendant`)!)).toEqual({ room, path: ['ceiling-light'] });
+      expect(optionOf(g.getObjectByName(`${room}-floor-lamp`)!)).toEqual({ room, path: ['floor-lamp'] });
+    }
+  });
+  it('lights the living room from its components', () => {
+    const g = new THREE.Group();
+    addRoomLamps(g).apply(withLamps({ time: 'eve', living: living(P, null) }));
+    expect(g.getObjectByName('living-pendant')).toBeDefined();
+    expect(g.getObjectByName('living-floor-lamp')).toBeUndefined();
   });
   it('stands the living floor lamp between the sofa and the plant pot', () => {
     const g = new THREE.Group();
     addRoomLamps(g).apply(
-      withLamps({ living: { ...DEFAULTS.living, floorLamp: 'kona' } }),
+      withLamps({ living: living(null, 'kona') }),
     );
     const lamp = g.getObjectByName('living-floor-lamp') as THREE.Object3D;
     lamp.updateMatrixWorld(true);
@@ -160,15 +183,17 @@ describe('addRoomLights', () => {
       at('office').intensity,
     ]).toEqual([0.6, 0.6, 0.6]);
     fill.apply(
-      withLamps({ time: 'eve', office: office(P, 'none') }),
+      withLamps({ time: 'eve', office: office(P, null) }),
     );
     expect([
       at('hall').intensity,
       at('living').intensity,
       at('office').intensity,
     ]).toEqual([0.6, 0.6, 0.15]);
+    fill.apply(withLamps({ time: 'eve', living: living(null, F) }));
+    expect(at('living').intensity).toBe(0.15);
     fill.apply(
-      withLamps({ time: 'day', office: office(P, 'none') }),
+      withLamps({ time: 'day', office: office(P, null) }),
     );
     expect(at('office').intensity).toBe(0);
   });
