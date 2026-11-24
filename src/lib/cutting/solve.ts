@@ -34,6 +34,15 @@ export function solveAll(req: SolveRequest, post: (reply: SolveReply) => void, o
   const plans = req.jobs.map((j) => optimise(j.items, j.stocks, { kerf: req.kerf, deadline: -Infinity, now: () => 0 }));
   post({ id: req.id, plans: [...plans], done: false });
   let last = now();
+  /* an improvement that comes too soon after the last post is kept, and posted once the throttle has passed */
+  let pending = false;
+  const flush = () => {
+    if (pending && now() - last >= o.throttleMs) {
+      pending = false;
+      last = now();
+      post({ id: req.id, plans: [...plans], done: false });
+    }
+  };
   req.jobs.forEach((job, i) => {
     plans[i] = optimise(job.items, job.stocks, {
       kerf: req.kerf,
@@ -41,11 +50,10 @@ export function solveAll(req: SolveRequest, post: (reply: SolveReply) => void, o
       now,
       onImprove: (p) => {
         plans[i] = p;
-        if (now() - last >= o.throttleMs) {
-          last = now();
-          post({ id: req.id, plans: [...plans], done: false });
-        }
+        pending = true;
+        flush();
       },
+      onTick: flush,
     });
   });
   post({ id: req.id, plans: [...plans], done: true });

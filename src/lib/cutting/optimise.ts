@@ -51,6 +51,8 @@ export interface OptimiseOptions {
   /** a timestamp (see `now`): past it the best plan so far is returned, not proven */
   deadline?: number;
   onImprove?: (plan: CutPlan) => void;
+  /** called now and then while it searches (about every thousand steps), for the caller to do periodic work */
+  onTick?: () => void;
   now?: () => number;
 }
 
@@ -109,7 +111,7 @@ interface Tail {
  * bars. Starts from a first-fit plan and searches until it has proved nothing is cheaper, or the deadline passes.
  */
 export function optimise(items: readonly CutItem[], stocks: readonly Stock[], opts: OptimiseOptions): CutPlan {
-  const { kerf, deadline, onImprove } = opts;
+  const { kerf, deadline, onImprove, onTick } = opts;
   const now = opts.now ?? Date.now;
   const maxLen = Math.max(0, ...stocks.map((s) => s.length));
 
@@ -236,7 +238,10 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
   let stopped = false;
   let ticks = 0;
   const tick = () => {
-    if (deadline !== undefined && (ticks++ & 1023) === 0 && now() > deadline) stopped = true;
+    if ((ticks++ & 1023) === 0) {
+      onTick?.();
+      if (deadline !== undefined && now() > deadline) stopped = true;
+    }
     return stopped;
   };
   const bestScore = (): Score => ({ cost: best.cost, total: best.total, bars: best.bars.length });
