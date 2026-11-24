@@ -387,7 +387,16 @@ The model is introduced in the simplest room first, then each room is moved over
      - should pointing at that row highlight every piece?
    - **Swatch column:** keep a list's swatch column when its only swatch row is hidden, so the rows don't shift.
 
-When the last room is moved, the old per-room panels and settings fields are removed.
+   **Implemented** ([bedroom plan](../plans/2026-11-24-bedroom-components.md)).
+   - Every furnished room uses the shared component page. The hall has an empty component list and shows only
+     Wall colour and About the room. The old panels and section routing are gone.
+   - Settings version 5 stores each room's paint, pieces, and applicable accent and moulding in `rooms`. The
+     migration keeps version 1–4 choices and the apartment-wide moulding products and cut settings.
+   - The bedroom has ten slots. The mirror and painting are Furniture. The rug is Textiles and decor.
+     The vase, tray and tabletop lamp belong to Dresser, including its evening light. The vase, Accent pillows
+     and artwork still follow the room accent. The two wall lamps switch together, separately from the tables.
+   - Show or hide pieces reports the actual count, including lamps that start hidden. Its overview row does not
+     highlight the room. Each switch inside the checklist highlights its own piece.
 
 ## Non-goals
 

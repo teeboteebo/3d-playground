@@ -9,10 +9,6 @@ import type { MenuNav, Topic } from './Menu';
 import { ShowHideSection } from './ShowHideSection';
 import { aboutTopic, accentTopic, wallsTopic } from './roomTopics';
 
-/**
- * The first page of every room: Room (wall colour, the room's accent colour and moulding where it has them, show or hide
- * pieces where it has any), then the component headings, with About the room last.
- */
 export function roomPage<R extends RoomId>(args: {
   room: R;
   title: string;
@@ -29,9 +25,9 @@ export function roomPage<R extends RoomId>(args: {
   const { room, title, sub, settings, update, menu, moulding, about, thumbs } = args;
   const def = ROOM_DEFS[room];
   const state = settings.rooms[room];
-  const components = state.components as Record<string, ComponentState>;
+  const components: Record<string, ComponentState> = state.components;
   const accent = 'accent' in state ? state.accent : undefined;
-  const patchRoom = (patch: Record<string, unknown>) => update({ rooms: { [room]: { components: patch } } } as Parameters<Update>[0]);
+  const patchRoom = (patch: Record<string, Partial<ComponentState>>) => update({ rooms: { [room]: { components: patch } } });
   const setShown = (ids: string[], shown: boolean) => patchRoom(Object.fromEntries(ids.map((id) => [id, { shown }])));
   const shownCount = def.components.filter((c) => components[c.id].shown).length;
   const changed = def.components.filter((c) => components[c.id].shown !== c.initial.shown);
@@ -39,7 +35,6 @@ export function roomPage<R extends RoomId>(args: {
     id: 'furniture',
     title: 'Show or hide pieces',
     summary: `${shownCount} of ${def.components.length} shown`,
-    /* the checklist stands for every piece, so it highlights none; its switches each point at their own */
     noPoint: true,
     content: (
       <ShowHideSection
@@ -49,7 +44,6 @@ export function roomPage<R extends RoomId>(args: {
         point={(id) => menu.point?.(id ? [id] : null)}
       />
     ),
-    /* back to how the room starts: the lamps off, everything else shown */
     reset: changed.length === 0 ? undefined : () => patchRoom(Object.fromEntries(changed.map((c) => [c.id, { shown: c.initial.shown }]))),
   };
   const thumbOf = thumbs as Record<string, ((v: Variant) => string) | undefined> | undefined;
@@ -61,7 +55,12 @@ export function roomPage<R extends RoomId>(args: {
     groups: [
       {
         title: 'Room',
-        topics: [wallsTopic(room, settings, update), ...(moulding ? [moulding] : []), ...(accent ? [accentTopic(accent, settings, update)] : []), ...(def.components.length ? [showHide] : [])],
+        topics: [
+          wallsTopic(room, settings, update),
+          ...(moulding ? [moulding] : []),
+          ...(accent ? [accentTopic(accent, (value) => update({ rooms: { [room]: { accent: value } } }))] : []),
+          ...(def.components.length ? [showHide] : []),
+        ],
       },
       ...componentGroups(def, (c) => componentTopic(c, components[c.id], (patch) => patchRoom({ [c.id]: patch }), thumbOf?.[c.id], accent)),
     ],

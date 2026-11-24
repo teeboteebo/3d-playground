@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { INK, PAINTS, TRIM, findById } from '../../data/catalog';
 import { BEDROOM, type BedroomComponentId } from '../../data/bedroom';
-import type { BedroomMoulding, Settings } from '../../state/settings';
+import { DEFAULTS, type Settings } from '../../state/settings';
 import { lin } from '../materials';
 import { mergeMeshes } from '../merge';
 import { pillowColours } from '../palette';
@@ -31,21 +31,6 @@ export interface Bedroom {
   dispose(): void;
 }
 
-/** which walls the camera looks through: what is on them is hidden, however the room's settings show it */
-interface Cutaway {
-  window: boolean;
-  door: boolean;
-  front: boolean;
-  back: boolean;
-}
-
-/**
- * The bedroom's fittings and furniture, built by hand into `parent` (its walls, floor and ceiling come from
- * buildApartment): doors, windows and curtains, and the ten pieces of its menu (see `BEDROOM`): ceiling light, bedside
- * lamps, bed, bench, bedside tables, dresser, mirror, painting, wardrobes and rug, and its wall moulding. Each piece is
- * tagged with its component id, shown only when its settings show it and the camera is not looking through its wall,
- * and its lights burn only while it is shown.
- */
 export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const k = kit(parent);
   const m = bedroomMaterials(accent);
@@ -57,7 +42,6 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const bedside = buildBedside(k, m);
   const pendant = buildPendant(k, m);
   const rug = buildRug(k, m);
-  /* everything on the dresser (its table lamp, vase and tray too) is the dresser's */
   const pieces: Record<BedroomComponentId, THREE.Object3D[]> = {
     'ceiling-light': pendant.parts,
     'bedside-lamps': bedside.lampParts,
@@ -70,37 +54,29 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
     wardrobes: mergeMeshes(k.collect(() => buildWardrobes(k, m))),
     rug: [rug.mesh],
   };
-  /* what each click opens in the bedroom's menu; the moulding tags its own parts as it rebuilds them */
   for (const { id } of BEDROOM.components) tagOption(pieces[id], 'bedroom', [id]);
   const windows = windowLights(parent);
   const dresserLight = dresserLamp(parent);
   const mould = bedroomMoulding(k, m);
   const painting = paintingApplier(m);
 
-  let shown = Object.fromEntries(BEDROOM.components.map((c) => [c.id, c.initial.shown])) as Record<BedroomComponentId, boolean>;
-  let moulding: BedroomMoulding | null = null;
-  let cut: Cutaway = { window: true, door: true, front: true, back: true };
+  let current = DEFAULTS.rooms.bedroom;
+  let frontVisible = true;
+  let backVisible = true;
 
-  /* a part is drawn when the settings show it and the camera is not looking through its wall */
-  function show() {
-    setVisible(windowParts, cut.window);
-    setVisible(doorParts, cut.door);
-    setVisible(frontParts, cut.front);
-    for (const { id } of BEDROOM.components) {
-      const hidden = !shown[id] || ((id === 'painting' || id === 'mirror') && !cut.front);
-      setVisible(pieces[id], !hidden);
-    }
-    setVisible(mould.bed.parts, cut.back && moulding?.mouldBedWall !== 'off');
-    setVisible(mould.dresser.parts, cut.front && moulding?.mouldDresserWall !== 'off');
+  function showWallFittings() {
+    setVisible(pieces.painting, frontVisible && current.components.painting.shown);
+    mirror.visible = frontVisible && current.components.mirror.shown;
+    setVisible(mould.bed.parts, backVisible && current.moulding.mouldBedWall === 'on');
+    setVisible(mould.dresser.parts, frontVisible && current.moulding.mouldDresserWall === 'on');
   }
 
   return {
     shared: { trim: m.trim, glass: m.glass },
     windowLights: windows,
     apply(settings) {
-      const { paint, accent, moulding: mouldSettings, components } = settings.rooms.bedroom;
-      moulding = mouldSettings;
-      shown = Object.fromEntries(BEDROOM.components.map((c) => [c.id, components[c.id].shown])) as Record<BedroomComponentId, boolean>;
+      current = settings.rooms.bedroom;
+      const { paint, accent, moulding: mouldSettings, components } = current;
       const evening = settings.time === 'eve';
       const wallHex = findById(PAINTS, paint).hex;
       const mouldHex = mouldSettings.mouldColour === 'tone' ? wallHex : TRIM.hex;
@@ -121,17 +97,22 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       painting({ accent, art, frame }, evening);
       rug.set(components.rug.variant);
 
-      /* each light burns for its own piece alone */
-      dresserLight.set(evening && shown.dresser);
-      bedside.setEvening(evening && shown['bedside-lamps']);
-      pendant.setLit(evening && shown['ceiling-light']);
+      dresserLight.set(evening && components.dresser.shown);
+      bedside.setEvening(evening && components['bedside-lamps'].shown);
+      pendant.setLit(evening && components['ceiling-light'].shown);
       m.glass.color.set(evening ? 0x1b2634 : 0xdce8ee);
-      show();
+      for (const { id } of BEDROOM.components) {
+        if (id !== 'mirror' && id !== 'painting') setVisible(pieces[id], components[id].shown);
+      }
+      showWallFittings();
     },
     showFrom(cam) {
-      const front = cam.z < L / 2 + 0.05;
-      cut = { window: cam.x > -W / 2 - 0.05, door: cam.x < W / 2 + 0.05, front, back: cam.z > -L / 2 - 0.05 };
-      show();
+      frontVisible = cam.z < L / 2 + 0.05;
+      backVisible = cam.z > -L / 2 - 0.05;
+      setVisible(windowParts, cam.x > -W / 2 - 0.05);
+      setVisible(doorParts, cam.x < W / 2 + 0.05);
+      setVisible(frontParts, frontVisible);
+      showWallFittings();
     },
     dispose() {
       rug.dispose();

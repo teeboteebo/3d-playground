@@ -1,26 +1,14 @@
 import { ARTS, FRAMES, PILLOW_SETS, RUGS, RUGS_CHECKED, WARDROBES } from './catalog';
 import type { ChipChoice, ComponentDef, RoomDef, Variant } from './components';
+import type { ComponentId } from './roomDefs';
 
 const fixed = (id: string, name: string): readonly Variant[] => [{ id, name }];
 
-/* the pillow sets; the first follows the room's accent colour, so it has no colour of its own */
 const PILLOW_CHOICES: ChipChoice[] = PILLOW_SETS.map((p) =>
   p.hex ? { id: p.id, name: p.name, hex: p.hex } : { id: p.id, name: p.name, followsAccent: true },
 );
-const WARDROBE_CHOICES: ChipChoice[] = WARDROBES.map(({ id, name, hex }) => ({ id, name, hex }));
-const ART_CHOICES: ChipChoice[] = ARTS.map(({ id, name }) => ({ id, name }));
 const FRAME_CHOICES: ChipChoice[] = FRAMES.map(({ id, name, hex }) => ({ id, name, hex, summary: name.toLowerCase() }));
 
-/** the rugs a shopper can choose; no rug is hiding the piece */
-const RUG_VARIANTS: readonly Variant[] = RUGS.map(
-  ({ id, name, vendor, price, sizes, stock, st, url }) => ({ id, name, vendor, price, sizes, stock, st, url }),
-);
-
-/**
- * The bedroom's ten pieces. The vase, tray and tabletop lamp stand on the dresser and belong to it; the mirror and
- * painting are their own pieces. The two lights are not catalog lamps (no `lamp`): the room builds them, so the
- * catalog lamp builder never draws them.
- */
 export const BEDROOM = {
   id: 'bedroom',
   components: [
@@ -88,7 +76,7 @@ export const BEDROOM = {
       note: 'The framed painting hangs above the dresser. Its picture follows the accent colour.',
       variants: fixed('framed', 'Framed painting'),
       options: [
-        { id: 'art', label: 'Painting', kind: 'chips', choices: ART_CHOICES, initial: 'sun' },
+        { id: 'art', label: 'Painting', kind: 'chips', choices: ARTS, initial: 'sun' },
         { id: 'frame', label: 'Frame', kind: 'chips', choices: FRAME_CHOICES, initial: 'brass' },
       ],
       initial: { shown: true, variant: 'framed' },
@@ -99,7 +87,7 @@ export const BEDROOM = {
       category: 'furniture',
       note: 'Built-in Pax wardrobes along the east wall.',
       variants: fixed('pax', 'Built-in Pax'),
-      options: [{ id: 'colour', label: 'Wardrobes', kind: 'chips', choices: WARDROBE_CHOICES, initial: 'wall' }],
+      options: [{ id: 'colour', label: 'Wardrobes', kind: 'chips', choices: WARDROBES, initial: 'wall' }],
       initial: { shown: true, variant: 'pax' },
     },
     {
@@ -107,14 +95,13 @@ export const BEDROOM = {
       name: 'Rug',
       category: 'decor',
       note: `A 200 × 300 cm rug under the bed. Prices and stock were checked on ${RUGS_CHECKED} and change often.`,
-      variants: RUG_VARIANTS,
+      variants: RUGS,
       initial: { shown: true, variant: 'naver' },
     },
   ],
 } as const satisfies RoomDef;
 
-/** the ids of the bedroom's ten pieces; `ComponentId<'bedroom'>` is the same once the room is registered in `ROOM_DEFS` */
-export type BedroomComponentId = (typeof BEDROOM)['components'][number]['id'];
+export type BedroomComponentId = ComponentId<'bedroom'>;
 
 export const bedroomDef = (id: BedroomComponentId): ComponentDef => {
   const def = BEDROOM.components.find((c) => c.id === id);

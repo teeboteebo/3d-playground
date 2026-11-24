@@ -20,7 +20,7 @@ function sanitizeOption(def: OptionDef, value: unknown): string {
 }
 
 /** an own field of a saved object: a name such as 'constructor' is never one that was saved */
-const own = (o: Record<string, unknown>, key: string): unknown => (Object.hasOwn(o, key) ? o[key] : undefined);
+const own = <T>(o: Record<string, T>, key: string): T | undefined => (Object.hasOwn(o, key) ? o[key] : undefined);
 
 function sanitizeOptions(c: ComponentDef, raw: unknown): Record<string, string> {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -58,12 +58,12 @@ export function patchComponents<K extends string>(
 ): ComponentStates<K> {
   const next: Record<string, ComponentState> = { ...states };
   for (const c of room.components) {
-    const p = own(patch, c.id) as Partial<ComponentState> | undefined;
+    const p = own(patch, c.id);
     if (!p) continue;
     const options = { ...next[c.id].options };
     for (const o of c.options ?? []) {
       const v = own(p.options ?? {}, o.id);
-      if (v !== undefined) options[o.id] = v as string;
+      if (v !== undefined) options[o.id] = v;
     }
     next[c.id] = {
       shown: p.shown ?? next[c.id].shown,

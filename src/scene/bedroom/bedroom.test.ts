@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { BEDROOM, type BedroomComponentId } from '../../data/bedroom';
-import { DEFAULTS, applyPatch, type Settings } from '../../state/settings';
+import { DEFAULTS, applyPatch, type RoomPatch, type Settings } from '../../state/settings';
 import { lin } from '../materials';
 import { optionOf } from '../options';
 import { buildBedroom } from '.';
@@ -22,12 +22,12 @@ const on = (o: THREE.Object3D): boolean => {
   for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return false;
   return true;
 };
-const IDS = BEDROOM.components.map((c) => c.id) as BedroomComponentId[];
+const IDS = BEDROOM.components.map((c) => c.id);
 const FRONT_VIEW = new THREE.Vector3(0, 1.5, 0);
 const BEHIND_FRONT_WALL = new THREE.Vector3(0, 1.5, L / 2 + 2);
 
-const patch = (components: Partial<Record<BedroomComponentId, object>>, extra: Record<string, unknown> = {}): Settings =>
-  applyPatch(DEFAULTS, { rooms: { bedroom: { components, ...extra } } } as never);
+const patch = (components: RoomPatch<'bedroom'>['components'], extra: Pick<RoomPatch<'bedroom'>, 'accent'> = {}): Settings =>
+  applyPatch(DEFAULTS, { rooms: { bedroom: { components, ...extra } } });
 const hide = (...ids: BedroomComponentId[]) => patch(Object.fromEntries(ids.map((id) => [id, { shown: false }])));
 const evening = (s: Settings): Settings => ({ ...s, time: 'eve' });
 
@@ -43,14 +43,10 @@ function build(accent = '#B5654A') {
     });
     return found;
   };
-  /** every mesh's visibility with its ancestors' */
   const visibility = () => {
     const map = new Map<THREE.Object3D, boolean>();
     parent.traverse((o) => {
-      if (!(o instanceof THREE.Mesh)) return;
-      let on = true;
-      for (let p: THREE.Object3D | null = o; p && p !== parent.parent; p = p.parent) on &&= p.visible;
-      map.set(o, on);
+      if (o instanceof THREE.Mesh) map.set(o, on(o));
     });
     return map;
   };
@@ -97,9 +93,14 @@ describe('the bedroom scene targets', () => {
 
   it('repaints the vase when the accent changes, while the dresser is hidden or not', () => {
     const { room, meshesOf } = build();
+    const vase = meshesOf('dresser').find((m) => (m.material as THREE.MeshStandardMaterial).color.equals(lin(DEFAULTS.rooms.bedroom.accent)))!;
+    const material = vase.material as THREE.MeshStandardMaterial;
+    room.apply(patch({ dresser: { shown: false } }, { accent: '#2F5D62' }));
+    expect(on(vase)).toBe(false);
+    expect(material.color.equals(lin('#2F5D62'))).toBe(true);
     room.apply(patch({}, { accent: '#2F5D62' }));
-    const colours = () => meshesOf('dresser').map((m) => (m.material as THREE.MeshStandardMaterial).color);
-    expect(colours().some((c) => c.equals(lin('#2F5D62')))).toBe(true);
+    expect(on(vase)).toBe(true);
+    expect(material.color.equals(lin('#2F5D62'))).toBe(true);
   });
 
   it('shows the rug as its real product, with no bare floor product', () => {

@@ -39,8 +39,7 @@ export function wallsTopic(room: RoomId, settings: Settings, update: Update): To
   };
 }
 
-/** the bedroom's accent colour: what the vase, the accent pillows and the painting follow */
-export function accentTopic(accent: string, settings: Settings, update: Update): Topic {
+export function accentTopic(accent: string, set: (value: string) => void): Topic {
   const preset = ACCENT_PRESETS.find((p) => p.hex === accent.toUpperCase());
   const start = DEFAULTS.rooms.bedroom.accent;
   return {
@@ -48,8 +47,8 @@ export function accentTopic(accent: string, settings: Settings, update: Update):
     title: 'Accent colour',
     summary: preset ? `${preset.name} · ${accent}` : accent,
     swatch: accent,
-    reset: equal(settings.rooms.bedroom.accent, start) ? undefined : () => update({ rooms: { bedroom: { accent: start } } }),
-    content: <AccentPicker value={accent} onChange={(hex) => update({ rooms: { bedroom: { accent: hex } } })} />,
+    reset: accent === start ? undefined : () => set(start),
+    content: <AccentPicker value={accent} onChange={set} />,
   };
 }
 
