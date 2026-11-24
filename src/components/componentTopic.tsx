@@ -45,6 +45,11 @@ export function componentTopic(
         {def.note ? <p className="note">{def.note}</p> : null}
       </>
     ),
+    /* back to how the room starts; left out while the piece already is */
+    reset:
+      state.shown === def.initial.shown && state.variant === def.initial.variant
+        ? undefined
+        : () => set({ shown: def.initial.shown, variant: def.initial.variant }),
   };
 }
 

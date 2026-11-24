@@ -8,6 +8,7 @@ import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms'
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
 import { spacingMax, type MouldWall } from '../scene/mouldLayout';
+import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
 import { componentDefaults, sanitizeComponents, type ComponentStates } from './components';
 import type { ComponentState } from '../data/components';
 import {
@@ -126,6 +127,7 @@ export const DEFAULTS: Settings = {
     sofaFabric: 'original',
   },
   office: { components: componentDefaults(OFFICE) },
+  mouldShop: SHOP_DEFAULTS,
 };
 
 type Raw = Record<string, unknown>;
@@ -295,6 +297,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     bedroom: sanitizeBedroom(s.bedroom),
     living: sanitizeLiving(s.living),
     office: { components: sanitizeComponents(obj(office).components, OFFICE) },
+    mouldShop: sanitizeShop(s.mouldShop),
   };
 }
 

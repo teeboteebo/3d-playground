@@ -588,11 +588,9 @@ describe('sofa fabric', () => {
 });
 
 describe('room menu', () => {
-  const rowTitles = () =>
-    screen
-      .getAllByRole('button')
-      .filter((b) => b.dataset.topic)
-      .map((b) => b.querySelector('strong')!.textContent);
+  const rowTitles = () => [...document.querySelectorAll('.topic strong')].map((b) => b.textContent);
+  /** the section headings of a room's first page */
+  const sections = () => screen.queryAllByRole('heading', { level: 2 }).map((h) => h.textContent);
 
   it('opens a room on a summary of its options, with no controls on it', async () => {
     await renderIn('bedroom');
@@ -614,12 +612,17 @@ describe('room menu', () => {
     expect(row('Ceiling light')).toHaveTextContent('None');
     expect(row('Sofa')).toHaveTextContent('Original fabric');
     unmount();
-    await renderIn('office');
+    const office = await renderIn('office');
     expect(rowTitles()).toEqual([
-      'Walls', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug', 'Ceiling pendant', 'Floor lamp',
+      'Wall colour', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug', 'Ceiling pendant', 'Floor lamp',
+      'About the room',
     ]);
     for (const name of ['Room', 'Furniture', 'Lighting']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
     for (const name of ['Workspace', 'Reading corner']) expect(screen.getByRole('heading', { level: 3, name })).toBeVisible();
+    office.unmount();
+    await renderIn('hall');
+    expect(sections()).toEqual(['Walls']);
+    expect(rowTitles()).toEqual(['Wall colour', 'About the room']);
   });
 
   it('keeps the moulding walls a level below the moulding page', async () => {
@@ -706,7 +709,7 @@ describe('clicking options in 3D', () => {
     ['living', ['sofa'], 'Sofa'],
     ['living', ['moulding', 'sofa'], 'Sofa wall'],
     ['living', ['moulding', 'tv'], 'TV wall'],
-    ['living', ['furniture'], 'Furniture'],
+    ['living', ['furniture'], 'Show or hide furniture'],
     ['office', ['cabinets'], 'Cabinets'],
     ['office', ['desk'], 'Desk'],
     ['office', ['drawers'], 'Drawer unit'],
@@ -716,6 +719,7 @@ describe('clicking options in 3D', () => {
     ['office', ['reading-chair'], 'Reading chair'],
     ['office', ['dresser'], 'Dresser'],
     ['office', ['round-rug'], 'Round rug'],
+    ['office', ['about'], 'About the room'],
   ] as const)('opens %s › %j as the "%s" page', async (room, path, title) => {
     await renderIn(room);
     await click3d(room, [...path]);

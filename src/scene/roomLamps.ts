@@ -98,7 +98,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         const ids = lampIds(s, room);
         const tags: { pendant: string; floor: string } =
           room === 'living'
-            ? { pendant: 'lighting', floor: 'lighting' }
+            ? { pendant: 'ceiling', floor: 'floorLamp' }
             : ({ pendant: 'pendant', floor: 'floor-lamp' } satisfies Record<'pendant' | 'floor', OfficeComponentId>);
         const pendantName = `${room}-pendant`;
         const pendant = place(

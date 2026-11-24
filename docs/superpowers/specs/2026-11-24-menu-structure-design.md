@@ -323,6 +323,21 @@ The model is introduced in the simplest room first, then each room is moved over
 
    An unknown product id in a version 2 save takes the piece's default product, as version 2 itself did, rather than
    hiding the piece. Only an explicit `'none'` hides it.
+
+   **Built on top of #21** ("Undo anything, and find every option in the same place in every room"). That PR landed
+   while this step was in progress. It gave every room shared menu sections (Walls, Lighting, Furniture, Textiles and
+   decor), shared row names, a Reset link on each page, an About row last, and undo. Where it and this step disagree,
+   this step wins for the office:
+   - **Headings and groups:** the office keeps its Room / Furniture / Lighting headings, with the Workspace and Reading
+     corner groups.
+   - **Ids:** it keeps its component ids (`reading-chair`, `round-rug`, `pendant`, `floor-lamp`).
+
+   Everything else from #21 still applies to the office:
+   - Wall colour, Reset on each component page, and About the room as the last row.
+   - Undo treats each piece's change as its own step.
+
+   The bedroom and living room keep #21's sections. Steps 2 and 3 should decide whether the office's headings or #21's
+   sections become the one structure for every room.
 2. **The living room.** The checklist becomes a switch on each piece's page, and the sofa fabric becomes an option.
 3. **The bedroom.** It has the most hand-wiring:
    - splitting the bench from the bed, and the wall lamps from the tables;

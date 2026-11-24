@@ -77,6 +77,8 @@ export function Menu({ root, exit, nav }: Props) {
     trail.push(next);
   }
   const page = trail.at(-1)!;
+  /* a page's sectioned rows line up across their sections: any swatch leaves room for one on every row */
+  const swatches = !!page.topics?.some((t) => t.swatch);
   const parent = trail.at(-2);
   /** where the menu is, as a key that changes with every move */
   const at = trail.map((t) => t.id).join('/');
@@ -134,14 +136,14 @@ export function Menu({ root, exit, nav }: Props) {
       {page.sub && <p className="sub">{page.sub}</p>}
       {page.content}
       <div ref={rows}>
-        {page.topics && page.topics.length > 0 && (
-          <section>
-            {page.topicsTitle && <h2>{page.topicsTitle}</h2>}
-            <RowList title={page.topicsTitle ?? `${page.title} options`} topics={page.topics} open={open} />
-          </section>
-        )}
         {page.groups?.map((g) => (
           <GroupSection key={g.title} group={g} level={2} open={open} />
+        ))}
+        {sectioned(page).map((group, gi) => (
+          <section key={group.title ?? `rest-${gi}`}>
+            {group.title && <h2>{group.title}</h2>}
+            <RowList title={group.title ?? `${page.title} options`} topics={group.topics} open={open} swatches={swatches} />
+          </section>
         ))}
       </div>
       {page.footer}
@@ -156,9 +158,8 @@ export function Menu({ root, exit, nav }: Props) {
   );
 }
 
-/** a list of rows; they keep their titles in line: a list with any swatch leaves room for one on every row */
-function RowList({ title, topics, open }: { title: string; topics: Topic[]; open: (id: string) => void }) {
-  const swatches = topics.some((t) => t.swatch);
+/** a list of rows; they keep their titles in line: a list with any swatch (or `swatches`, for lists that line up with each other) leaves room for one on every row */
+function RowList({ title, topics, open, swatches = topics.some((t) => t.swatch) }: { title: string; topics: Topic[]; open: (id: string) => void; swatches?: boolean }) {
   return (
     <ul className="topics" aria-label={title}>
       {topics.map((t) => (

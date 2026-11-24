@@ -66,7 +66,7 @@ export function Stage({ settings, update, onOption }: Props) {
             if (current !== 'all' && next === current) {
               const path = option?.room === current ? option.path : [];
               onOptionRef.current(path);
-              say(path.length ? `Opened ${optionLabel(path)}` : `${roomById(current).name} options`);
+              say(path.length ? `Opened ${optionLabel(current, path)}` : `${roomById(current).name} options`);
               return;
             }
             if (next === current) return;

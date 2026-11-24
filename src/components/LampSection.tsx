@@ -5,6 +5,8 @@ import { ProductList } from './ProductList';
 
 interface Props {
   room: 'living';
+  /** which lamp: the ceiling pendant or the floor lamp */
+  kind: 'pendant' | 'floorLamp';
   settings: Settings;
   update: Update;
 }
