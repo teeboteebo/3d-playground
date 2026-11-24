@@ -15,6 +15,13 @@ const withLamps = (over: Partial<Settings>): Settings => ({
   ...DEFAULTS,
   ...over,
 });
+const office = (pendant: string, floorLamp: string): Settings['office'] => ({
+  components: {
+    ...DEFAULTS.office.components,
+    pendant: { shown: pendant !== 'none', variant: pendant === 'none' ? P : pendant },
+    'floor-lamp': { shown: floorLamp !== 'none', variant: floorLamp === 'none' ? F : floorLamp },
+  },
+});
 const names = (g: THREE.Object3D) => g.children.map((c) => c.name).sort();
 const light = (g: THREE.Object3D, n: string) =>
   g.getObjectByName(n) as THREE.PointLight;
@@ -28,7 +35,7 @@ describe('addRoomLamps', () => {
   it('hangs the pendant at the room centre, 2.1 m above the floor', () => {
     const g = new THREE.Group();
     addRoomLamps(g).apply(
-      withLamps({ office: { ...DEFAULTS.office, pendant: P, floorLamp: 'none' } }),
+      withLamps({ office: office(P, 'none') }),
     );
     const p = g.getObjectByName('office-pendant')!;
     const [cx, cz] = centroid(roomById('office').poly);
@@ -56,7 +63,7 @@ describe('addRoomLamps', () => {
   it('disposes the lamp it replaces and leaves an unchanged lamp alone', () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
-    lamps.apply(withLamps({ office: { ...DEFAULTS.office, pendant: P, floorLamp: F } }));
+    lamps.apply(withLamps({ office: office(P, F) }));
     const oldPendant = g.getObjectByName('office-pendant')!;
     const floor = g.getObjectByName('office-floor-lamp')!;
     let freed = 0;
@@ -66,7 +73,7 @@ describe('addRoomLamps', () => {
           freed++;
         });
     });
-    lamps.apply(withLamps({ office: { ...DEFAULTS.office, pendant: P2, floorLamp: F } }));
+    lamps.apply(withLamps({ office: office(P2, F) }));
     expect(freed).toBeGreaterThan(0);
     expect(g.getObjectByName('office-floor-lamp')).toBe(floor);
   });
@@ -74,19 +81,29 @@ describe('addRoomLamps', () => {
     const g = new THREE.Group();
     const lamps = addRoomLamps(g);
     lamps.apply(
-      withLamps({ time: 'day', office: { ...DEFAULTS.office, pendant: P, floorLamp: F } }),
+      withLamps({ time: 'day', office: office(P, F) }),
     );
     expect(light(g, 'office-pendant-light').intensity).toBe(0);
     expect(light(g, 'office-pendant-light').visible).toBe(false);
     expect(light(g, 'office-floor-lamp-light').visible).toBe(false);
     lamps.apply(
-      withLamps({ time: 'eve', office: { ...DEFAULTS.office, pendant: P, floorLamp: F } }),
+      withLamps({ time: 'eve', office: office(P, F) }),
     );
     expect(light(g, 'office-pendant-light').intensity).toBe(0.9);
     expect(light(g, 'office-floor-lamp-light').intensity).toBe(0.6);
     expect(light(g, 'office-pendant-light').visible).toBe(true);
     expect(light(g, 'office-floor-lamp-light').visible).toBe(true);
     expect(light(g, 'office-pendant-light').castShadow).toBe(false);
+  });
+  it("turns off a hidden office lamp's light in the evening", () => {
+    const g = new THREE.Group();
+    const lamps = addRoomLamps(g);
+    lamps.apply(withLamps({ time: 'eve', office: office(P, 'none') }));
+    expect(g.getObjectByName('office-pendant')).toBeDefined();
+    expect(light(g, 'office-pendant-light').visible).toBe(true);
+    lamps.apply(withLamps({ time: 'eve', office: office('none', 'none') }));
+    expect(g.getObjectByName('office-pendant')).toBeUndefined();
+    expect(g.getObjectByName('office-pendant-light')).toBeUndefined();
   });
   it('stands the living floor lamp between the sofa and the plant pot', () => {
     const g = new THREE.Group();
@@ -143,7 +160,7 @@ describe('addRoomLights', () => {
       at('office').intensity,
     ]).toEqual([0.6, 0.6, 0.6]);
     fill.apply(
-      withLamps({ time: 'eve', office: { ...DEFAULTS.office, pendant: P, floorLamp: 'none' } }),
+      withLamps({ time: 'eve', office: office(P, 'none') }),
     );
     expect([
       at('hall').intensity,
@@ -151,7 +168,7 @@ describe('addRoomLights', () => {
       at('office').intensity,
     ]).toEqual([0.6, 0.6, 0.15]);
     fill.apply(
-      withLamps({ time: 'day', office: { ...DEFAULTS.office, pendant: P, floorLamp: 'none' } }),
+      withLamps({ time: 'day', office: office(P, 'none') }),
     );
     expect(at('office').intensity).toBe(0);
   });

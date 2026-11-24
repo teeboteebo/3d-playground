@@ -1,13 +1,15 @@
 import {
-  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
-  WARDROBES,
+  ACCENT_DEFAULT, ARTS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, RUGS, WARDROBES,
 } from '../data/catalog';
+import { DRESSERS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
+import { OFFICE, type OfficeComponentId } from '../data/office';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
 import { spacingMax, type MouldWall } from '../scene/mouldLayout';
-import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
+import { componentDefaults, sanitizeComponents, type ComponentStates } from './components';
+import type { ComponentState } from '../data/components';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
 } from './mould';
@@ -38,11 +40,9 @@ export interface LampSettings {
   floorLamp: string;
 }
 
-/** The office: lamps and the reading corner's pieces (catalog ids; 'none' for no piece). */
-export interface OfficeSettings extends LampSettings {
-  readingChair: string;
-  dresser: string;
-  roundRug: string;
+/** The office: each of its components, shown or hidden, and which product it is. */
+export interface OfficeSettings {
+  components: ComponentStates<OfficeComponentId>;
 }
 
 /** What can be changed in the living room. */
@@ -60,7 +60,7 @@ export interface LivingSettings extends LampSettings {
 }
 
 export interface Settings {
-  version: 2;
+  version: 3;
   /** selected room, or 'all' for none */
   room: RoomSelection;
   /** lighting, shared by every room */
@@ -78,11 +78,15 @@ export interface Settings {
 export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living' | 'office'>> & {
   bedroom?: Partial<BedroomSettings>;
   living?: Partial<LivingSettings>;
-  office?: Partial<OfficeSettings>;
+  office?: { components?: Partial<Record<OfficeComponentId, Partial<ComponentState>>> };
 };
 
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
-  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living }, office: { ...s.office, ...p.office } };
+  const components = { ...s.office.components };
+  for (const [id, patch] of Object.entries(p.office?.components ?? {}) as [OfficeComponentId, Partial<ComponentState>][]) {
+    components[id] = { ...components[id], ...patch };
+  }
+  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living }, office: { components } };
 }
 
 export const STORAGE_KEY = 'apartment-playground';
@@ -90,7 +94,7 @@ export const STORAGE_KEY = 'apartment-playground';
 export const LEGACY_STORAGE_KEY = 'bedroom-viz';
 
 export const DEFAULTS: Settings = {
-  version: 2,
+  version: 3,
   room: 'all',
   time: 'day',
   walls: Object.fromEntries(ROOMS.map((r) => [r.id, r.paint])) as Record<RoomId, string>,
@@ -121,15 +125,7 @@ export const DEFAULTS: Settings = {
     mouldWalls: LIVING_MOULD_DEFAULTS,
     sofaFabric: 'original',
   },
-  office: {
-    pendant: 'none',
-    floorLamp: 'none',
-    /* the first real product of each list (index 1, after 'none'): reordering the catalog changes these defaults */
-    readingChair: READING_CHAIRS[1].id,
-    dresser: DRESSERS[1].id,
-    roundRug: ROUND_RUGS[1].id,
-  },
-  mouldShop: SHOP_DEFAULTS,
+  office: { components: componentDefaults(OFFICE) },
 };
 
 type Raw = Record<string, unknown>;
@@ -184,16 +180,27 @@ function sanitizeLamps(raw: unknown): LampSettings {
   };
 }
 
-/** Unlike the lamps, the corner's pieces default to the first product; only an explicit 'none' means no piece. */
-function sanitizeOffice(raw: unknown): OfficeSettings {
+/**
+ * the version 2 office's five catalog ids, as component states: 'none' is a hidden piece, a known id a shown one, and
+ * anything else is left out so it takes the initial state (version 2 took its default, a lamp's being none)
+ */
+function fromVersion2Office(raw: unknown): Raw {
   const o = obj(raw);
-  const d = DEFAULTS.office;
-  return {
-    ...sanitizeLamps(o),
-    readingChair: oneOf(o.readingChair, ids(READING_CHAIRS), d.readingChair),
-    dresser: oneOf(o.dresser, ids(DRESSERS), d.dresser),
-    roundRug: oneOf(o.roundRug, ids(ROUND_RUGS), d.roundRug),
-  };
+  const lists: [OfficeComponentId, string, readonly { id: string }[]][] = [
+    ['pendant', 'pendant', PENDANTS],
+    ['floor-lamp', 'floorLamp', FLOOR_LAMPS],
+    ['reading-chair', 'readingChair', READING_CHAIRS],
+    ['dresser', 'dresser', DRESSERS],
+    ['round-rug', 'roundRug', ROUND_RUGS],
+  ];
+  const components: Raw = {};
+  for (const [id, old, list] of lists) {
+    const v = o[old];
+    if (v === 'none') components[id] = { shown: false };
+    else if (list.some((i) => i.id === v)) components[id] = { shown: true, variant: v };
+    /* missing or unknown: the component's initial state, as version 2 took its default */
+  }
+  return { components };
 }
 
 /** room spacing and dado; a pre-wall save (no mouldWalls) takes its spacing from the old gap field */
@@ -278,16 +285,16 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
  */
 export function sanitizeSettings(raw: unknown): Settings {
   const r = obj(raw);
-  const s = r.version === 2 ? r : fromVersion1(r);
+  const s = r.version === 2 || r.version === 3 ? r : fromVersion1(r);
+  const office = r.version === 3 ? s.office : fromVersion2Office(s.office);
   return {
-    version: 2,
+    version: 3,
     room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
     bedroom: sanitizeBedroom(s.bedroom),
     living: sanitizeLiving(s.living),
-    office: sanitizeOffice(s.office),
-    mouldShop: sanitizeShop(s.mouldShop),
+    office: { components: sanitizeComponents(obj(office).components, OFFICE) },
   };
 }
 

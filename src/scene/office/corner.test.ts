@@ -10,14 +10,19 @@ import { CORNER } from './dimensions';
 import { buildOffice } from './index';
 
 const NAMES = ['office-reading-chair', 'office-dresser', 'office-round-rug'];
-const NONE = { readingChair: 'none', dresser: 'none', roundRug: 'none' };
-const settings = (o: Partial<Settings['office']>): Settings => ({
-  ...DEFAULTS,
-  office: { ...DEFAULTS.office, ...NONE, ...o },
-});
+type Pieces = { readingChair?: string; dresser?: string; roundRug?: string };
+const IDS = { readingChair: 'reading-chair', dresser: 'dresser', roundRug: 'round-rug' } as const;
+const settings = (o: Pieces): Settings => {
+  const components = { ...DEFAULTS.office.components };
+  for (const [key, id] of Object.entries(IDS) as [keyof Pieces, (typeof IDS)[keyof Pieces]][]) {
+    const v = o[key];
+    components[id] = v === undefined || v === 'none' ? { ...components[id], shown: false } : { shown: true, variant: v };
+  }
+  return { ...DEFAULTS, office: { components } };
+};
 
 /** the office furniture and the corner, built into one group, with `o` applied */
-const build = (o: Partial<Settings['office']>) => {
+const build = (o: Pieces) => {
   const g = new THREE.Group();
   const office = buildOffice(g);
   office.apply(settings(o));

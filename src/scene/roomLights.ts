@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ROOMS, centroid } from '../data/rooms';
+import { lampIds } from './roomLamps';
 import type { Settings } from '../state/settings';
 
 /**
@@ -19,7 +20,7 @@ export function addRoomLights(scene: THREE.Scene): { apply(s: Settings): void } 
     apply(s) {
       const evening = s.time === 'eve';
       for (const { id, light } of lights) {
-        const lamps = id === 'living' || id === 'office' ? s[id] : null;
+        const lamps = id === 'living' || id === 'office' ? lampIds(s, id) : null;
         const lit = !!lamps && (lamps.pendant !== 'none' || lamps.floorLamp !== 'none');
         light.intensity = !evening ? 0 : lit ? 0.15 : 0.6;
       }

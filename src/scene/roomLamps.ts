@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { FLOOR_LAMPS, PENDANTS, findById } from '../data/catalog';
 import { CEILING, centroid, roomById } from '../data/rooms';
+import { drawn } from '../state/components';
 import type { Settings } from '../state/settings';
 import { buildLamp, type BuiltLamp } from './lamps';
 import { tagOption } from './options';
@@ -25,6 +26,13 @@ export const FLOOR_LAMP_SPOT: Record<
 const PENDANT_HEIGHT = 2.1;
 const PENDANT_INTENSITY = 0.9;
 const FLOOR_INTENSITY = 0.6;
+
+/** the catalog ids of a room's pendant and floor lamp, 'none' for no lamp */
+export function lampIds(s: Settings, room: LampRoom): { pendant: string; floorLamp: string } {
+  if (room === 'living') return s.living;
+  const c = s.office.components;
+  return { pendant: drawn(c.pendant), floorLamp: drawn(c['floor-lamp']) };
+}
 
 export interface RoomLamps {
   apply(s: Settings): void;
@@ -86,27 +94,29 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
     apply(s) {
       const evening = s.time === 'eve';
       for (const room of LAMP_ROOMS) {
+        const ids = lampIds(s, room);
+        const tags = room === 'living' ? { pendant: 'lighting', floor: 'lighting' } : { pendant: 'pendant', floor: 'floor-lamp' };
         const pendantName = `${room}-pendant`;
         const pendant = place(
           pendantName,
-          s[room].pendant,
+          ids.pendant,
           PENDANTS,
           CEILING - PENDANT_HEIGHT,
         );
         if (pendant) {
-          tagOption([pendant.lamp.group], room, ['ceiling']);
+          tagOption([pendant.lamp.group], room, [tags.pendant]);
           const [x, z] = centroid(roomById(room).poly);
           pendant.lamp.group.position.set(x, CEILING, z);
         }
         const floorName = `${room}-floor-lamp`;
         const floor = place(
           floorName,
-          s[room].floorLamp,
+          ids.floorLamp,
           FLOOR_LAMPS,
           undefined,
         );
         if (floor) {
-          tagOption([floor.lamp.group], room, ['floorLamp']);
+          tagOption([floor.lamp.group], room, [tags.floor]);
           const { x, z, rotY } = FLOOR_LAMP_SPOT[room];
           floor.lamp.group.position.set(x, 0, z);
           floor.lamp.group.rotation.y = rotY;

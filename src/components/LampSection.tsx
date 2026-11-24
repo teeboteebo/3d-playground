@@ -4,9 +4,7 @@ import type { Update } from '../state/useSettings';
 import { ProductList } from './ProductList';
 
 interface Props {
-  room: 'living' | 'office';
-  /** which lamp: the ceiling pendant or the floor lamp */
-  kind: 'pendant' | 'floorLamp';
+  room: 'living';
   settings: Settings;
   update: Update;
 }
