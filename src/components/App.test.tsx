@@ -523,6 +523,32 @@ describe('showing and hiding the office pieces together', () => {
   });
 });
 
+describe('showing and hiding the living room pieces together', () => {
+  const pieces = () => stored().living.components;
+
+  it('hides every piece as one step that Undo restores', async () => {
+    await renderIn('living');
+    goTo('Show or hide pieces');
+    const before = JSON.parse(JSON.stringify(pieces()));
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }));
+    expect(Object.values(pieces()).every((c) => !c.shown)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(pieces()).toEqual(before);
+    expect(pieces().sofa.shown).toBe(true);
+  });
+
+  it('resets to how the room starts, lamps hidden and the rest shown', async () => {
+    await renderIn('living');
+    goTo('Show or hide pieces');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide pieces' }));
+    expect(pieces()['ceiling-light'].shown).toBe(false);
+    expect(pieces()['floor-lamp'].shown).toBe(false);
+    expect(pieces().sofa.shown).toBe(true);
+    expect(pieces().rug.shown).toBe(true);
+  });
+});
+
 describe('office pieces', () => {
   const lists = [
     ['Reading chair', READING_CHAIRS, 'reading-chair'],
@@ -668,7 +694,7 @@ describe('room menu', () => {
 
   it('opens a room on a summary of its options, with no controls on it', async () => {
     await renderIn('bedroom');
-    expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture', 'Textiles and decor']);
+    expect(sections()).toEqual(['Room', 'Lighting', 'Furniture', 'Textiles and decor']);
     expect(rowTitles()).toEqual([
       'Wall colour', 'Wall moulding', 'Ceiling light', 'Wardrobes', 'Rug', 'Pillows and throw', 'Painting', 'Accent colour', 'About the room',
     ]);
@@ -698,7 +724,7 @@ describe('room menu', () => {
     for (const name of ['Workspace', 'Reading corner']) expect(screen.getByRole('heading', { level: 3, name })).toBeVisible();
     office.unmount();
     await renderIn('hall');
-    expect(sections()).toEqual(['Walls']);
+    expect(sections()).toEqual(['Room']);
     expect(rowTitles()).toEqual(['Wall colour', 'About the room']);
   });
 
