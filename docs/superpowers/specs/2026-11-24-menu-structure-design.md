@@ -370,6 +370,23 @@ The model is introduced in the simplest room first, then each room is moved over
    - the vase's link to the accent colour;
    - the pendant.
 
+   **Carried over from the step 2 reviews.** Do these first:
+   - **Lamp rooms:** `roomLamps` loops over every room in `ROOM_DEFS` and expects catalog lamps. Derive the lamp rooms
+     from the definitions (or mark lamp components) before the bedroom joins, so its own pendant isn't doubled and a
+     missing floor lamp doesn't crash. `roomLights` should read the same list.
+   - **`SettingsPatch` and `applyPatch`:** collapse them into the mapped per-room type once the bedroom is a component
+     room. Guard unknown component ids.
+   - **One source for an option's default:** `componentDefaults` uses `initial.options`, while sanitising uses
+     `OptionDef.initial`.
+   - **Bedroom ids:** the bedroom's `ceiling` row id becomes `ceiling-light`, like the other rooms.
+   - **`roomPage` types:** type its component state as plain `ComponentState`, not the office's.
+   - **Options undo key:** key it per option id.
+   - **Decide with the user:**
+     - should "Show or hide pieces" count against the room's starting state (the default reads "6 of 8 shown" because
+       the lamps start hidden)?
+     - should pointing at that row highlight every piece?
+   - **Swatch column:** keep a list's swatch column when its only swatch row is hidden, so the rows don't shift.
+
 When the last room is moved, the old per-room panels and settings fields are removed.
 
 ## Non-goals
