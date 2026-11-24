@@ -75,6 +75,8 @@ export const ACCENT_PRESETS: Swatch[] = [
 ];
 
 export const RUG_SIZE = { w: 2.0, l: 3.0 };
+/** when the bedroom rugs' prices and stock were last checked */
+export const RUGS_CHECKED = '3 Nov 2026';
 
 export type StockState = 'ok' | 'no' | 'un';
 

@@ -10,6 +10,8 @@ export interface Variant<S = unknown> {
   stock?: string;
   st?: StockState;
   url?: string;
+  /** the sizes it comes in, such as "200×300" */
+  sizes?: string;
   shape?: S;
 }
 
@@ -22,8 +24,20 @@ export const CATEGORIES: readonly { id: Category; title: string }[] = [
   { id: 'decor', title: 'Textiles and decor' },
 ];
 
+/** one choice of a chips option; `followsAccent` takes its colour from the room's accent colour instead of `hex` */
+export interface ChipChoice {
+  id: string;
+  name: string;
+  hex?: string;
+  followsAccent?: boolean;
+  /** how the choice reads in the piece's row summary, when that differs from its name */
+  summary?: string;
+}
+
 /** something about a component other than its product that can be chosen, such as the fabric of a sofa */
-export type OptionDef = { id: string; label: string; kind: 'fabric'; initial: string };
+export type OptionDef =
+  | { id: string; label: string; kind: 'fabric'; initial: string }
+  | { id: string; label: string; kind: 'chips'; choices: readonly ChipChoice[]; initial: string };
 
 /** the lamps the catalog's lamp builder draws: a ceiling pendant or a floor lamp */
 export type LampKind = 'pendant' | 'floor';

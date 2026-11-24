@@ -14,6 +14,8 @@ function sanitizeOption(def: OptionDef, value: unknown): string {
   switch (def.kind) {
     case 'fabric':
       return value === 'original' || BEMZ_FABRICS.some((f) => f.code === value) ? (value as string) : def.initial;
+    case 'chips':
+      return def.choices.some((c) => c.id === value) ? (value as string) : def.initial;
   }
 }
 

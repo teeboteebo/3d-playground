@@ -1,7 +1,17 @@
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
-import { CATEGORIES, initialOptions, type ComponentDef, type ComponentState, type OptionDef, type RoomDef, type Variant } from '../data/components';
+import {
+  CATEGORIES,
+  initialOptions,
+  type ChipChoice,
+  type ComponentDef,
+  type ComponentState,
+  type OptionDef,
+  type RoomDef,
+  type Variant,
+} from '../data/components';
 import type { ReactNode } from 'react';
 import type { StockState } from '../data/catalog';
+import { ChipGroup } from './ChipGroup';
 import type { Topic, TopicGroup } from './Menu';
 import { ProductList } from './ProductList';
 import { SofaFabricSection } from './SofaFabricSection';
@@ -10,20 +20,37 @@ import { ToggleRow } from './ToggleRow';
 /** the first part of a product name, before its colour or finish */
 const short = (name: string) => name.split(',')[0];
 
-/** the control that sets an option */
-export function optionControl(def: OptionDef, value: string, onChange: (v: string) => void): ReactNode {
+/** a chips choice's colour: the room's accent colour for a choice that follows it */
+const choiceHex = (c: ChipChoice, accent?: string) => (c.followsAccent ? accent : c.hex);
+
+/** the control that sets an option; `accent` is the room's accent colour, for a choice that follows it */
+export function optionControl(def: OptionDef, value: string, onChange: (v: string) => void, accent?: string): ReactNode {
   switch (def.kind) {
     case 'fabric':
       return <SofaFabricSection key={def.id} value={value} onChange={onChange} />;
+    case 'chips':
+      return (
+        <ChipGroup
+          key={def.id}
+          label={def.label}
+          options={def.choices.map((c) => ({ id: c.id, name: c.name, hex: choiceHex(c, accent) }))}
+          value={value}
+          onChange={onChange}
+        />
+      );
   }
 }
 
 /** an option's value in words, with the colour to show beside it where it has one */
-export function optionSummary(def: OptionDef, value: string): { text: string; swatch?: string } {
+export function optionSummary(def: OptionDef, value: string, accent?: string): { text: string; swatch?: string } {
   switch (def.kind) {
     case 'fabric': {
       const f = BEMZ_FABRICS.find((x) => x.code === value);
       return f ? { text: `Bemz ${f.family}, ${f.colour}`, swatch: f.hex } : { text: 'Original fabric' };
+    }
+    case 'chips': {
+      const c = def.choices.find((x) => x.id === value) ?? def.choices.find((x) => x.id === def.initial);
+      return c ? { text: c.summary ?? c.name, swatch: choiceHex(c, accent) } : { text: '' };
     }
   }
 }
@@ -39,15 +66,18 @@ export function componentTopic(
   state: ComponentState,
   set: (patch: Partial<ComponentState>) => void,
   thumb?: (v: Variant) => string,
+  accent?: string,
 ): Topic {
   const chosen = def.variants.find((v) => v.id === state.variant);
-  const option = def.options?.[0];
-  const optionText = option ? optionSummary(option, state.options[option.id] ?? option.initial) : undefined;
-  const summary = !state.shown ? 'Hidden' : optionText ? optionText.text : chosen ? short(chosen.name) : '';
+  const optionTexts = (def.options ?? []).map((o) => optionSummary(o, state.options[o.id] ?? o.initial, accent));
+  const optionText = optionTexts.length ? optionTexts.map((t) => t.text).join(' · ') : undefined;
+  const swatch = optionTexts.find((t) => t.swatch)?.swatch;
+  const summary = !state.shown ? 'Hidden' : optionText ? optionText : chosen ? short(chosen.name) : '';
   const items = def.variants.map((v) => ({
     ...v,
     vendor: v.vendor ?? '',
     price: v.price ?? '',
+    sizes: v.sizes ?? '',
     stock: v.stock ?? '',
     st: v.st ?? ('un' as StockState),
     url: v.url ?? '',
@@ -56,9 +86,9 @@ export function componentTopic(
     id: def.id,
     title: def.name,
     summary,
-    swatch: state.shown ? optionText?.swatch : undefined,
+    swatch: state.shown ? swatch : undefined,
     /* a hidden piece keeps the room its swatch takes, so its list's titles stay in line */
-    swatchSpace: !!optionText?.swatch,
+    swatchSpace: !!swatch,
     content: (
       <>
         <div className="piece-show">
@@ -75,13 +105,13 @@ export function componentTopic(
             items={items}
             value={state.variant}
             onChange={(id) => set({ variant: id, shown: true })}
-            meta={(i) => `${i.vendor} · ${i.price}`}
+            meta={(i) => [i.vendor, i.price, i.sizes].filter(Boolean).join(' · ')}
             thumb={thumb}
           />
         ) : null}
-        {(def.options ?? []).map((o) => (
-          <div key={o.id}>
-            {optionControl(o, state.options[o.id] ?? o.initial, (v) => set({ options: { [o.id]: v } }))}
+        {(def.options ?? []).map((o, i) => (
+          <div key={o.id} className={i > 0 ? 'mt6' : undefined}>
+            {optionControl(o, state.options[o.id] ?? o.initial, (v) => set({ options: { [o.id]: v } }), accent)}
           </div>
         ))}
         {def.note ? <p className="note">{def.note}</p> : null}

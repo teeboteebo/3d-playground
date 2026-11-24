@@ -4,7 +4,7 @@ import type { Kit } from './kit';
 import { BEDX, L } from './dimensions';
 import type { BedroomMaterials } from './materials';
 
-/** IKEA TONSTAD 160×200 bed, the ILVA Amigo bench at its foot, and five pillows, centred on BEDX against the back wall. */
+/** IKEA TONSTAD 160×200 bed with its bedding and five pillows, centred on BEDX against the back wall. */
 export function buildBed({ add, box, collect }: Kit, m: BedroomMaterials): THREE.Object3D[] {
   const bz0 = -L / 2;
   const BF = 0.15;
@@ -27,7 +27,26 @@ export function buildBed({ add, box, collect }: Kit, m: BedroomMaterials): THREE
     box(1.66, 0.085, 0.38, m.throwBlanket, 0, 0.52 + BF, -0.26);
     box(1.66, 0.2, 0.012, m.throwBlanket, 0, 0.41 + BF, -0.07);
 
-    /* bench: 90 x 35 x 45 cm, solid oak, woven seat, low shelf */
+    const pillows: [number, number, number, number, number, number, number][] = [
+      // w, h, d, x, y, z, tilt
+      [0.62, 0.16, 0.62, -0.4, 0.75, -1.6, -0.45],
+      [0.62, 0.16, 0.62, 0.4, 0.75, -1.6, -0.45],
+      [0.72, 0.13, 0.48, -0.4, 0.73, -1.3, -0.2],
+      [0.72, 0.13, 0.48, 0.4, 0.73, -1.3, -0.2],
+      [0.5, 0.1, 0.22, 0, 0.78, -1.1, -0.1],
+    ];
+    pillows.forEach(([w, h, d, x, y, z, tilt], i) => {
+      add(pillowGeo(w, h, d), m.pillows[i], x, y, z).rotation.x = tilt;
+    });
+  });
+  for (const p of parts) p.position.x += BEDX;
+  return parts;
+}
+
+/** the ILVA Amigo bench at the foot of the bed, centred on BEDX: 90 × 35 × 45 cm, solid oak, woven seat, low shelf */
+export function buildBench({ add, box, collect }: Kit, m: BedroomMaterials): THREE.Object3D[] {
+  const bz0 = -L / 2;
+  const parts = collect(() => {
     const weaveMat = new THREE.MeshStandardMaterial({ map: weaveTexture(), roughness: 0.9 });
     const bzc = bz0 + 2.09 + 0.02 + 0.175;
     const BW = 0.9;
@@ -40,18 +59,6 @@ export function buildBed({ add, box, collect }: Kit, m: BedroomMaterials): THREE
     for (const sx of [-1, 1]) box(0.025, 0.06, BD - 0.04, m.oak, sx * (BW / 2 - 0.03), BH - 0.05, bzc);
     box(BW - 0.09, 0.022, BD - 0.09, weaveMat, 0, BH - 0.045, bzc);
     for (const k of [-1, 0, 1]) box(BW - 0.07, 0.022, 0.07, m.oak, 0, 0.17, bzc + k * 0.09);
-
-    const pillows: [number, number, number, number, number, number, number][] = [
-      // w, h, d, x, y, z, tilt
-      [0.62, 0.16, 0.62, -0.4, 0.75, -1.6, -0.45],
-      [0.62, 0.16, 0.62, 0.4, 0.75, -1.6, -0.45],
-      [0.72, 0.13, 0.48, -0.4, 0.73, -1.3, -0.2],
-      [0.72, 0.13, 0.48, 0.4, 0.73, -1.3, -0.2],
-      [0.5, 0.1, 0.22, 0, 0.78, -1.1, -0.1],
-    ];
-    pillows.forEach(([w, h, d, x, y, z, tilt], i) => {
-      add(pillowGeo(w, h, d), m.pillows[i], x, y, z).rotation.x = tilt;
-    });
   });
   for (const p of parts) p.position.x += BEDX;
   return parts;

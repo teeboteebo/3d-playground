@@ -4,7 +4,7 @@ import type { BedroomSettings, Settings } from '../../state/settings';
 import { lin } from '../materials';
 import { mergeMeshes } from '../merge';
 import { pillowColours } from '../palette';
-import { buildBed } from './bed';
+import { buildBed, buildBench } from './bed';
 import { buildBedside } from './bedside';
 import { L, W } from './dimensions';
 import { buildDresser, buildMirror, buildPainting, dresserLamp, paintingApplier } from './dresser';
@@ -42,6 +42,7 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const windowParts = mergeMeshes(buildWindows(k, m));
   const doorParts = mergeMeshes(buildHallDoorway(k, m));
   const bedParts = mergeMeshes(buildBed(k, m));
+  mergeMeshes(buildBench(k, m));
   const frontParts = mergeMeshes(buildFrontDoor(k, m));
   const dresserParts = mergeMeshes(k.collect(() => buildDresser(k, m)));
   const mirror = buildMirror(k, m);
