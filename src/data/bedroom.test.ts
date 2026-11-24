@@ -23,9 +23,9 @@ describe('the bedroom as components', () => {
       ['bench', 'furniture'],
       ['bedside-tables', 'furniture'],
       ['dresser', 'furniture'],
+      ['mirror', 'furniture'],
+      ['painting', 'furniture'],
       ['wardrobes', 'furniture'],
-      ['mirror', 'decor'],
-      ['painting', 'decor'],
       ['rug', 'decor'],
     ]);
   });
@@ -57,9 +57,9 @@ describe('the bedroom products', () => {
       ['ILVA Amigo'],
       ['AC Design Cholet'],
       ['Mio TOVA'],
-      ['Built-in Pax'],
       ['Full-length mirror'],
       ['Framed painting'],
+      ['Built-in Pax'],
     ]);
   });
 

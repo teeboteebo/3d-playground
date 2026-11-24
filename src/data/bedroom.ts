@@ -74,18 +74,9 @@ export const BEDROOM = {
       initial: { shown: true, variant: 'tova' },
     },
     {
-      id: 'wardrobes',
-      name: 'Wardrobes',
-      category: 'furniture',
-      note: 'Built-in Pax wardrobes along the east wall. Hiding them shows the bare wall and floor behind.',
-      variants: fixed('pax', 'Built-in Pax'),
-      options: [{ id: 'colour', label: 'Wardrobes', kind: 'chips', choices: WARDROBE_CHOICES, initial: 'wall' }],
-      initial: { shown: true, variant: 'pax' },
-    },
-    {
       id: 'mirror',
       name: 'Mirror',
-      category: 'decor',
+      category: 'furniture',
       note: 'A full-length oak-framed mirror on the front wall, left of the dresser. It shows a stylised reflection.',
       variants: fixed('full-length', 'Full-length mirror'),
       initial: { shown: true, variant: 'full-length' },
@@ -93,7 +84,7 @@ export const BEDROOM = {
     {
       id: 'painting',
       name: 'Painting',
-      category: 'decor',
+      category: 'furniture',
       note: 'The framed painting hangs above the dresser. Its picture follows the accent colour.',
       variants: fixed('framed', 'Framed painting'),
       options: [
@@ -101,6 +92,15 @@ export const BEDROOM = {
         { id: 'frame', label: 'Frame', kind: 'chips', choices: FRAME_CHOICES, initial: 'brass' },
       ],
       initial: { shown: true, variant: 'framed' },
+    },
+    {
+      id: 'wardrobes',
+      name: 'Wardrobes',
+      category: 'furniture',
+      note: 'Built-in Pax wardrobes along the east wall.',
+      variants: fixed('pax', 'Built-in Pax'),
+      options: [{ id: 'colour', label: 'Wardrobes', kind: 'chips', choices: WARDROBE_CHOICES, initial: 'wall' }],
+      initial: { shown: true, variant: 'pax' },
     },
     {
       id: 'rug',
