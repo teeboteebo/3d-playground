@@ -707,6 +707,10 @@ describe('clicking options in 3D', () => {
     ['living', ['moulding', 'sofa'], 'Sofa wall'],
     ['living', ['moulding', 'tv'], 'TV wall'],
     ['living', ['furniture'], 'Furniture'],
+    ['office', ['cabinets'], 'Cabinets'],
+    ['office', ['desk'], 'Desk'],
+    ['office', ['drawers'], 'Drawer unit'],
+    ['office', ['desk-chair'], 'Desk chair'],
     ['office', ['pendant'], 'Ceiling pendant'],
     ['office', ['floor-lamp'], 'Floor lamp'],
     ['office', ['reading-chair'], 'Reading chair'],
@@ -730,6 +734,13 @@ describe('clicking options in 3D', () => {
     expect(label).toHaveTextContent('Pillows and throw');
     await hover3d();
     expect(label).not.toBeVisible();
+  });
+
+  it('names an office piece under the mouse', async () => {
+    const { container } = await renderIn('office');
+    const label = container.querySelector<HTMLElement>('.pick-label')!;
+    await hover3d('office', ['round-rug']);
+    expect(label).toHaveTextContent('Round rug');
   });
 
   it('names the room a click would select', async () => {
