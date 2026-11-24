@@ -7,6 +7,7 @@ import { FinishSection } from './FinishSection';
 import { LightingSection } from './LightingSection';
 import { Menu, type MenuNav, type Topic } from './Menu';
 import { mouldingTopic } from './mouldingTopic';
+import { useShoppingList } from './useShoppingList';
 import { SofaFabricSection } from './SofaFabricSection';
 import { lightingTopic, wallsTopic, type RoomExit } from './roomTopics';
 
@@ -19,6 +20,7 @@ interface Props {
 
 export function LivingPanel({ settings, update, exit, menu }: Props) {
   const { hidden, sofaFabric } = settings.living;
+  const shopping = useShoppingList('living', settings);
   const toggle = (id: string) => update({ living: { hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id] } });
   const fabric = BEMZ_FABRICS.find((f) => f.code === sofaFabric);
   const shown = FURNITURE.length - FURNITURE.filter((f) => hidden.includes(f.id)).length;
@@ -37,7 +39,7 @@ export function LivingPanel({ settings, update, exit, menu }: Props) {
         swatch: fabric?.hex,
         content: <SofaFabricSection settings={settings} update={update} />,
       },
-      mouldingTopic('living', LIVING_MOULD_WALLS, settings, update),
+      mouldingTopic('living', LIVING_MOULD_WALLS, settings, update, shopping),
       {
         id: 'furniture',
         title: 'Furniture',

@@ -597,9 +597,9 @@ describe('room menu', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Wall moulding' })).toHaveFocus();
     expect(screen.getByRole('group', { name: 'Show moulding on' })).toBeInTheDocument();
     expect(screen.queryByTestId('mould-bed')).toBeNull();
-    const walls = within(screen.getByRole('list', { name: 'Walls' })).getAllByRole('button');
+    const walls = within(screen.getByRole('list', { name: 'Walls and shopping list' })).getAllByRole('button');
     expect(walls.map((b) => b.querySelector('strong')!.textContent)).toEqual([
-      'Bed wall', 'Dresser wall',
+      'Bed wall', 'Dresser wall', 'Shopping list',
     ]);
   });
 
@@ -706,5 +706,71 @@ describe('clicking options in 3D', () => {
     expect(label).toHaveTextContent('Living room');
     await hover3d('office');
     expect(label).toHaveTextContent('Office');
+  });
+});
+
+describe('moulding shopping list', () => {
+  /* the bed wall alone, so that the list is worked out at once */
+  const renderBedWall = (extra: Record<string, unknown> = {}) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, room: 'bedroom', bedroom: { mouldDresserWall: 'off' }, ...extra }));
+    return renderApp();
+  };
+  const field = (name: string) => screen.getByRole('spinbutton', { name });
+
+  it('asks for products, then lists what to buy once a length is added', async () => {
+    await renderBedWall();
+    goTo('Wall moulding');
+    expect(row('Shopping list')).toHaveTextContent('Add products');
+    goTo('Shopping list');
+    expect(screen.getByText(/Add the lengths your store sells/)).toBeInTheDocument();
+    goTo('Products and settings');
+    fireEvent.click(screen.getByRole('button', { name: 'Add panel length' }));
+    fireEvent.change(field('Panel price 1 (kr)'), { target: { value: '89' } });
+    expect(stored().mouldShop.panel.lengths).toEqual([{ length: 240, price: 89 }]);
+    up('Shopping list');
+    expect(await screen.findByText(/^\d+ × 240 cm$/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByText(/^Spare 1 × 240 cm$/)).toBeInTheDocument();
+    expect(screen.getByTestId('shop-total')).toHaveTextContent(/\d kr/);
+    up('Wall moulding');
+    expect(row('Shopping list')).toHaveTextContent(/\d kr/);
+  });
+
+  it('says there is nothing to buy when no moulding wall is on', async () => {
+    await renderBedWall({ bedroom: { mouldBedWall: 'off', mouldDresserWall: 'off' } });
+    goTo('Wall moulding');
+    expect(row('Shopping list')).toHaveTextContent('Nothing to buy');
+    goTo('Shopping list');
+    expect(screen.getByText(/no moulding wall is switched on/i)).toBeInTheDocument();
+  });
+
+  it('keeps a typed width inside its limits', async () => {
+    await renderBedWall();
+    goTo('Wall moulding', 'Shopping list', 'Products and settings');
+    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '-5' } });
+    expect(stored().mouldShop.panel.width).toBe(10);
+    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '45' } });
+    expect(stored().mouldShop.panel.width).toBe(45);
+    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '' } });
+    expect(stored().mouldShop.panel.width).toBe(45);
+  });
+
+  it('shows the rail product only when the rail is a different product, and saves the switches', async () => {
+    await renderBedWall();
+    goTo('Wall moulding', 'Shopping list', 'Products and settings');
+    expect(screen.queryByRole('spinbutton', { name: 'Rail height (mm)' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Rail is a different product' }));
+    expect(field('Rail height (mm)')).toHaveValue(40);
+    expect(stored().mouldShop.railSeparate).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Allow joins in panel frames' }));
+    expect(stored().mouldShop.joins).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Spare length' }));
+    expect(stored().mouldShop.spare).toBe(false);
+  });
+
+  it('draws the moulding at the product width', async () => {
+    await renderBedWall();
+    goTo('Wall moulding', 'Shopping list', 'Products and settings');
+    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '45' } });
+    expect(lastApplied().mouldShop.panel.width).toBe(45);
   });
 });

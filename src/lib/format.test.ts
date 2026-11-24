@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatKr } from './format';
+import { formatKr, formatMm } from './format';
 
 describe('formatKr', () => {
   it('groups thousands with a space and rounds to whole kr', () => {
@@ -8,5 +8,12 @@ describe('formatKr', () => {
     expect(formatKr(999)).toBe('999 kr');
     expect(formatKr(1234567.4)).toBe('1 234 567 kr');
     expect(formatKr(89.5)).toBe('90 kr');
+  });
+});
+
+describe('formatMm', () => {
+  it('groups thousands with a space', () => {
+    expect(formatMm(1210)).toBe('1 210 mm');
+    expect(formatMm(812.4)).toBe('812 mm');
   });
 });

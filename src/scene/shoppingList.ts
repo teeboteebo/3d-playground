@@ -91,6 +91,10 @@ export interface ProductResult {
   /** one spare of the longest length, priced apart from `buy` */
   spare: BuyLine | null;
   plan: CutPlan;
+  /** the stock lengths the plan's bars name by index */
+  stocks: Stock[];
+  /** every piece to cut, the ones the plan's cuts name by id */
+  pieces: Piece[];
   /** pieces that fit no length, even in all the parts they may be cut into */
   unfit: Piece[];
 }
@@ -124,6 +128,8 @@ export function shoppingResult(req: ShoppingRequest, plans: readonly CutPlan[], 
       buy,
       spare: shop.spare && longest ? line(longest, 1) : null,
       plan,
+      stocks: job.stocks,
+      pieces: job.pieces,
       unfit: job.pieces.filter((p) => plan.unfit.includes(p.id)),
     };
   });

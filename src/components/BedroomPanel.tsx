@@ -8,6 +8,7 @@ import { FinishSection } from './FinishSection';
 import { Icon } from './Icon';
 import { Menu, type MenuNav, type Topic } from './Menu';
 import { mouldingTopic } from './mouldingTopic';
+import { useShoppingList } from './useShoppingList';
 import { RugList } from './RugList';
 import { wallsTopic, type RoomExit } from './roomTopics';
 
@@ -20,6 +21,7 @@ interface Props {
 
 export function BedroomPanel({ settings, update, exit, menu }: Props) {
   const b = settings.bedroom;
+  const shopping = useShoppingList('bedroom', settings);
   const set = (patch: Partial<typeof b>) => update({ bedroom: patch });
   const strip: [string, string][] = [
     ['Walls', findById(PAINTS, settings.walls.bedroom).hex],
@@ -56,7 +58,7 @@ export function BedroomPanel({ settings, update, exit, menu }: Props) {
       swatch: b.accent,
       content: <AccentPicker value={b.accent} onChange={(accent) => set({ accent })} />,
     },
-    mouldingTopic('bedroom', BEDROOM_MOULD_WALLS, settings, update),
+    mouldingTopic('bedroom', BEDROOM_MOULD_WALLS, settings, update, shopping),
     {
       id: 'wardrobes',
       title: 'Wardrobes',

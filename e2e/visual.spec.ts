@@ -93,3 +93,15 @@ test('selects the room clicked in the 3D view', async ({ page }) => {
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await expect(page.getByRole('heading', { name: 'Living room' })).toBeVisible();
 });
+
+/* the bedroom's shopping list on a phone, for a bed wall bought from two lengths: it has to read well in the store */
+test('shopping list, on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  const lengths = [{ length: 240, price: 89 }, { length: 300, price: 109 }];
+  await openWith(page, { room: 'bedroom', bedroom: { mouldDresserWall: 'off' }, mouldShop: { panel: { lengths } } });
+  await page.locator('[data-topic="moulding"]').click();
+  await page.locator('[data-topic="shopping"]').click();
+  await expect(page.getByTestId('shop-total')).toBeVisible({ timeout: 30_000 });
+  /* the 3D view sticks over the top of the page on a phone: mask it, so the picture is the list alone */
+  await expect(page.getByTestId('shopping-list')).toHaveScreenshot('shopping-list-phone.png', { mask: [page.locator('canvas.stage-canvas, .hint, .lightbar, .viewbar')] });
+});
