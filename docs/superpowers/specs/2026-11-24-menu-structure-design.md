@@ -314,6 +314,15 @@ The model is introduced in the simplest room first, then each room is moved over
    - scene registration, and giving each of the office's four pieces its own click tag.
 
    The office goes first because it has both groups and its pieces are already built one by one.
+
+   **Done** (`docs/superpowers/plans/2026-11-24-office-components.md`). It differs from this design in two ways:
+   - **Version 3 settings carry only the office as components.** The bedroom, the living room and `walls` keep their
+     version 2 shapes until step 3, when everything moves into `rooms`.
+   - **The catalogs keep their `'none'` entries for now.** The office filters them out of its variants, and they are
+     removed in step 2, when the living room's lamps move over.
+
+   An unknown product id in a version 2 save takes the piece's default product, as version 2 itself did, rather than
+   hiding the piece. Only an explicit `'none'` hides it.
 2. **The living room.** The checklist becomes a switch on each piece's page, and the sofa fabric becomes an option.
 3. **The bedroom.** It has the most hand-wiring:
    - splitting the bench from the bed, and the wall lamps from the tables;
