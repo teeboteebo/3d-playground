@@ -43,6 +43,22 @@ function expectValid(plan: CutPlan, all: CutItem[], stocks: Stock[], kerf: numbe
   expect(plan.total).toBe(plan.bars.reduce((t, b) => t + stocks[b.stock].length, 0));
 }
 
+/** pieces that can really be split: with two or more, the search is good but does not claim to be exact */
+const splittableCount = (all: CutItem[]) => all.filter((i) => i.maxParts >= 2 && i.length >= 2 * Math.max(10, i.minPart)).length;
+
+/** the plan against the brute force over every split: equal and proven when at most one piece is split, else valid, no better, unproven */
+function expectAgainstBrute(plan: CutPlan, all: CutItem[], stocks: Stock[], label: string) {
+  const brute = bruteForceSplit(all, stocks, 0, 100)!;
+  if (splittableCount(all) <= 1) {
+    expect({ cost: plan.cost, total: plan.total, bars: plan.bars.length }, label).toEqual(brute);
+    expect(plan.proven, label).toBe(true);
+  } else {
+    expect(plan.cost, label).toBeGreaterThanOrEqual(brute.cost);
+    expect(plan.proven, label).toBe(false);
+  }
+  expectValid(plan, all, stocks, 0);
+}
+
 describe('optimise', () => {
   it('matches a brute force on 200 random small cases', () => {
     const rand = rng(20261124);
@@ -148,10 +164,50 @@ describe('optimise', () => {
         });
         stocks.push({ length: 1800, price: 9000 });
         const plan = optimise(all, stocks, { kerf: 0 });
-        const brute = bruteForceSplit(all, stocks, 0, 100)!;
-        expect({ cost: plan.cost, total: plan.total, bars: plan.bars.length }, `case ${c}: ${JSON.stringify({ all, stocks })}`).toEqual(brute);
-        expect(plan.proven).toBe(true);
-        expectValid(plan, all, stocks, 0);
+        expectAgainstBrute(plan, all, stocks, `case ${c}: ${JSON.stringify({ all, stocks })}`);
+      }
+    });
+
+    it('is not fooled by a splittable piece that is cut into all its parts elsewhere (review finding)', () => {
+      const stocks = [{ length: 1000, price: 100 }];
+      const all = [item('a', 800), splittable('x', 700, 200), item('p', 600), item('q', 600)];
+      const plan = optimise(all, stocks, { kerf: 0 });
+      expect(plan.cost).toBe(bruteForceSplit(all, stocks, 0, 100)!.cost);
+      expect(plan.cost).toBe(300);
+      expect(plan.proven).toBe(true);
+      expectValid(plan, all, stocks, 0);
+    });
+
+    it('does not claim to be proven when two pieces can be split and share a bar (review finding)', () => {
+      const stocks = [{ length: 1000, price: 100 }, { length: 600, price: 70 }];
+      const all = [splittable('a', 700, 200), splittable('b', 500, 200)];
+      const plan = optimise(all, stocks, { kerf: 0 });
+      expect(bruteForceSplit(all, stocks, 0, 100)!.cost).toBe(140);
+      expect(plan.cost).toBeGreaterThanOrEqual(140);
+      expect(plan.proven).toBe(false);
+      expectValid(plan, all, stocks, 0);
+    });
+
+    it('matches the brute force on 150 mixed cases of splittable and whole pieces', () => {
+      const rand = rng(424242);
+      for (let c = 0; c < 150; c++) {
+        const n = 3 + Math.floor(rand() * 2);
+        let splittableLeft = 2;
+        const all = Array.from({ length: n }, (_, i) => {
+          const length = 200 + Math.floor(rand() * 8) * 100;
+          if (splittableLeft > 0 && rand() < 0.6) {
+            splittableLeft--;
+            return splittable(`m${i}`, length, 200);
+          }
+          return item(`m${i}`, length);
+        });
+        const stocks: Stock[] = Array.from({ length: 1 + Math.floor(rand() * 2) }, () => {
+          const length = 600 + Math.floor(rand() * 9) * 100;
+          return { length, price: Math.round(length * (2 + rand() * 3)) };
+        });
+        stocks.push({ length: 1800, price: 9000 });
+        const plan = optimise(all, stocks, { kerf: 0 });
+        expectAgainstBrute(plan, all, stocks, `case ${c}: ${JSON.stringify({ all, stocks })}`);
       }
     });
 

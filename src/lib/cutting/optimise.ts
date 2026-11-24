@@ -68,6 +68,9 @@ export const better = (a: CutPlan, b: CutPlan): boolean =>
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
+/** the most states the search remembers before it starts again (about 100 MB at this size) */
+const MEMO_LIMIT = 250_000;
+
 /** parts are cut on this grid, mm */
 const GRID = 10;
 
@@ -90,8 +93,14 @@ interface Chosen {
   stock: number;
   /** whole pieces taken, per class */
   take: number[];
-  /** a part cut from a piece to fill the bar: its class, its length and the class of what is left of the piece */
-  tail: { cls: number; part: number; rest: number } | null;
+  /** parts cut from pieces to fill the bar: each one's class, its length and the class of what is left of the piece */
+  tails: Tail[];
+}
+
+interface Tail {
+  cls: number;
+  part: number;
+  rest: number;
 }
 
 /**
@@ -244,10 +253,10 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
           cuts.push({ item: inst.item, length: cls[k].length, done: inst.done });
         }
       });
-      if (ch.tail) {
-        const inst = queues[ch.tail.cls].shift()!;
-        cuts.push({ item: inst.item, length: ch.tail.part, done: inst.done });
-        queues[ch.tail.rest].push({ item: inst.item, done: inst.done + 1 });
+      for (const t of ch.tails) {
+        const inst = queues[t.cls].shift()!;
+        cuts.push({ item: inst.item, length: t.part, done: inst.done });
+        queues[t.rest].push({ item: inst.item, done: inst.done + 1 });
       }
       return { stock: ch.stock, cuts };
     });
@@ -267,7 +276,7 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
     const prefix: Score = { cost, total, bars };
     const seen = memo.get(key);
     if (seen && !lexLess(prefix, seen)) return;
-    if (memo.size > 1_500_000) memo.clear();
+    if (memo.size > MEMO_LIMIT) memo.clear();
     memo.set(key, prefix);
 
     const active = rem.map((r, k) => (r > 0 ? k : -1)).filter((k) => k >= 0).sort((a, b) => cls[b].length - cls[a].length || a - b);
@@ -276,7 +285,7 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
     const after = new Array<number>(active.length + 1).fill(0);
     for (let at = active.length - 1; at >= 0; at--) after[at] = after[at + 1] + rem[active[at]] * (cls[active[at]].length + kerf);
     const canSplit = active.some((k) => cls[k].maxParts >= 2);
-    const options: { stock: number; take: number[]; fill: number; tail: Chosen['tail'] }[] = [];
+    const options: { stock: number; take: number[]; fill: number; tails: Tail[] }[] = [];
     const size = cls.length;
     for (const s of byPrice) {
       const cap = stocks[s].length + kerf;
@@ -286,24 +295,27 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
         if (at === active.length) {
           const left = cap - used;
           const wholeFits = active.some((k) => rem[k] > take[k] && cls[k].length + kerf <= left);
-          /* a part cut from a splittable piece to fill what is left of the bar */
-          const avail = left - kerf;
-          let tailed = false;
-          for (const k of active) {
-            const c = cls[k];
-            if (c.maxParts < 2 || rem[k] - take[k] < 1) continue;
-            const part = Math.min(Math.floor(avail / GRID) * GRID, c.length - c.minPart);
-            if (part < c.minPart || c.length - part > (c.maxParts - 1) * maxLen) continue;
-            tailed = true;
-            if (take[j0] >= 1 || k === j0) {
-              const rest = classOf(norm(c.length - part, c.maxParts - 1, c.minPart));
-              options.push({ stock: s, take: [...take], fill: used + part + kerf, tail: { cls: k, part, rest } });
+          /* parts cut from splittable pieces to fill what is left of the bar: any number, each taking all the room it can,
+             in class order so that one set of parts is tried once */
+          const walk = (avail: number, from: number, tails: Tail[], extra: number): void => {
+            if (tails.length > 0 && (take[j0] >= 1 || tails.some((t) => t.cls === j0))) {
+              options.push({ stock: s, take: [...take], fill: used + extra, tails: [...tails] });
             }
-          }
-          /* no part to cut: the bar is done when no whole piece would still fit; and a shorter stock that costs no more
+            for (const k of active) {
+              if (k < from) continue;
+              const c = cls[k];
+              if (c.maxParts < 2 || rem[k] - take[k] - tails.filter((t) => t.cls === k).length < 1) continue;
+              const part = Math.min(Math.floor(avail / GRID) * GRID, c.length - c.minPart);
+              if (part < c.minPart || c.length - part > (c.maxParts - 1) * maxLen) continue;
+              const rest = classOf(norm(c.length - part, c.maxParts - 1, c.minPart));
+              walk(avail - part - kerf, k, [...tails, { cls: k, part, rest }], extra + part + kerf);
+            }
+          };
+          walk(left - kerf, 0, [], 0);
+          /* with no part cut, the bar is done when no whole piece would still fit; and a shorter stock that costs no more
              would hold the same pieces and be better */
-          if (!tailed && !wholeFits && take[j0] >= 1 && !stocks.some((o) => o.price <= stocks[s].price && o.length < stocks[s].length && used <= o.length + kerf)) {
-            options.push({ stock: s, take: [...take], fill: used, tail: null });
+          if (!wholeFits && take[j0] >= 1 && !stocks.some((o) => o.price <= stocks[s].price && o.length < stocks[s].length && used <= o.length + kerf)) {
+            options.push({ stock: s, take: [...take], fill: used, tails: [] });
           }
           return;
         }
@@ -329,22 +341,25 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
         rem[k] -= a;
         used += a * cls[k].length;
       });
-      if (o.tail) {
-        rem[o.tail.cls]--;
-        rem[o.tail.rest]++;
-        used += o.tail.part;
+      for (const t of o.tails) {
+        rem[t.cls]--;
+        rem[t.rest]++;
+        used += t.part;
       }
-      chosen.push({ stock: o.stock, take: o.take, tail: o.tail });
+      chosen.push({ stock: o.stock, take: o.take, tails: o.tails });
       dfs(cost + stocks[o.stock].price, total + stocks[o.stock].length, bars + 1, material - used);
       chosen.pop();
-      if (o.tail) {
-        rem[o.tail.rest]--;
-        rem[o.tail.cls]++;
+      for (const t of [...o.tails].reverse()) {
+        rem[t.rest]--;
+        rem[t.cls]++;
       }
       o.take.forEach((a, k) => (rem[k] += a));
     }
   };
   dfs(0, 0, 0, material0);
 
-  return { ...best, proven: !stopped };
+  /* the search is exact when nothing but one piece can be split; with two or more, a bar may hold parts of several, and
+     the room they share has to be divided in ways the search does not try, so a plan found is good but not proven */
+  const splittable = kept.filter((k) => k.c.maxParts >= 2).length;
+  return { ...best, proven: !stopped && splittable <= 1 };
 }
