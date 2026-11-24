@@ -111,3 +111,23 @@ describe('wallPieces', () => {
     }
   });
 });
+
+describe('wide profiles (review finding)', () => {
+  const cases: [string, MouldWallDef<string>, number, number, number, number][] = [];
+  for (const [name, def] of ALL) for (const w of [28, 60, 90, 120]) for (const s of [4, 8, 14]) for (const dado of [60, 77, 110]) cases.push([name, def, w, s, dado, 3]);
+  it.each(cases)('%s, profile %i mm, S %i, dado %i: every frame side is room for two mitres', (_n, def, w, s, dado, n) => {
+    const room = { spacing: s, dado, rail: Math.min(w, 60) / 10, frame: w / 10 };
+    const layouts = wallLayouts(def, room, walls(def, n), -0.33);
+    for (const f of frames(layouts)) {
+      expect(f.x[1] - f.x[0]).toBeGreaterThanOrEqual((2 * w) / 1000 - 1e-9);
+      expect(f.y[1] - f.y[0]).toBeGreaterThanOrEqual((2 * w) / 1000 - 1e-9);
+    }
+    expect(drawnFrames(layouts, w / 1000).every((b) => b.y1 - b.y0 > 0 && b.x1 - b.x0 > 0)).toBe(true);
+  });
+
+  it('draws fewer columns for a wider profile instead of squeezing them', () => {
+    const def = LIVING_MOULD_WALLS[0] as MouldWallDef<string>;
+    const count = (w: number) => wallLayouts(def, { spacing: 30, dado: 77, rail: 2.8, frame: w / 10 }, walls(def, 10), undefined).reduce((t, l) => t + l.count, 0);
+    expect(count(120)).toBeLessThan(count(28));
+  });
+});

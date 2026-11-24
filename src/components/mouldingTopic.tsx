@@ -27,7 +27,7 @@ export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], se
     title: 'Wall moulding',
     summary: onWalls.length ? `${COLOUR_SHORT[b.mouldColour]} · ${onWalls.join(', ')}` : 'Off',
     sub: 'Panel moulding split by a rail at dado height. Each wall section has its own spacing and columns.',
-    content: <MouldingRoomControls room={room} walls={walls} b={b} layouts={layouts} railHeight={mouldProfile(settings.mouldShop).railHeight} set={set} />,
+    content: <MouldingRoomControls room={room} walls={walls} b={b} layouts={layouts} railHeight={mouldProfile(settings.mouldShop).railHeight} frameWidth={mouldProfile(settings.mouldShop).frameWidth} set={set} />,
     topicsTitle: 'Walls and shopping list',
     topics: walls.flatMap((def, wi) =>
       def.sections.map((sec, si): Topic => {

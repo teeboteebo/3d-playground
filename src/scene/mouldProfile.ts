@@ -20,7 +20,7 @@ export function mouldProfile(shop: MouldShop): MouldProfile {
   };
 }
 
-/** a room's spacing, dado and rail height for the layout (cm) */
+/** a room's spacing, dado, rail height and frame width for the layout (cm) */
 export function mouldRoom(s: { mouldSpacing: number; mouldDado: number }, shop: MouldShop): MouldRoom {
-  return { spacing: s.mouldSpacing, dado: s.mouldDado, rail: mouldProfile(shop).railHeight * 100 };
+  return { spacing: s.mouldSpacing, dado: s.mouldDado, rail: mouldProfile(shop).railHeight * 100, frame: mouldProfile(shop).frameWidth * 100 };
 }

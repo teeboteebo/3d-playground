@@ -1,6 +1,6 @@
 import type { BedroomSection, LivingSection } from '../state/mould';
 import { DRESSER_X, FRONT_DOOR_TOP, FRONT_DOOR_X0, FRONT_DOOR_X1, W, WARD_FRONT } from './bedroom/dimensions';
-import { frameAbove, layoutWall, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
+import { frameAbove, layoutWall, minRowFor, type MouldRoom, type MouldWall, type SectionLayout } from './mouldLayout';
 
 export interface MouldSectionDef<K extends string> {
   key: K;
@@ -84,7 +84,7 @@ export function wallLayouts<K extends string>(
     return {
       ...l,
       over: sec.above.flatMap(({ name, x, top }) => {
-        const f = frameAbove(x, top, l.spacing);
+        const f = frameAbove(x, top, l.spacing, minRowFor((room.frame ?? 0) / 100));
         return f ? [{ ...f, name }] : [];
       }),
     };
