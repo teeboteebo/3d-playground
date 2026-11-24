@@ -16,6 +16,8 @@ export interface Topic {
   content?: ReactNode;
   /** deeper pages, listed as rows below the content */
   topics?: Topic[];
+  /** rows under headings, shown after `topics` */
+  groups?: TopicGroup[];
   /** the heading over the rows, when the page has controls of its own above them */
   topicsTitle?: string;
   /** shown at the bottom of the page */
@@ -35,6 +37,17 @@ function sectioned(page: Topic): { title?: string; topics: Topic[] }[] {
     { title: undefined, topics: topics.filter((t) => !t.section) },
   ].filter((g) => g.topics.length > 0);
 }
+
+/** a heading over rows on a page; one level of sub-groups inside it */
+export interface TopicGroup {
+  title: string;
+  topics: Topic[];
+  groups?: TopicGroup[];
+}
+
+const groupTopics = (g: TopicGroup): Topic[] => [...g.topics, ...(g.groups ?? []).flatMap(groupTopics)];
+/** every page opened from a page: its own rows and those under its headings, to any depth */
+const childTopics = (page: Topic): Topic[] => [...(page.topics ?? []), ...(page.groups ?? []).flatMap(groupTopics)];
 
 /** where a menu is: the ids of the topics opened from the first page, and the way to open another page */
 export interface MenuNav {
@@ -59,13 +72,11 @@ export function Menu({ root, exit, nav }: Props) {
   const { path, go: setPath } = nav;
   const trail: Topic[] = [root];
   for (const id of path) {
-    const next = trail.at(-1)!.topics?.find((t) => t.id === id);
+    const next = childTopics(trail.at(-1)!).find((t) => t.id === id);
     if (!next) break;
     trail.push(next);
   }
   const page = trail.at(-1)!;
-  /* rows keep their titles in line: a page with any swatch leaves room for one on every row */
-  const swatches = !!page.topics?.some((t) => t.swatch);
   const parent = trail.at(-2);
   /** where the menu is, as a key that changes with every move */
   const at = trail.map((t) => t.id).join('/');
@@ -123,26 +134,15 @@ export function Menu({ root, exit, nav }: Props) {
       {page.sub && <p className="sub">{page.sub}</p>}
       {page.content}
       <div ref={rows}>
-      {sectioned(page).map((group, gi) => (
-        <section key={group.title ?? `rest-${gi}`}>
-          {group.title && <h2>{group.title}</h2>}
-          <ul className="topics" aria-label={group.title ?? `${page.title} options`}>
-            {group.topics.map((t) => (
-              <li key={t.id}>
-                <button type="button" className="topic" data-topic={t.id} onClick={() => open(t.id)}>
-                  {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
-                  <span>
-                    <strong>{t.title}</strong> <small>{t.summary}</small>
-                  </span>
-                  <span className="chev" aria-hidden="true">
-                    ›
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
+        {page.topics && page.topics.length > 0 && (
+          <section>
+            {page.topicsTitle && <h2>{page.topicsTitle}</h2>}
+            <RowList title={page.topicsTitle ?? `${page.title} options`} topics={page.topics} open={open} />
+          </section>
+        )}
+        {page.groups?.map((g) => (
+          <GroupSection key={g.title} group={g} level={2} open={open} />
+        ))}
       </div>
       {page.footer}
       {page.reset && (
@@ -153,5 +153,41 @@ export function Menu({ root, exit, nav }: Props) {
         </p>
       )}
     </>
+  );
+}
+
+/** a list of rows; they keep their titles in line: a list with any swatch leaves room for one on every row */
+function RowList({ title, topics, open }: { title: string; topics: Topic[]; open: (id: string) => void }) {
+  const swatches = topics.some((t) => t.swatch);
+  return (
+    <ul className="topics" aria-label={title}>
+      {topics.map((t) => (
+        <li key={t.id}>
+          <button type="button" className="topic" data-topic={t.id} onClick={() => open(t.id)}>
+            {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
+            <span>
+              <strong>{t.title}</strong> <small>{t.summary}</small>
+            </span>
+            <span className="chev" aria-hidden="true">
+              ›
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** a heading over its rows, then its sub-groups under smaller headings */
+function GroupSection({ group, level, open }: { group: TopicGroup; level: 2 | 3; open: (id: string) => void }) {
+  const Heading = level === 2 ? 'h2' : 'h3';
+  return (
+    <section>
+      <Heading>{group.title}</Heading>
+      <RowList title={group.title} topics={group.topics} open={open} />
+      {group.groups?.map((g) => (
+        <GroupSection key={g.title} group={g} level={3} open={open} />
+      ))}
+    </section>
   );
 }
