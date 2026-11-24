@@ -22,7 +22,7 @@ export function addRoomLights(scene: THREE.Scene): { apply(s: Settings): void } 
       const evening = s.time === 'eve';
       for (const { id, light } of lights) {
         const lit = CATALOG_LAMPS.some(
-          (l) => l.room === id && (s[l.room].components as Record<string, ComponentState>)[l.id].shown,
+          (l) => l.room === id && (s.rooms[l.room].components as Record<string, ComponentState>)[l.id].shown,
         );
         light.intensity = !evening ? 0 : lit ? 0.15 : 0.6;
       }

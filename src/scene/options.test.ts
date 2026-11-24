@@ -48,14 +48,16 @@ describe('options', () => {
     const parent = new THREE.Group();
     const room = buildBedroom(parent, '#B5654A');
     room.apply(applyPatch(DEFAULTS, { room: 'bedroom' }));
-    expect(paths(parent, 'bedroom')).toEqual(['accent', 'ceiling', 'moulding/bed', 'moulding/dresser', 'painting', 'pillows', 'rug', 'wardrobes']);
+    expect(paths(parent, 'bedroom')).toEqual([
+      'bed', 'bedside-lamps', 'bedside-tables', 'bench', 'ceiling-light', 'dresser', 'mirror', 'moulding/bed', 'moulding/dresser', 'painting', 'rug', 'wardrobes',
+    ]);
   });
 
   it('keep the moulding tagged when a setting rebuilds it', () => {
     const parent = new THREE.Group();
     const room = buildBedroom(parent, '#B5654A');
     room.apply(DEFAULTS);
-    room.apply(applyPatch(DEFAULTS, { bedroom: { mouldSpacing: 14 } }));
+    room.apply(applyPatch(DEFAULTS, { rooms: { bedroom: { moulding: { mouldSpacing: 14 } } } }));
     expect(paths(parent, 'bedroom')).toContain('moulding/bed');
   });
 

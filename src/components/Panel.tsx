@@ -1,11 +1,8 @@
 import type { Settings } from '../state/settings';
 import type { Steps, Update } from '../state/useSettings';
 import { AllRoomsPanel } from './AllRoomsPanel';
-import { BedroomPanel } from './BedroomPanel';
-import { LivingPanel } from './LivingPanel';
-import { OfficePanel } from './OfficePanel';
 import type { MenuNav } from './Menu';
-import { SimpleRoomPanel } from './SimpleRoomPanel';
+import { RoomPanel } from './RoomPanel';
 import { StepsBar } from './StepsBar';
 
 interface Props {
@@ -27,17 +24,7 @@ export function Panel({ settings, update, menu, steps }: Props) {
   return (
     <aside className="panel">
       <div className="panel-body">
-      {room === 'all' ? (
-        <AllRoomsPanel settings={settings} update={update} steps={steps} />
-      ) : room === 'bedroom' ? (
-        <BedroomPanel key={room} {...props} />
-      ) : room === 'living' ? (
-        <LivingPanel key={room} {...props} />
-      ) : room === 'office' ? (
-        <OfficePanel key={room} {...props} />
-      ) : (
-        <SimpleRoomPanel key={room} room={room} {...props} />
-      )}
+      {room === 'all' ? <AllRoomsPanel settings={settings} update={update} steps={steps} /> : <RoomPanel key={room} room={room} {...props} />}
       </div>
       <StepsBar steps={steps} />
     </aside>

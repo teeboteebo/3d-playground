@@ -9,7 +9,7 @@ import { ShoppingListPage } from './ShoppingListPage';
 import { shoppingText } from './shoppingText';
 
 const shop = { ...SHOP_DEFAULTS, panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 89 }, { length: 300, price: 109 }] } };
-const s = applyPatch(DEFAULTS, { mouldShop: shop, bedroom: { mouldDresserWall: 'off' } });
+const s = applyPatch(DEFAULTS, { mouldShop: shop, rooms: { bedroom: { moulding: { mouldDresserWall: 'off' } } } });
 const req = shoppingRequest('bedroom', s);
 const plans = req.jobs.map((j) => optimise(j.items, j.stocks, { kerf: req.kerf }));
 const real = shoppingResult(req, plans, shop);

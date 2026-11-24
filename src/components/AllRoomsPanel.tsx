@@ -12,8 +12,8 @@ interface Props {
 }
 
 /** every room as the app starts; the store's moulding products are the user's own and stay */
-const START = { walls: DEFAULTS.walls, bedroom: DEFAULTS.bedroom, living: DEFAULTS.living, office: DEFAULTS.office };
-const changed = (s: Settings) => !equal({ walls: s.walls, bedroom: s.bedroom, living: s.living, office: s.office }, START);
+const START = { rooms: DEFAULTS.rooms };
+const changed = (s: Settings) => !equal({ rooms: s.rooms }, START);
 
 /** What the panel shows with no room selected: the rooms to pick from, and a way to start over. */
 export function AllRoomsPanel({ settings, update, steps }: Props) {
@@ -30,7 +30,7 @@ export function AllRoomsPanel({ settings, update, steps }: Props) {
           {ROOMS.map((r) => (
             <li key={r.id}>
               <button type="button" onClick={() => update({ room: r.id })}>
-                <i style={{ background: findById(PAINTS, settings.walls[r.id]).hex }} aria-hidden="true" />
+                <i style={{ background: findById(PAINTS, settings.rooms[r.id].paint).hex }} aria-hidden="true" />
                 <span>{r.name}</span>
                 <small>{roomSize(r)}</small>
               </button>

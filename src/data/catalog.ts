@@ -104,7 +104,6 @@ export const RUGS: Rug[] = [
     url: 'https://www.rugvista.se/p/rista-200x300-cm-rostrod-beige-stor-ullmatta-RVD44061', edge: '#A5472E' },
   { id: 'palma', name: 'Palma, green vines', vendor: 'Sleepo', price: '10 072 kr', sizes: '200×300', stock: 'Stock not shown', st: 'un',
     url: 'https://www.sleepo.se/produkter/palma-matta-gron-200x300', edge: '#3E5944' },
-  { id: 'none', name: 'No rug', vendor: '', price: '', sizes: '', stock: '', st: 'un', url: '', edge: OAT },
 ];
 
 // Lamp shade sizes are the product's listed dimensions, in metres.

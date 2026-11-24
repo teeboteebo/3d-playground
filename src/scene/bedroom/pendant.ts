@@ -38,12 +38,11 @@ export function buildPendant({ add, collect, parent }: Kit, m: BedroomMaterials)
   parent.add(light);
   return {
     parts,
-    /** hung or taken down; lit (with shadows) only in the evening */
-    set(hung: boolean, evening: boolean) {
-      for (const p of parts) p.visible = hung;
-      light.intensity = evening && hung ? 0.7 : 0;
-      light.castShadow = evening && hung;
-      glowShade(paper, evening, 0xffc27a, 0.7);
+    /** lit (with shadows) or dark; the room lights it only in the evening and only while the pendant is shown */
+    setLit(on: boolean) {
+      light.intensity = on ? 0.7 : 0;
+      light.castShadow = on;
+      glowShade(paper, on, 0xffc27a, 0.7);
     },
   };
 }

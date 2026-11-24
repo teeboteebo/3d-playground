@@ -7,7 +7,7 @@ import { BEDROOM_MOULD_WALLS, LIVING_MOULD_WALLS, wallLayouts, type MouldWallDef
 
 const ALL: [string, MouldWallDef<string>][] = [...BEDROOM_MOULD_WALLS, ...LIVING_MOULD_WALLS].map((d) => [d.label, d as MouldWallDef<string>]);
 
-const defaults: Record<string, MouldWall> = { ...DEFAULTS.bedroom.mouldWalls, ...DEFAULTS.living.mouldWalls };
+const defaults: Record<string, MouldWall> = { ...DEFAULTS.rooms.bedroom.moulding.mouldWalls, ...DEFAULTS.rooms.living.moulding.mouldWalls };
 const walls = (def: MouldWallDef<string>, columns: number) =>
   Object.fromEntries(def.sections.map((s) => [s.key, { ...defaults[s.key], columns }])) as Record<string, MouldWall>;
 const layoutsOf = (def: MouldWallDef<string>, spacing: number, columns: number, rail = 2.8) =>

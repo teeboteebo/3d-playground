@@ -24,14 +24,13 @@ export function buildRug({ parent }: Kit, m: BedroomMaterials) {
   };
   return {
     mesh,
+    /** puts the rug's texture and edge on; showing or hiding the rug is the room's business */
     set(rug: string) {
-      const tex = rug === 'none' ? null : texture(rug);
-      mesh.visible = !!tex;
-      if (tex) {
-        top.map = tex;
-        top.needsUpdate = true;
-        m.rugSide.color.copy(lin(findById(RUGS, rug).edge));
-      }
+      const tex = texture(rug);
+      if (!tex) return;
+      top.map = tex;
+      top.needsUpdate = true;
+      m.rugSide.color.copy(lin(findById(RUGS, rug).edge));
     },
     /** the textures of rugs not currently shown are not in the scene, so free them all here */
     dispose() {

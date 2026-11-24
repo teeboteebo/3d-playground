@@ -11,8 +11,8 @@ const WARDROBE_CHOICES: ChipChoice[] = WARDROBES.map(({ id, name, hex }) => ({ i
 const ART_CHOICES: ChipChoice[] = ARTS.map(({ id, name }) => ({ id, name }));
 const FRAME_CHOICES: ChipChoice[] = FRAMES.map(({ id, name, hex }) => ({ id, name, hex, summary: name.toLowerCase() }));
 
-/** the rugs a shopper can choose; "no rug" is hiding the piece, not a product */
-const RUG_VARIANTS: readonly Variant[] = RUGS.filter((r) => r.id !== 'none').map(
+/** the rugs a shopper can choose; no rug is hiding the piece */
+const RUG_VARIANTS: readonly Variant[] = RUGS.map(
   ({ id, name, vendor, price, sizes, stock, st, url }) => ({ id, name, vendor, price, sizes, stock, st, url }),
 );
 

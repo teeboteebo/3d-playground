@@ -53,12 +53,13 @@ const stocksOf = (p: MouldProduct): { stocks: Stock[]; unpriced: number[] } => {
 /** The pieces a room's moulding is cut into, from the walls that are on, grouped into the products to buy. */
 export function shoppingRequest(room: MouldRoomId, settings: Settings): ShoppingRequest {
   const shop = settings.mouldShop;
-  const r = settings[room] as unknown as Record<string, unknown> & { mouldWalls: never };
+  const moulding = settings.rooms[room].moulding;
+  const r = moulding as unknown as Record<string, unknown> & { mouldWalls: never };
   const walls = (WALLS[room] as readonly MouldWallDef<string>[]).filter((d) => r[d.toggle] === 'on');
   const kerf = shop.kerf;
   if (walls.length === 0) return { room, jobs: [], kerf };
 
-  const pieces = walls.flatMap((d) => wallPieces(d, wallLayouts(d, mouldRoom(settings[room], shop), r.mouldWalls, room === 'bedroom' ? BEDX : undefined)));
+  const pieces = walls.flatMap((d) => wallPieces(d, wallLayouts(d, mouldRoom(moulding, shop), r.mouldWalls, room === 'bedroom' ? BEDX : undefined)));
   const panelStock = stocksOf(shop.panel);
   const railStock = shop.railSeparate ? stocksOf(shop.rail) : panelStock;
   const longest = (stocks: Stock[]) => Math.max(0, ...stocks.map((s) => s.length));

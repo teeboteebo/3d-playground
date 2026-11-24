@@ -9,9 +9,9 @@ import { buildOffice } from './index';
 
 describe('the office scene tags', () => {
   it('open exactly the office components', () => {
-    const components = { ...DEFAULTS.office.components };
+    const components = { ...DEFAULTS.rooms.office.components };
     for (const c of OFFICE.components) components[c.id as OfficeComponentId] = { shown: true, variant: c.initial.variant, options: {} };
-    const s: Settings = { ...DEFAULTS, office: { components } };
+    const s: Settings = { ...DEFAULTS, rooms: { ...DEFAULTS.rooms, office: { ...DEFAULTS.rooms.office, components } } };
     const g = new THREE.Group();
     buildOffice(g).apply(s);
     addRoomLamps(g).apply(s);
@@ -24,10 +24,10 @@ describe('the office scene tags', () => {
   });
 
   it('open the living-room lamps as their components', () => {
-    const components = { ...DEFAULTS.living.components };
+    const components = { ...DEFAULTS.rooms.living.components };
     for (const c of LIVING.components) components[c.id] = { shown: true, variant: c.initial.variant, options: {} };
     const g = new THREE.Group();
-    addRoomLamps(g).apply({ ...DEFAULTS, living: { ...DEFAULTS.living, components } });
+    addRoomLamps(g).apply({ ...DEFAULTS, rooms: { ...DEFAULTS.rooms, living: { ...DEFAULTS.rooms.living, components } } });
     const ids = new Set<string>();
     g.traverse((o) => {
       const opt = o instanceof THREE.Mesh ? optionOf(o) : null;

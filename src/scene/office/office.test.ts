@@ -37,7 +37,7 @@ describe('buildOffice', () => {
   });
   it('paints the cabinets in the office wall colour', () => {
     const { g, office } = build();
-    office.apply({ ...DEFAULTS, walls: { ...DEFAULTS.walls, office: 'linen' } });
+    office.apply({ ...DEFAULTS, rooms: { ...DEFAULTS.rooms, office: { ...DEFAULTS.rooms.office, paint: 'linen' } } });
     const mats = new Set<THREE.Material>();
     g.traverse((o) => {
       if (o instanceof THREE.Mesh && !Array.isArray(o.material)) mats.add(o.material);
@@ -101,8 +101,8 @@ describe('buildOffice', () => {
     const { g, office } = build();
     const names = ['office-cabinets', 'office-desk', 'office-drawers', 'office-chair'];
     const vis = () => names.map((n) => g.getObjectByName(n)!.visible);
-    const comps = DEFAULTS.office.components;
-    office.apply({ ...DEFAULTS, office: { components: { ...comps, desk: { ...comps.desk, shown: false } } } });
+    const comps = DEFAULTS.rooms.office.components;
+    office.apply({ ...DEFAULTS, rooms: { ...DEFAULTS.rooms, office: { ...DEFAULTS.rooms.office, components: { ...comps, desk: { ...comps.desk, shown: false } } } } });
     expect(vis()).toEqual([true, false, true, true]);
     office.apply(DEFAULTS);
     expect(vis()).toEqual([true, true, true, true]);

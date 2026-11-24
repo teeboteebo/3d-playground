@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { SECTIONS, type MenuSection } from './menuStructure';
 import { PanelHead, type Crumb } from './PanelHead';
 
 /** One page of the side panel: its own controls, and deeper pages listed as rows under them. */
@@ -28,18 +27,6 @@ export interface Topic {
   footer?: ReactNode;
   /** puts this page's choices back to how the room started; left out while they are as they started */
   reset?: () => void;
-  /** the section of a room's first page this row sits in (null: after every section); see menuStructure */
-  section?: MenuSection | null;
-}
-
-/** the rows of a page under their headings: the room sections in their order, then rows with none */
-function sectioned(page: Topic): { title?: string; topics: Topic[] }[] {
-  const topics = page.topics ?? [];
-  if (!topics.some((t) => t.section !== undefined)) return [{ title: page.topicsTitle, topics }];
-  return [
-    ...SECTIONS.map((s) => ({ title: s.title, topics: topics.filter((t) => t.section === s.id) })),
-    { title: undefined, topics: topics.filter((t) => !t.section) },
-  ].filter((g) => g.topics.length > 0);
 }
 
 const hasSwatch = (t: Topic) => !!(t.swatch || t.swatchSpace);
@@ -85,7 +72,7 @@ export function Menu({ root, exit, nav }: Props) {
     trail.push(next);
   }
   const page = trail.at(-1)!;
-  /* a page's sectioned rows line up across their sections: any swatch leaves room for one on every row */
+  /* any swatch among a page's rows leaves room for one on every row */
   const swatches = !!page.topics?.some(hasSwatch);
   const parent = trail.at(-2);
   /** where the menu is, as a key that changes with every move */
@@ -150,12 +137,12 @@ export function Menu({ root, exit, nav }: Props) {
         {page.groups?.map((g) => (
           <GroupSection key={g.title} group={g} level={2} open={open} point={point} />
         ))}
-        {sectioned(page).map((group, gi) => (
-          <section key={group.title ?? `rest-${gi}`}>
-            {group.title && <h2>{group.title}</h2>}
-            <RowList title={group.title ?? `${page.title} options`} topics={group.topics} open={open} point={point} swatches={swatches} />
+        {page.topics && page.topics.length > 0 && (
+          <section>
+            {page.topicsTitle && <h2>{page.topicsTitle}</h2>}
+            <RowList title={page.topicsTitle ?? `${page.title} options`} topics={page.topics} open={open} point={point} swatches={swatches} />
           </section>
-        ))}
+        )}
       </div>
       {page.footer}
       {page.reset && (

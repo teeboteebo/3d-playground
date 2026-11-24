@@ -86,7 +86,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
     apply(s) {
       const evening = s.time === 'eve';
       for (const { room, id, kind } of CATALOG_LAMPS) {
-        const lamp: ComponentState = (s[room].components as Record<string, ComponentState>)[id];
+        const lamp: ComponentState = (s.rooms[room].components as Record<string, ComponentState>)[id];
         const pendant = kind === 'pendant';
         const name = pendant ? `${room}-pendant` : `${room}-floor-lamp`;
         const p = place(name, lamp, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);

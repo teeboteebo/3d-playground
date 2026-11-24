@@ -78,14 +78,19 @@ describe('the bedroom products', () => {
 describe('the bedroom at the start', () => {
   const start = componentDefaults<string>(BEDROOM);
 
-  it('shows every piece, on the choices the bedroom starts with today', () => {
-    const b = DEFAULTS.bedroom;
-    expect(Object.values(start).every((s) => s.shown)).toBe(b.pendant === 'on');
-    expect(start.rug.variant).toBe(b.rug);
-    expect(start.bed.options).toEqual({ pillows: b.pillows });
-    expect(start.wardrobes.options).toEqual({ colour: b.wardrobes });
-    expect(start.painting.options).toEqual({ art: b.art, frame: b.frame });
+  it('is the settings default: every piece shown, a real rug, and the choices the bedroom starts with', () => {
+    expect(DEFAULTS.rooms.bedroom.components).toEqual(start);
+    expect(Object.values(start).every((s) => s.shown)).toBe(true);
+    expect(RUGS.some((r) => r.id === start.rug.variant)).toBe(true);
+    expect(start.bed.options).toEqual({ pillows: 'clay' });
+    expect(start.wardrobes.options).toEqual({ colour: 'wall' });
+    expect(start.painting.options).toEqual({ art: 'sun', frame: 'brass' });
     expect(start.dresser.options).toEqual({});
+  });
+
+  it('has no no-rug product: hiding the rug is its own switch', () => {
+    expect(RUGS.some((r) => r.id === 'none')).toBe(false);
+    expect(bedroomDef('rug').variants.map((v) => v.id)).toEqual(RUGS.map((r) => r.id));
   });
 
   it('offers every pillow set, art, frame and wardrobe colour the bedroom has', () => {

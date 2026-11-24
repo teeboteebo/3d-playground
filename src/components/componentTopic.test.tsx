@@ -141,7 +141,7 @@ describe('componentTopic chips options', () => {
     const t = componentTopic(rug, { shown: false, variant: 'naver', options: {} }, set, (v) => `thumb-${v.id}.png`);
     expect(t.summary).toBe('Hidden');
     const { container } = render(<>{t.content}</>);
-    expect(container.querySelectorAll('img')).toHaveLength(RUGS.length - 1);
+    expect(container.querySelectorAll('img')).toHaveLength(RUGS.length);
     expect(container.querySelector('img')!.getAttribute('src')).toBe('thumb-naver.png');
     expect(screen.getByText('Granit · 4 499 kr · 200×300')).toBeTruthy();
     expect(screen.queryByText('No rug')).toBeNull();

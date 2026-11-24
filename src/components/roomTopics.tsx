@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { PAINTS, findById } from '../data/catalog';
+import { ACCENT_PRESETS, PAINTS, findById } from '../data/catalog';
 import type { RoomId } from '../data/rooms';
 import { equal } from '../lib/equal';
-import { DEFAULTS, type Settings, type SettingsPatch } from '../state/settings';
+import { DEFAULTS, type Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
+import { AccentPicker } from './AccentPicker';
 import { FinishSection } from './FinishSection';
 import type { Topic } from './Menu';
-import { ROWS, type RowId } from './menuStructure';
+import type { MouldFields, MouldRoom } from './MouldingSection';
 
 /** the way from a room's first page back to all rooms */
 export interface RoomExit {
@@ -15,35 +16,44 @@ export interface RoomExit {
   onExit: () => void;
 }
 
-type RoomKey = 'bedroom' | 'living' | 'office';
-
-/** a row of a room's first page, titled and placed as menuStructure says */
-export function roomRow(id: RowId, topic: Omit<Topic, 'id' | 'title' | 'section'>): Topic {
-  return { id, title: ROWS[id].title, section: ROWS[id].section, ...topic };
-}
-
-/** puts some of a room's fields back to how the app starts; undefined while they already are */
-export function resetFields<R extends RoomKey>(settings: Settings, update: Update, room: R, keys: readonly (keyof Settings[R])[]): (() => void) | undefined {
-  const now = settings[room];
-  const start = DEFAULTS[room];
+/** puts some of a room's moulding fields back to how the app starts; undefined while they already are */
+export function resetMoulding(settings: Settings, update: Update, room: MouldRoom, keys: readonly (keyof MouldFields)[]): (() => void) | undefined {
+  const now: MouldFields = settings.rooms[room].moulding;
+  const start: MouldFields = DEFAULTS.rooms[room].moulding;
   if (keys.every((k) => equal(now[k], start[k]))) return undefined;
   const patch = Object.fromEntries(keys.map((k) => [k, start[k]]));
-  return () => update({ [room]: patch } as SettingsPatch);
+  return () => update({ rooms: { [room]: { moulding: patch } } });
 }
 
 /** a room's wall paint */
 export function wallsTopic(room: RoomId, settings: Settings, update: Update): Topic {
-  const paint = findById(PAINTS, settings.walls[room]);
-  const start = DEFAULTS.walls[room];
-  return roomRow('walls', {
+  const paint = findById(PAINTS, settings.rooms[room].paint);
+  const start = DEFAULTS.rooms[room].paint;
+  return {
+    id: 'walls',
+    title: 'Wall colour',
     summary: paint.name,
     swatch: paint.hex,
     content: <FinishSection room={room} settings={settings} update={update} />,
-    reset: settings.walls[room] === start ? undefined : () => update({ walls: { ...settings.walls, [room]: start } }),
-  });
+    reset: paint.id === start ? undefined : () => update({ rooms: { [room]: { paint: start } } }),
+  };
+}
+
+/** the bedroom's accent colour: what the vase, the accent pillows and the painting follow */
+export function accentTopic(accent: string, settings: Settings, update: Update): Topic {
+  const preset = ACCENT_PRESETS.find((p) => p.hex === accent.toUpperCase());
+  const start = DEFAULTS.rooms.bedroom.accent;
+  return {
+    id: 'accent',
+    title: 'Accent colour',
+    summary: preset ? `${preset.name} · ${accent}` : accent,
+    swatch: accent,
+    reset: equal(settings.rooms.bedroom.accent, start) ? undefined : () => update({ rooms: { bedroom: { accent: start } } }),
+    content: <AccentPicker value={accent} onChange={(hex) => update({ rooms: { bedroom: { accent: hex } } })} />,
+  };
 }
 
 /** what the room is, how big, and what the model assumes: the last row of every room */
 export function aboutTopic(text: ReactNode): Topic {
-  return roomRow('about', { summary: 'Sizes, products and what is assumed', content: <p className="note">{text}</p> });
+  return { id: 'about', title: 'About the room', summary: 'Sizes, products and what is assumed', content: <p className="note">{text}</p> };
 }

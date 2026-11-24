@@ -83,7 +83,7 @@ export function createApartmentScene(
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 60);
 
-  const bedroom = buildBedroom(scene, initial.bedroom.accent);
+  const bedroom = buildBedroom(scene, initial.rooms.bedroom.accent);
 
   /* every room's walls, floor and ceiling, and the other rooms' doors and windows, in the bedroom's trim and glass */
   const apartment = buildApartment({
@@ -139,8 +139,8 @@ export function createApartmentScene(
     bedroom.apply(s);
     office.apply(s);
     livingMoulding.apply(s);
-    for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
-    const living = s.living.components;
+    for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.rooms[r.id].paint).hex));
+    const living = s.rooms.living.components;
     furniture.setShown((id) => living[id as keyof typeof living]?.shown ?? true);
     fabric.set(living.sofa.options.fabric ?? 'original');
     sky.setEvening(evening);

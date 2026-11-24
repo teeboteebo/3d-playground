@@ -21,27 +21,25 @@ export const LIMIT = 100;
 const design = (s: Settings) => JSON.stringify({ ...s, room: null, time: null });
 
 /**
- * the fields a patch changes, as a key: "walls", "living.mouldWalls,living.mouldSpacing", and for a room's components each
- * component's own fields, and each option on its own: "office.components.desk.shown", "living.components.sofa.options.fabric"
+ * the fields a patch changes, as a key: "time", "rooms.living.paint", "rooms.living.moulding.mouldSpacing", and for a
+ * room's components each component's own fields, and each option on its own: "rooms.office.components.desk.shown",
+ * "rooms.living.components.sofa.options.fabric"
  */
 export function patchKey(p: SettingsPatch): string {
-  return Object.entries(p)
-    .flatMap(([k, v]) => {
-      if (!v || (k !== 'bedroom' && k !== 'living' && k !== 'office')) return [k];
-      return Object.entries(v).flatMap(([f, sub]) =>
-        f === 'components' && sub && typeof sub === 'object'
-          ? Object.entries(sub).flatMap(([id, fields]) =>
-              Object.entries(fields ?? {}).flatMap(([x, value]) =>
-                x === 'options' && value && typeof value === 'object'
-                  ? Object.keys(value).map((o) => `${k}.components.${id}.options.${o}`)
-                  : [`${k}.components.${id}.${x}`],
-              ),
-            )
-          : [`${k}.${f}`],
-      );
-    })
-    .sort()
-    .join(',');
+  const { rooms = {}, ...top } = p;
+  const fields = (prefix: string, o: object): string[] =>
+    Object.entries(o).flatMap(([f, v]) => (f === 'moulding' && v && typeof v === 'object' ? Object.keys(v).map((m) => `${prefix}.moulding.${m}`) : [`${prefix}.${f}`]));
+  const components = (prefix: string, o: object): string[] =>
+    Object.entries(o).flatMap(([id, c]) =>
+      Object.entries(c ?? {}).flatMap(([x, value]) =>
+        x === 'options' && value && typeof value === 'object' ? Object.keys(value).map((k) => `${prefix}.${id}.options.${k}`) : [`${prefix}.${id}.${x}`],
+      ),
+    );
+  const room = ([id, rp]: [string, object | undefined]) => {
+    const { components: c, ...own } = (rp ?? {}) as { components?: object };
+    return [...fields(`rooms.${id}`, own), ...(c ? components(`rooms.${id}.components`, c) : [])];
+  };
+  return [...Object.keys(top), ...Object.entries(rooms).flatMap(room)].sort().join(',');
 }
 
 export const startHistory = (present: Settings): History => ({ past: [], present, future: [], last: null });

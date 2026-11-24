@@ -1,17 +1,19 @@
+import { BEDROOM } from './bedroom';
 import type { LampKind, RoomDef } from './components';
+import { HALL } from './hall';
 import { LIVING } from './living';
 import { OFFICE } from './office';
+import type { RoomId } from './rooms';
 
-/** every room that is made of components */
-export const ROOM_DEFS = { living: LIVING, office: OFFICE } as const;
+/** every room, described as the components it is made of; a room with no pieces has none */
+export const ROOM_DEFS = { bedroom: BEDROOM, hall: HALL, living: LIVING, office: OFFICE } as const;
 
-export type ComponentRoom = keyof typeof ROOM_DEFS;
-export type ComponentId<R extends ComponentRoom> = (typeof ROOM_DEFS)[R]['components'][number]['id'];
+export type ComponentId<R extends RoomId> = (typeof ROOM_DEFS)[R]['components'][number]['id'];
 
 /** the rooms with a component of catalog lamp kind K, read from their definitions */
 export type LampRoom<K extends LampKind = LampKind> = {
-  [R in ComponentRoom]: Extract<(typeof ROOM_DEFS)[R]['components'][number], { lamp: K }> extends never ? never : R;
-}[ComponentRoom];
+  [R in RoomId]: Extract<(typeof ROOM_DEFS)[R]['components'][number], { lamp: K }> extends never ? never : R;
+}[RoomId];
 
 /** a component the catalog's lamp builder draws, and the room it is in */
 export interface CatalogLamp {

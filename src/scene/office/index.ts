@@ -46,8 +46,8 @@ export function buildOffice(parent: THREE.Object3D): Office {
   const corner = buildCorner(parent);
   return {
     apply(s) {
-      cabinet.color.copy(lin(findById(PAINTS, s.walls.office).hex));
-      for (const id of Object.keys(pieces) as (keyof typeof pieces)[]) pieces[id].visible = s.office.components[id].shown;
+      cabinet.color.copy(lin(findById(PAINTS, s.rooms.office.paint).hex));
+      for (const id of Object.keys(pieces) as (keyof typeof pieces)[]) pieces[id].visible = s.rooms.office.components[id].shown;
       corner.apply(s);
     },
     dispose() {

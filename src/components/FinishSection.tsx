@@ -17,8 +17,8 @@ export function FinishSection({ room, settings, update }: Props) {
       <ChipGroup
         label="Wall colour"
         options={PAINTS}
-        value={settings.walls[room]}
-        onChange={(id) => update({ walls: { ...settings.walls, [room]: id } })}
+        value={settings.rooms[room].paint}
+        onChange={(paint) => update({ rooms: { [room]: { paint } } })}
       />
     </section>
   );
