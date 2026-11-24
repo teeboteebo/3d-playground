@@ -6,9 +6,10 @@ import type { Kit } from './kit';
 import { ADINA_SHADE_Y, ADINA_STEM_OUT, L, NIGHTSTAND, NIGHTSTAND_X } from './dimensions';
 import { bulb, glowShade, type Bulb } from './lamps';
 import type { BedroomMaterials } from './materials';
-import { BED_WALL_STRIP_DEPTH } from './moulding';
 
 export interface Bedside {
+  /** stands the tables `depth` m off the bed wall, in front of the moulding */
+  standOff(depth: number): void;
   setEvening(on: boolean): void;
   lamps: Bulb[];
 }
@@ -24,9 +25,9 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
   lampShade.side = THREE.DoubleSide;
   const lampBulb = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
   const { w, h, d, y0 } = NIGHTSTAND;
-  mergeMeshes(NIGHTSTAND_X.flatMap((x) =>
+  const merged = mergeMeshes(NIGHTSTAND_X.flatMap((x) =>
     collect(() => {
-      const back = -L / 2 + BED_WALL_STRIP_DEPTH; // the carcass stands off the wall, in front of the moulding strips
+      const back = -L / 2; // flush with the wall; standOff moves the carcass out in front of the moulding strips
       const zc = back + d / 2;
       const TOP = y0 + h;
       box(w, 0.02, d, m.oak, x, TOP - 0.01, zc);
@@ -58,9 +59,15 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
       box(0.022, 0.06, 0.016, lampCord, cordX, cordTop - 0.22, wz + 0.01, true);
     }),
   ));
+  /* the carcass is what stands off the wall; the lamps hang on it */
+  const carcass = merged.filter((o): o is THREE.Mesh => o instanceof THREE.Mesh && ([m.oak, m.oakDeep, m.brass] as THREE.Material[]).includes(o.material as THREE.Material));
+  const flushZ = carcass.map((o) => o.position.z);
   const lamps = NIGHTSTAND_X.map((x) => bulb(parent, x, ADINA_SHADE_Y - 0.015, -L / 2 + ADINA_STEM_OUT, 7, 0.35, 0.35));
   return {
     lamps,
+    standOff(depth) {
+      carcass.forEach((o, i) => (o.position.z = flushZ[i] + depth));
+    },
     setEvening(on) {
       for (const l of lamps) l.set(on);
       glowShade(lampShade, on);

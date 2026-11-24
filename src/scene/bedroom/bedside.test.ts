@@ -5,7 +5,6 @@ import { BEDX, NIGHTSTAND, L, NIGHTSTAND_X, W, WARD_FRONT } from './dimensions';
 import { kit } from './kit';
 import { bedroomMaterials } from './materials';
 import { buildBedside } from './bedside';
-import { BED_WALL_STRIP_DEPTH } from './moulding';
 
 /* jsdom has no 2D canvas: the textures only need something that swallows every drawing call */
 beforeAll(() => {
@@ -53,12 +52,21 @@ describe('nightstands', () => {
       expect(s.y).toBeCloseTo(NIGHTSTAND.h, 2);
       expect(s.z).toBeCloseTo(NIGHTSTAND.d, 2);
       expect(box.min.y).toBeCloseTo(0.48, 2);
-      // the back panel stands in front of the bed-wall moulding strips
-      expect(box.min.z - -L / 2).toBeGreaterThanOrEqual(BED_WALL_STRIP_DEPTH - 1e-9);
     }
     expect(left.min.x - -W / 2).toBeCloseTo(0.47, 2);
     expect(WARD_FRONT - right.max.x).toBeCloseTo(0.55, 2);
     b.lamps.forEach((l, i) => expect(l.key.position.x).toBeCloseTo(NIGHTSTAND_X[i], 6));
+  });
+
+  it('stand off the wall by the moulding depth they are given, flush before that', () => {
+    const parent = new THREE.Group();
+    const m = bedroomMaterials('#888888');
+    const b = buildBedside(kit(parent), m);
+    expect(oakBox(parent, m.oak).min.z - -L / 2).toBeCloseTo(0, 6);
+    b.standOff(0.02);
+    expect(oakBox(parent, m.oak).min.z - -L / 2).toBeCloseTo(0.02, 6);
+    b.standOff(0.012);
+    expect(oakBox(parent, m.oak).min.z - -L / 2).toBeCloseTo(0.012, 6);
   });
 
   it('stand about 10 cm from the headboard on each side', () => {

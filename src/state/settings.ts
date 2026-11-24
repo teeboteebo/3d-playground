@@ -7,6 +7,7 @@ import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms'
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
 import { spacingMax, type MouldWall } from '../scene/mouldLayout';
+import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
 } from './mould';
@@ -69,6 +70,8 @@ export interface Settings {
   bedroom: BedroomSettings;
   living: LivingSettings;
   office: OfficeSettings;
+  /** the moulding products and cut settings, shared by every room */
+  mouldShop: MouldShop;
 }
 
 /** a change to the settings: top-level fields, and any fields of a room's own settings */
@@ -126,6 +129,7 @@ export const DEFAULTS: Settings = {
     dresser: DRESSERS[1].id,
     roundRug: ROUND_RUGS[1].id,
   },
+  mouldShop: SHOP_DEFAULTS,
 };
 
 type Raw = Record<string, unknown>;
@@ -283,6 +287,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     bedroom: sanitizeBedroom(s.bedroom),
     living: sanitizeLiving(s.living),
     office: sanitizeOffice(s.office),
+    mouldShop: sanitizeShop(s.mouldShop),
   };
 }
 

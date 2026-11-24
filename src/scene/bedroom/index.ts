@@ -10,6 +10,7 @@ import { L, W } from './dimensions';
 import { buildDresser, buildMirror, buildPainting, dresserLamp, paintingApplier } from './dresser';
 import { kit, setVisible } from './kit';
 import { bedroomMaterials } from './materials';
+import { mouldProfile } from '../mouldProfile';
 import { bedroomMoulding } from './moulding';
 import { buildPendant } from './pendant';
 import { buildRug } from './rug';
@@ -77,8 +78,9 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
         mat.color.copy(lin(mouldHex));
         if (s.mouldColour === 'tone') mat.color.multiplyScalar(0.82);
       }
-      mould.bed.layout(s);
-      mould.dresser.layout(s);
+      mould.bed.layout(s, settings.mouldShop);
+      mould.dresser.layout(s, settings.mouldShop);
+      bedside.standOff(mouldProfile(settings.mouldShop).frameDepth);
       m.wardrobe.color.copy(lin(s.wardrobes === 'trim' ? TRIM.hex : s.wardrobes === 'ink' ? INK : wallHex));
 
       const pl = pillowColours(s.pillows, s.accent);

@@ -29,6 +29,22 @@ const shown = (o: THREE.Object3D) => {
   return true;
 };
 
+describe('living-room moulding at the product size', () => {
+  it('draws the frames at the product width and depth, and the rail as the panel profile', () => {
+    const { m, meshes } = setup();
+    m.apply(settings());
+    for (const name of ['living-mould-sofa', 'living-mould-tv']) {
+      const boxes = meshes(name).flatMap(strips);
+      const rail = boxes.reduce((a, b) => (b.max.x - b.min.x > a.max.x - a.min.x ? b : a));
+      expect(rail.max.y - rail.min.y).toBeCloseTo(0.028);
+      for (const b of boxes) {
+        expect(b.max.z - b.min.z).toBeCloseTo(0.012);
+        if (b !== rail) expect(Math.min(b.max.x - b.min.x, b.max.y - b.min.y)).toBeCloseTo(0.028);
+      }
+    }
+  });
+});
+
 describe('living-room moulding', () => {
   it('builds a rail and the columns on each wall, inside the wall', () => {
     const { m, meshes } = setup();

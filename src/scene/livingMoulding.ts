@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { PAINTS, TRIM, findById } from '../data/catalog';
 import type { XZ } from '../data/rooms';
+import type { MouldShop } from '../state/mouldShop';
 import type { LivingSettings, Settings } from '../state/settings';
 import type { LivingSection } from '../state/mould';
-import { FRAME_T } from './bedroom/dimensions';
 import { kit } from './bedroom/kit';
 import { lin } from './materials';
 import { mergeMeshes } from './merge';
 import { drawRail, drawSection } from './mouldStrips';
+import { mouldProfile, mouldRoom } from './mouldProfile';
 import { LIVING_MOULD_WALLS, wallLayouts, type MouldWallDef } from './mouldWalls';
 import { tagOption } from './options';
 
@@ -55,10 +56,11 @@ export function buildLivingMoulding(
     return { spec, material, wrapper, inner, key: '' };
   });
 
-  function rebuild(w: (typeof walls)[number], s: LivingSettings) {
+  function rebuild(w: (typeof walls)[number], s: LivingSettings, shop: MouldShop) {
     const { spec, material, inner } = w;
-    const layouts = wallLayouts(spec.def, { spacing: s.mouldSpacing, dado: s.mouldDado }, s.mouldWalls);
-    const key = JSON.stringify(layouts);
+    const profile = mouldProfile(shop);
+    const layouts = wallLayouts(spec.def, mouldRoom(s, shop), s.mouldWalls);
+    const key = JSON.stringify([layouts, profile]);
     if (key === w.key) return;
     w.key = key;
     for (const p of [...inner.children]) {
@@ -66,11 +68,11 @@ export function buildLivingMoulding(
       if (p instanceof THREE.Mesh) p.geometry.dispose();
     }
     const { box } = kit(inner);
-    const strip = (sw: number, h: number, x: number, y: number, d = 0.012) => {
+    const strip = (sw: number, h: number, x: number, y: number, d = profile.frameDepth) => {
       box(sw, h, d, material, x, y, spec.z + (spec.face * d) / 2, true);
     };
-    for (const l of layouts) drawSection(strip, l, FRAME_T);
-    drawRail(strip, spec.def.rail, layouts[0].rows.rail, 0.014);
+    for (const l of layouts) drawSection(strip, l, profile.frameWidth);
+    drawRail(strip, spec.def.rail, layouts[0].rows.rail, profile.railDepth);
     mergeMeshes(inner.children);
   }
 
@@ -81,7 +83,7 @@ export function buildLivingMoulding(
       for (const w of walls) {
         w.material.color.copy(lin(s.mouldColour === 'tone' ? paint : TRIM.hex));
         if (s.mouldColour === 'tone') w.material.color.multiplyScalar(0.82);
-        rebuild(w, s);
+        rebuild(w, s, settings.mouldShop);
         w.inner.visible = s[w.spec.def.toggle as 'mouldSofaWall' | 'mouldTvWall'] === 'on';
       }
     },

@@ -23,7 +23,21 @@ export interface MouldWall {
 export interface MouldRoom {
   spacing: number;
   dado: number;
+  /** rail height; defaults to RAIL_H */
+  rail?: number;
+  /** the frame moulding's profile width, cm: no column or row is drawn too small for two mitres on it */
+  frame?: number;
 }
+
+/** the smallest a column may be for a profile `w` m wide: room for two mitres, and never under MIN_COL */
+export const minColFor = (w: number) => Math.max(MIN_COL, 2 * w + 0.02);
+/** the smallest a row may be for a profile `w` m wide */
+export const minRowFor = (w: number) => Math.max(MIN_ROW, 2 * w + 0.02);
+const minColOf = (room: MouldRoom) => minColFor((room.frame ?? 0) / 100);
+const minRowOf = (room: MouldRoom) => minRowFor((room.frame ?? 0) / 100);
+
+/** the room's rail height, metres */
+const railOf = (room: MouldRoom) => (room.rail === undefined ? RAIL_H : room.rail / 100);
 
 export interface Rows {
   rail: [number, number];
@@ -42,7 +56,7 @@ export interface SectionLayout {
   columns: [number, number][];
   rows: Rows;
   /** frames of their own, such as one over a door: absolute x and y extents */
-  over?: { x: [number, number]; y: [number, number] }[];
+  over?: { x: [number, number]; y: [number, number]; name?: string }[];
   limits: {
     maxColumns: number;
     /** cm, null when no fixed column is drawn */
@@ -54,26 +68,26 @@ export interface SectionLayout {
   };
 }
 
-const range = (lo: number, hi: number): [number, number] | null => (hi - lo >= MIN_ROW - 1e-9 ? [lo, hi] : null);
+const range = (lo: number, hi: number, minRow: number): [number, number] | null => (hi - lo >= minRow - 1e-9 ? [lo, hi] : null);
 
 /** Rail, lower and upper rows for spacing S and dado D (top of the rail), metres; a row shorter than MIN_ROW is null. */
-export function rows(spacing: number, dado: number): Rows {
-  const railBottom = dado - RAIL_H;
+export function rows(spacing: number, dado: number, railH: number = RAIL_H, minRow: number = MIN_ROW): Rows {
+  const railBottom = dado - railH;
   return {
     rail: [railBottom, dado],
-    lower: range(SKIRTING + spacing, railBottom - spacing),
-    upper: range(dado + spacing, CEILING - spacing),
+    lower: range(SKIRTING + spacing, railBottom - spacing, minRow),
+    upper: range(dado + spacing, CEILING - spacing, minRow),
   };
 }
 
 /** Largest S (metres) that still leaves the lower row MIN_ROW tall at this dado. */
-export function spacingMax(dado: number): number {
-  return (dado - RAIL_H - SKIRTING - MIN_ROW) / 2;
+export function spacingMax(dado: number, railH: number = RAIL_H, minRow: number = MIN_ROW): number {
+  return (dado - railH - SKIRTING - minRow) / 2;
 }
 
 /** Dado range (metres) that leaves both rows MIN_ROW tall at this spacing. */
-export function dadoRange(spacing: number): { min: number; max: number } {
-  return { min: SKIRTING + RAIL_H + 2 * spacing + MIN_ROW, max: CEILING - 2 * spacing - MIN_ROW };
+export function dadoRange(spacing: number, railH: number = RAIL_H, minRow: number = MIN_ROW): { min: number; max: number } {
+  return { min: SKIRTING + railH + 2 * spacing + minRow, max: CEILING - 2 * spacing - minRow };
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -91,26 +105,28 @@ function split(x0: number, x1: number, m: number, s: number): [number, number][]
  */
 export function layoutSection(run: [number, number], room: MouldRoom, wall: MouldWall, bedX?: number): SectionLayout {
   const [a, b] = run;
+  const minCol = minColOf(room);
+  const minRow = minRowOf(room);
   const s = (wall.spacing ?? room.spacing) / 100;
-  const maxColumns = Math.max(0, Math.floor((b - a - s) / (MIN_COL + s)));
+  const maxColumns = Math.max(0, Math.floor((b - a - s) / (minCol + s)));
   const n = clamp(Math.floor(wall.columns), 0, maxColumns);
   const k = wall.fixedColumn >= 1 && wall.fixedColumn <= n ? wall.fixedColumn : 0;
   const limits = {
     maxColumns,
     fixedWidth: null as { min: number; max: number } | null,
     fixedCentre: null as { min: number; max: number } | null,
-    spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
+    spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100, railOf(room), minRow) * 100)),
   };
-  const base = { spacing: s, count: n, rows: rows(s, room.dado / 100), limits };
+  const base = { spacing: s, count: n, rows: rows(s, room.dado / 100, railOf(room), minRow), limits };
   if (n === 0) return { ...base, fixed: null, columns: [] };
   if (k === 0) return { ...base, fixed: null, columns: split(a + s, b - s, n, s) };
 
-  const wMax = b - a - (n + 1) * s - (n - 1) * MIN_COL;
+  const wMax = b - a - (n + 1) * s - (n - 1) * minCol;
   // a lone column has no neighbour to take up slack, so it fills the run
-  const w = n === 1 ? wMax : clamp(wall.fixedWidth / 100, MIN_COL, wMax);
+  const w = n === 1 ? wMax : clamp(wall.fixedWidth / 100, minCol, wMax);
   // a fixed column at either end of the run must still touch S from that end, so its centre has no slack on that side
-  const lo = a + s + (k - 1) * (MIN_COL + s) + w / 2;
-  const hi = b - s - (n - k) * (MIN_COL + s) - w / 2;
+  const lo = a + s + (k - 1) * (minCol + s) + w / 2;
+  const hi = b - s - (n - k) * (minCol + s) - w / 2;
   const cMin = k === n ? hi : lo;
   const cMax = k === 1 ? lo : hi;
   let want: number;
@@ -129,7 +145,7 @@ export function layoutSection(run: [number, number], room: MouldRoom, wall: Moul
     columns: [...left, [centre - w / 2, centre + w / 2], ...right],
     limits: {
       ...limits,
-      fixedWidth: { min: (n === 1 ? wMax : MIN_COL) * 100, max: wMax * 100 },
+      fixedWidth: { min: (n === 1 ? wMax : minCol) * 100, max: wMax * 100 },
       fixedCentre: { min: (cMin - a) * 100, max: (cMax - a) * 100 },
     },
   };
@@ -149,14 +165,14 @@ export function segments(run: [number, number], gaps: readonly (readonly [number
 }
 
 /** most columns of at least MIN_COL that fit a segment at spacing s */
-const fits = ([a, b]: [number, number], s: number) => Math.max(0, Math.floor((b - a - s) / (MIN_COL + s)));
+const fits = ([a, b]: [number, number], s: number, minCol: number) => Math.max(0, Math.floor((b - a - s) / (minCol + s)));
 
 /**
  * Shares `n` columns among the segments: first one for every segment that fits one (longest first), so no stretch of the
  * wall is left bare while there are columns to give, then each next column to the segment whose columns stay widest.
  */
-export function shareColumns(segs: [number, number][], s: number, n: number): number[] {
-  const max = segs.map((g) => fits(g, s));
+export function shareColumns(segs: [number, number][], s: number, n: number, minCol: number = MIN_COL): number[] {
+  const max = segs.map((g) => fits(g, s, minCol));
   const counts = segs.map(() => 0);
   const width = (i: number, c: number) => (segs[i][1] - segs[i][0] - (c + 1) * s) / c;
   let left = n;
@@ -188,11 +204,13 @@ export function layoutWall(
   run: [number, number], gaps: readonly (readonly [number, number])[], room: MouldRoom, wall: MouldWall, bedX?: number,
 ): SectionLayout {
   const segs = segments(run, gaps);
+  const minCol = minColOf(room);
+  const minRow = minRowOf(room);
   if (segs.length === 1 && segs[0][0] === run[0] && segs[0][1] === run[1]) return layoutSection(run, room, wall, bedX);
   const s = (wall.spacing ?? room.spacing) / 100;
-  const maxColumns = segs.reduce((t, g) => t + fits(g, s), 0);
+  const maxColumns = segs.reduce((t, g) => t + fits(g, s, minCol), 0);
   const n = clamp(Math.floor(wall.columns), 0, maxColumns);
-  const counts = shareColumns(segs, s, n);
+  const counts = shareColumns(segs, s, n, minCol);
   const k = wall.fixedColumn >= 1 && wall.fixedColumn <= n ? wall.fixedColumn : 0;
   let before = 0;
   const parts = segs.map((seg, i) => {
@@ -210,19 +228,19 @@ export function layoutWall(
     count: parts.reduce((t, p) => t + p.l.count, 0),
     fixed: withFixed ? { ...withFixed.l.fixed!, index: withFixed.first + withFixed.l.fixed!.index } : null,
     columns: parts.flatMap((p) => p.l.columns),
-    rows: rows(s, room.dado / 100),
+    rows: rows(s, room.dado / 100, railOf(room), minRow),
     limits: {
       maxColumns,
       fixedWidth: withFixed?.l.limits.fixedWidth ?? null,
       fixedCentre: withFixed ? shift(withFixed.l.limits.fixedCentre, withFixed.offset) : null,
-      spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100) * 100)),
+      spacingMax: Math.floor(Math.min(30, spacingMax(room.dado / 100, railOf(room), minRow) * 100)),
     },
   };
 }
 
 /** a frame over an opening `x` wide whose top is at `top`: S above the opening and S below the ceiling, or null when that
  * leaves less than MIN_ROW */
-export function frameAbove(x: [number, number], top: number, spacing: number): { x: [number, number]; y: [number, number] } | null {
-  const y = range(top + spacing, CEILING - spacing);
+export function frameAbove(x: [number, number], top: number, spacing: number, minRow: number = MIN_ROW): { x: [number, number]; y: [number, number] } | null {
+  const y = range(top + spacing, CEILING - spacing, minRow);
   return y ? { x, y } : null;
 }

@@ -32,7 +32,7 @@ function setup() {
 describe('bedroom moulding', () => {
   it('lays the bed wall out as the shared layout, with the frames at the default rows', () => {
     const { mould, boxes } = setup();
-    mould.bed.layout(bedroom());
+    mould.bed.layout(bedroom(), DEFAULTS.mouldShop);
     const expected = layoutSection(BEDROOM_MOULD_WALLS[0].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.bedroom.mouldWalls.bed, BEDX);
     const all = boxes('bed');
     /* rail + 3 columns x 2 frames x 4 strips */
@@ -48,42 +48,77 @@ describe('bedroom moulding', () => {
       });
     }
     const lowTop = Math.max(...all.filter((b) => b.max.y < 0.7).map((b) => b.max.y));
-    expect(lowTop).toBeCloseTo(0.65);
+    expect(lowTop).toBeCloseTo(0.662);
     const upTop = Math.max(...all.map((b) => b.max.y));
     expect(upTop).toBeCloseTo(3.22);
-    const rail = all.find((b) => b.max.x - b.min.x > W - WINDOW_WALL_CLEARANCE - 0.01)!;
+    const rail = all.find((b) => b.max.x - b.min.x > W - 0.9)!;
     expect(rail.min.x).toBeCloseTo(-W / 2 + WINDOW_WALL_CLEARANCE);
-    expect(rail.max.x).toBeCloseTo(W / 2);
-    expect(rail.min.y).toBeCloseTo(0.73);
+    expect(rail.max.x).toBeCloseTo(WARD_FRONT);
+    expect(rail.min.y).toBeCloseTo(0.742);
     expect(rail.max.y).toBeCloseTo(0.77);
     /* the left corner keeps 12 cm clear on top of the spacing; the wardrobe side has the spacing alone */
     expect(expected.columns[0][0]).toBeCloseTo(-W / 2 + 0.12 + 0.08);
     expect(expected.columns[2][1]).toBeCloseTo(WARD_FRONT - 0.08);
   });
 
+  it('draws every frame strip and the rail at the product size, on both walls', () => {
+    const { mould, boxes } = setup();
+    for (const wall of ['bed', 'dresser'] as const) {
+      mould[wall].layout(bedroom(), DEFAULTS.mouldShop);
+      const all = boxes(wall);
+      const rail = all.reduce((a, b) => (b.max.x - b.min.x > a.max.x - a.min.x ? b : a));
+      expect(rail.max.y - rail.min.y).toBeCloseTo(0.028);
+      expect(rail.max.z - rail.min.z).toBeCloseTo(0.012);
+      for (const b of all.filter((x) => x !== rail)) {
+        expect(Math.min(b.max.x - b.min.x, b.max.y - b.min.y)).toBeCloseTo(0.028);
+        expect(b.max.z - b.min.z).toBeCloseTo(0.012);
+      }
+    }
+  });
+
+  it('follows a wider, deeper product, and the rows move with the rail', () => {
+    const { mould, boxes } = setup();
+    const shop = { ...DEFAULTS.mouldShop, panel: { ...DEFAULTS.mouldShop.panel, width: 50, depth: 20 } };
+    mould.bed.layout(bedroom(), shop);
+    const all = boxes('bed');
+    const rail = all.reduce((a, b) => (b.max.x - b.min.x > a.max.x - a.min.x ? b : a));
+    expect(rail.max.y - rail.min.y).toBeCloseTo(0.05);
+    expect(rail.max.z - rail.min.z).toBeCloseTo(0.02);
+    expect(rail.max.y).toBeCloseTo(0.77);
+    const lowTop = Math.max(...all.filter((b) => b.max.y < 0.7).map((b) => b.max.y));
+    expect(lowTop).toBeCloseTo(0.77 - 0.05 - 0.08);
+  });
+
+  it('keeps the bed-wall rail clear of the space behind the wardrobes', () => {
+    const { mould, boxes } = setup();
+    mould.bed.layout(bedroom(), DEFAULTS.mouldShop);
+    const rail = boxes('bed').reduce((a, b) => (b.max.x - b.min.x > a.max.x - a.min.x ? b : a));
+    expect(rail.max.x).toBeCloseTo(WARD_FRONT);
+  });
+
   it('starts the bed wall 12 cm plus the spacing from the left corner', () => {
     const { mould, boxes } = setup();
-    mould.bed.layout(bedroom({ mouldSpacing: 10 }));
-    const panels = boxes('bed').filter((b) => b.max.x - b.min.x < W - 0.5);
+    mould.bed.layout(bedroom({ mouldSpacing: 10 }), DEFAULTS.mouldShop);
+    const panels = boxes('bed').filter((b) => b.max.x - b.min.x < W - 0.9);
     expect(Math.min(...panels.map((b) => b.min.x)) - -W / 2).toBeCloseTo(0.22);
     expect(WARD_FRONT - Math.max(...panels.map((b) => b.max.x))).toBeCloseTo(0.1);
   });
 
   it('rebuilds only the wall whose layout changes', () => {
     const { mould } = setup();
-    mould.bed.layout(bedroom());
-    mould.dresser.layout(bedroom());
+    mould.bed.layout(bedroom(), DEFAULTS.mouldShop);
+    mould.dresser.layout(bedroom(), DEFAULTS.mouldShop);
     const bed = [...mould.bed.parts];
     const dresser = [...mould.dresser.parts];
     const withBed = bedroom({ mouldWalls: { ...DEFAULTS.bedroom.mouldWalls, bed: { ...DEFAULTS.bedroom.mouldWalls.bed, spacing: 12 } } });
-    mould.bed.layout(withBed);
-    mould.dresser.layout(withBed);
+    mould.bed.layout(withBed, DEFAULTS.mouldShop);
+    mould.dresser.layout(withBed, DEFAULTS.mouldShop);
     expect(mould.bed.parts[0]).not.toBe(bed[0]);
     expect(mould.dresser.parts).toEqual(dresser);
     const room = bedroom({ mouldSpacing: 12 });
     const before = [...mould.bed.parts];
-    mould.bed.layout(room);
-    mould.dresser.layout(room);
+    mould.bed.layout(room, DEFAULTS.mouldShop);
+    mould.dresser.layout(room, DEFAULTS.mouldShop);
     /* the bed wall's own spacing wins, so it is unchanged; the dresser wall follows the room */
     expect(mould.bed.parts).toEqual(before);
     expect(mould.dresser.parts[0]).not.toBe(dresser[0]);
@@ -91,9 +126,9 @@ describe('bedroom moulding', () => {
 
   it('draws the dresser rail broken behind the dresser and at the door', () => {
     const { mould, boxes } = setup();
-    mould.dresser.layout(bedroom());
+    mould.dresser.layout(bedroom(), DEFAULTS.mouldShop);
     const rails = boxes('dresser')
-      .filter((b) => Math.abs(b.max.y - b.min.y - 0.04) < 1e-6 && Math.abs(b.min.y - 0.73) < 1e-6)
+      .filter((b) => Math.abs(b.max.y - b.min.y - 0.028) < 1e-6 && Math.abs(b.min.y - 0.742) < 1e-6)
       .sort((a, b) => a.min.x - b.min.x);
     expect(rails.map((b) => [b.min.x, b.max.x])).toEqual([
       [expect.closeTo(-W / 2 + 0.12), expect.closeTo(DRESSER_X - 0.4)],
@@ -105,7 +140,7 @@ describe('bedroom moulding', () => {
 
   it('frames the space over the door, as wide as its casing, S from the casing and from the ceiling', () => {
     const { mould, boxes } = setup();
-    mould.dresser.layout(bedroom({ mouldSpacing: 10 }));
+    mould.dresser.layout(bedroom({ mouldSpacing: 10 }), DEFAULTS.mouldShop);
     const over = boxes('dresser').filter((b) => b.min.x >= FRONT_DOOR_X0 - 1e-6 && b.max.x <= FRONT_DOOR_X1 + 1e-6);
     /* one frame of four strips */
     expect(over).toHaveLength(4);
@@ -117,7 +152,7 @@ describe('bedroom moulding', () => {
 
   it('lays the dresser wall out as one wall, 12 cm plus the spacing from the window wall and clear of the door', () => {
     const { mould, boxes } = setup();
-    mould.dresser.layout(bedroom({ mouldSpacing: 10 }));
+    mould.dresser.layout(bedroom({ mouldSpacing: 10 }), DEFAULTS.mouldShop);
     const panels = boxes('dresser').filter((b) => Math.abs(b.min.y - 0.28) < 1e-6 && b.max.y - b.min.y < 0.1);
     const cols = panels.map((b) => [b.min.x, b.max.x]).sort((p, q) => p[0] - q[0]);
     /* the default four columns: three from the window wall to the door, one from the door to the corner */
