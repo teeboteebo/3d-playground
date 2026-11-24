@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+import { SECTIONS, type MenuSection } from './menuStructure';
+import { PanelHead, type Crumb } from './PanelHead';
 
 /** One page of the side panel: its own controls, and deeper pages listed as rows under them. */
 export interface Topic {
@@ -18,6 +20,20 @@ export interface Topic {
   topicsTitle?: string;
   /** shown at the bottom of the page */
   footer?: ReactNode;
+  /** puts this page's choices back to how the room started; left out while they are as they started */
+  reset?: () => void;
+  /** the section of a room's first page this row sits in (null: after every section); see menuStructure */
+  section?: MenuSection | null;
+}
+
+/** the rows of a page under their headings: the room sections in their order, then rows with none */
+function sectioned(page: Topic): { title?: string; topics: Topic[] }[] {
+  const topics = page.topics ?? [];
+  if (!topics.some((t) => t.section !== undefined)) return [{ title: page.topicsTitle, topics }];
+  return [
+    ...SECTIONS.map((s) => ({ title: s.title, topics: topics.filter((t) => t.section === s.id) })),
+    { title: undefined, topics: topics.filter((t) => !t.section) },
+  ].filter((g) => g.topics.length > 0);
 }
 
 /** where a menu is: the ids of the topics opened from the first page, and the way to open another page */
@@ -55,20 +71,31 @@ export function Menu({ root, exit, nav }: Props) {
   const at = trail.map((t) => t.id).join('/');
 
   const heading = useRef<HTMLHeadingElement>(null);
-  const rows = useRef<HTMLUListElement>(null);
+  const rows = useRef<HTMLDivElement>(null);
   /* where focus goes after a move: the new page's heading, or the row of the page just left */
   const focusAfter = useRef<string | null>(null);
   const open = (id: string) => {
     focusAfter.current = null;
     setPath(trail.slice(1).map((t) => t.id).concat(id));
   };
-  const up = () => {
-    focusAfter.current = page.id;
-    setPath(trail.slice(1, -1).map((t) => t.id));
+  /* up to the page at `i` in the trail, focusing the row of the page left on the way */
+  function upTo(i: number) {
+    focusAfter.current = trail[i + 1].id;
+    setPath(trail.slice(1, i + 1).map((t) => t.id));
+  }
+  /* the way out of the room, then every page above this one; the last is the way back */
+  const crumbs: Crumb[] = [
+    { title: exit.text, label: parent ? undefined : exit.label },
+    ...trail.slice(0, -1).map((t, i, above): Crumb => ({ title: t.title, label: i === above.length - 1 ? `Back to ${t.title}` : undefined })),
+  ];
+  /* crumb 0 is the way out of the room; crumb k is the page at k - 1 in the trail */
+  const onCrumb = (k: number) => {
+    if (k === 0) exit.onExit();
+    else upTo(k - 1);
   };
   /* each page starts at its top: the panel scrolls on its own beside the stage, or with the page under a sticky stage */
   useLayoutEffect(() => {
-    const panel = heading.current?.closest<HTMLElement>('.panel');
+    const panel = heading.current?.closest<HTMLElement>('.panel-body');
     if (!panel) return;
     if (getComputedStyle(panel).overflowY !== 'visible') {
       panel.scrollTo?.({ top: 0 });
@@ -89,25 +116,18 @@ export function Menu({ root, exit, nav }: Props) {
 
   return (
     <>
-      {parent ? (
-        <button type="button" className="back" aria-label={`Back to ${parent.title}`} onClick={up}>
-          <span aria-hidden="true">←</span> {parent.title}
-        </button>
-      ) : (
-        <button type="button" className="back" aria-label={exit.label} onClick={exit.onExit}>
-          <span aria-hidden="true">←</span> {exit.text}
-        </button>
-      )}
+      <PanelHead crumbs={crumbs} onCrumb={onCrumb} />
       <h1 ref={heading} tabIndex={-1}>
         {page.title}
       </h1>
       {page.sub && <p className="sub">{page.sub}</p>}
       {page.content}
-      {page.topics && page.topics.length > 0 && (
-        <section>
-          {page.topicsTitle && <h2>{page.topicsTitle}</h2>}
-          <ul ref={rows} className="topics" aria-label={page.topicsTitle ?? `${page.title} options`}>
-            {page.topics.map((t) => (
+      <div ref={rows}>
+      {sectioned(page).map((group, gi) => (
+        <section key={group.title ?? `rest-${gi}`}>
+          {group.title && <h2>{group.title}</h2>}
+          <ul className="topics" aria-label={group.title ?? `${page.title} options`}>
+            {group.topics.map((t) => (
               <li key={t.id}>
                 <button type="button" className="topic" data-topic={t.id} onClick={() => open(t.id)}>
                   {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
@@ -122,8 +142,16 @@ export function Menu({ root, exit, nav }: Props) {
             ))}
           </ul>
         </section>
-      )}
+      ))}
+      </div>
       {page.footer}
+      {page.reset && (
+        <p className="reset">
+          <button type="button" className="linkish" onClick={page.reset}>
+            Reset {page.title.toLowerCase()}
+          </button>
+        </p>
+      )}
     </>
   );
 }

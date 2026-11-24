@@ -1,9 +1,15 @@
+import { useState, type ReactNode } from 'react';
 import { formatKr, formatMm } from '../lib/format';
 import type { Cut } from '../lib/cutting/optimise';
-import type { ProductResult } from '../scene/shoppingList';
+import type { BuyLine, ProductResult } from '../scene/shoppingList';
+import type { MouldShop } from '../state/mouldShop';
+import { Icon } from './Icon';
+import { groupBars, kr, shoppingText } from './shoppingText';
 import type { ShoppingState } from './useShoppingList';
 
-const kr = (n: number) => (Number.isInteger(n) ? formatKr(n) : `${n.toFixed(2)} kr`);
+const price = (n: number | null) => (n === null ? 'no price' : kr(n));
+const percent = (f: number) => `${(f * 100).toFixed(1).replace('.', ',')} %`;
+const metres = (m: number) => `${m.toFixed(1).replace('.', ',')} m`;
 
 /** pieces grouped by wall and then by frame (or rail), keeping their order */
 function groupPieces(p: ProductResult): Map<string, Map<string, { side: string; id: string; length: number; ends: [string, string] }[]>> {
@@ -28,71 +34,71 @@ function joinedText(s: { length: number; ends: [string, string] }, parts: Cut[])
   return `${formatMm(s.length)}: ${parts.map((c, i) => `${formatMm(c.length)} (${ends(i)})`).join(' + ')}, join${joins.length > 1 ? 's' : ''} ${joins.map(formatMm).join(' and ')} from the left end`;
 }
 
-function Product({ p, show }: { p: ProductResult; show: 'buy' | 'plan' | 'cuts' }) {
+function BuyLines({ p }: { p: ProductResult }) {
+  const row = (l: BuyLine, name: ReactNode, note: string) => (
+    <li key={`${l.length}${note}`} className={l.price === null ? 'unpriced' : undefined}>
+      <span>{name}</span>
+      <span className="mut">{note}</span>
+      <b>{price(l.price)}</b>
+    </li>
+  );
+  return (
+    <div className="buyp">
+      <h4>{p.name}</h4>
+      <ul className="buy">
+        {p.buy.map((l) => row(l, `${l.count} × ${l.length} cm`, l.unitPrice === null ? 'price to fill in' : `at ${kr(l.unitPrice)}`))}
+        {p.spare ? row(p.spare, `Spare ${p.spare.count} × ${p.spare.length} cm`, 'for a miscut') : null}
+      </ul>
+    </div>
+  );
+}
+
+function CutPlan({ p }: { p: ProductResult }) {
   const labels = new Map(p.pieces.map((x) => [x.id, x.label]));
-  if (show === 'buy') {
-    return (
-      <div className="buyp">
-        <h4>{p.name}</h4>
-        <ul className="buy">
-          {p.buy.map((l) => (
-            <li key={l.length}>
-              <span>
-                {l.count} × {l.length} cm
-              </span>
-              <span className="mut">at {kr(l.unitPrice)}</span>
-              <b>{kr(l.price)}</b>
-            </li>
-          ))}
-          {p.spare ? (
-            <li className="spare">
-              <span>
-                Spare {p.spare.count} × {p.spare.length} cm
-              </span>
-              <span className="mut">for a miscut</span>
-              <b>{kr(p.spare.price)}</b>
-            </li>
-          ) : null}
-        </ul>
-      </div>
-    );
-  }
-  if (show === 'plan') {
-    return (
-      <div className="buyp">
-        <h4>{p.name}</h4>
-        <ol className="bars">
-          {p.plan.bars.map((bar, i) => (
-            <li key={i}>
+  const name = (c: Cut) => `${labels.get(c.item) ?? c.item}${c.part ? ` · part ${c.part.index} of ${c.part.of}` : ''}`;
+  const groups = groupBars(p.plan.bars);
+  return (
+    <div className="buyp">
+      <h4>{p.name}</h4>
+      <ol className="bars">
+        {groups.map(({ bars, first }) => {
+          const bar = bars[0];
+          const pieces = bars.flatMap((b) => b.cuts);
+          return (
+            <li key={first}>
               <span className="barhead">
-                {p.stocks[bar.stock].length / 10} cm · bar {i + 1}
+                <b>{p.stocks[bar.stock].length / 10} cm</b>
+                {bars.length > 1 ? <span className="times"> × {bars.length}</span> : null}
+                <span> · cuts in mm{bar.offcut > 0 ? ` · ${bar.offcut} mm left` : ''}</span>
               </span>
-              <div className="bar">
+              <div className="bar" aria-hidden="true">
                 {bar.cuts.map((c, k) => (
-                  <span className="cut" key={k} style={{ flexGrow: c.length }} title={`${labels.get(c.item) ?? c.item}${c.part ? ` (part ${c.part.index} of ${c.part.of})` : ''}`}>
+                  <span className="cut" key={k} style={{ flexGrow: c.length }}>
                     {c.length}
                   </span>
                 ))}
                 {bar.offcut > 0 ? (
-                  <span className="offcut" style={{ flexGrow: bar.offcut }} title="Offcut">
+                  <span className="offcut" style={{ flexGrow: bar.offcut }}>
                     {bar.offcut}
                   </span>
                 ) : null}
               </div>
               <ul className="barcuts">
-                {bar.cuts.map((c, k) => (
+                {pieces.map((c, k) => (
                   <li key={k}>
-                    {formatMm(c.length)} · {labels.get(c.item) ?? c.item}
-                    {c.part ? ` · part ${c.part.index} of ${c.part.of}` : ''}
+                    {formatMm(c.length)} · {name(c)}
                   </li>
                 ))}
               </ul>
             </li>
-          ))}
-        </ol>
-      </div>
-    );
-  }
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
+function CutList({ p }: { p: ProductResult }) {
   const cuts = new Map<string, Cut[]>();
   for (const b of p.plan.bars) for (const c of b.cuts) cuts.set(c.item, [...(cuts.get(c.item) ?? []), c]);
   return (
@@ -126,8 +132,63 @@ function Product({ p, show }: { p: ProductResult; show: 'buy' | 'plan' | 'cuts' 
   );
 }
 
+/** copies the list, or selects it in a box to copy by hand where the clipboard is refused */
+function CopyButton({ text }: { text: string }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'manual'>('idle');
+  return (
+    <>
+      <button
+        type="button"
+        className="chip"
+        onClick={() => {
+          const clip = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+          if (!clip) return setState('manual');
+          clip.writeText(text).then(() => setState('copied'), () => setState('manual'));
+        }}
+      >
+        <Icon name={state === 'copied' ? 'check' : 'copy'} />
+        <span>{state === 'copied' ? 'Copied' : 'Copy shopping list'}</span>
+      </button>
+      {state === 'manual' ? (
+        <textarea className="copybox" readOnly value={text} aria-label="Shopping list to copy" ref={(t) => t?.select()} rows={8} />
+      ) : null}
+    </>
+  );
+}
+
+/** a part of the page that can be folded away */
+function Fold({ title, open: startOpen, children }: { title: string; open: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(startOpen);
+  return (
+    <div className="grp">
+      <div className="foldhead">
+        <h3>{title}</h3>
+        <button type="button" className="linkish" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? `Hide ${title.toLowerCase()}` : `Show ${title.toLowerCase()}`}
+        </button>
+      </div>
+      {open ? children : null}
+    </div>
+  );
+}
+
+export interface ShoppingActions {
+  /** opens the products and settings page */
+  openProducts(): void;
+  /** fills in example store lengths, prices left to fill in */
+  useExamples(): void;
+}
+
+interface Props {
+  state: ShoppingState;
+  actions?: ShoppingActions;
+  /** what the list is for, at the top of the copied text */
+  title?: string;
+  shop?: MouldShop;
+}
+
 /** What to buy for a room's wall moulding, how every length is cut, and every piece's size. */
-export function ShoppingListPage({ state }: { state: ShoppingState }) {
+export function ShoppingListPage({ state, actions, title = 'Wall moulding', shop }: Props) {
   if (state.status === 'empty') {
     return (
       <section>
@@ -138,10 +199,22 @@ export function ShoppingListPage({ state }: { state: ShoppingState }) {
   if (state.status === 'needs-products') {
     const rail = state.products.includes('rail');
     return (
-      <section>
-        <p className="acc-note">
-          Add the lengths your store sells, with their prices, under Products and settings{rail ? ' (for the panel moulding and the rail)' : ''}. The list is worked out from them.
+      <section className="emptystate">
+        <p>
+          The list is worked out from the lengths your store sells{rail ? ', for the panel moulding and for the rail' : ''}. Add them with their prices, or start from
+          the usual 240 and 300 cm and fill in the prices later.
         </p>
+        {actions ? (
+          <div className="chips mt8">
+            <button type="button" className="chip primary" onClick={actions.openProducts}>
+              <Icon name="plus" />
+              <span>Add your store’s lengths</span>
+            </button>
+            <button type="button" className="chip" onClick={actions.useExamples}>
+              <span>Use 240 and 300 cm</span>
+            </button>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -157,45 +230,80 @@ export function ShoppingListPage({ state }: { state: ShoppingState }) {
   }
   const checking = state.status === 'working';
   const unfit = result.products.flatMap((p) => p.unfit);
+  const { stats } = result;
   return (
     <section data-testid="shopping-list">
-      {checking ? (
-        <p className="acc-note" role="status">
-          Not yet proven cheapest, still checking.
-        </p>
-      ) : null}
-      {!checking && !result.proven ? (
-        <p className="acc-note" role="status">
-          Not proven cheapest: this is the best list found in the time allowed.
-        </p>
-      ) : null}
+      <p className="optstate" role="status" title={result.proven ? undefined : 'A cheaper list may exist; this is the best one found in the time allowed.'}>
+        {checking ? 'Optimising… the list may still get cheaper' : result.proven ? 'Cheapest list possible ✓' : 'Best list found in the time allowed'}
+      </p>
       {unfit.length > 0 ? (
         <p className="acc-note warn" role="alert">
           These pieces don’t fit any length: {unfit.map((u) => `${u.label} (${formatMm(u.length)})`).join('; ')}. Turn on joins or add a longer length.
         </p>
       ) : null}
+      <div className="summary">
+        <div className="sumtotal">
+          <span>Total</span>
+          <b data-testid="shop-total">{formatKr(result.total)}</b>
+          {result.missing.length ? <small>+ lengths with no price yet</small> : null}
+        </div>
+        <dl>
+          <div>
+            <dt>Lengths</dt>
+            <dd>
+              {stats.lengths}
+              {stats.spares ? ` + ${stats.spares} spare` : ''}
+            </dd>
+          </div>
+          <div>
+            <dt>Moulding</dt>
+            <dd>{metres(stats.metres)}</dd>
+          </div>
+          <div>
+            <dt>Offcut and saw</dt>
+            <dd>{percent(stats.waste)}</dd>
+          </div>
+          <div>
+            <dt>Joins</dt>
+            <dd>{stats.joins}</dd>
+          </div>
+        </dl>
+      </div>
+      {result.missing.length > 0 ? (
+        <p className="acc-note warn mt8">
+          No price yet for {result.missing.map((l) => `${l} cm`).join(' and ')}, so the total leaves {result.missing.length > 1 ? 'them' : 'it'} out.{' '}
+          {actions ? (
+            <button type="button" className="linkish" onClick={actions.openProducts}>
+              Fill in prices
+            </button>
+          ) : null}
+        </p>
+      ) : null}
       <div className="grp">
         <h3>Buy</h3>
         {result.products.map((p) => (
-          <Product key={p.product} p={p} show="buy" />
+          <BuyLines key={p.product} p={p} />
         ))}
-        <p className="total">
-          Total <b data-testid="shop-total">{formatKr(result.total)}</b>
-        </p>
+        <div className="buyfoot">
+          {shop ? <CopyButton text={shoppingText(title, result, shop)} /> : null}
+          {actions ? (
+            <button type="button" className="linkish" onClick={actions.openProducts}>
+              Change products and settings
+            </button>
+          ) : null}
+        </div>
       </div>
-      <div className="grp">
-        <h3>Cut plan</h3>
+      <Fold title="Cut plan" open>
         {result.products.map((p) => (
-          <Product key={p.product} p={p} show="plan" />
+          <CutPlan key={p.product} p={p} />
         ))}
-      </div>
-      <div className="grp">
-        <h3>Cut list</h3>
+      </Fold>
+      <Fold title="Cut list" open={false}>
         <p className="acc-note">Frame sides are mitred 45° at both ends, measured to the long point. The rail is cut square.</p>
         {result.products.map((p) => (
-          <Product key={p.product} p={p} show="cuts" />
+          <CutList key={p.product} p={p} />
         ))}
-      </div>
+      </Fold>
     </section>
   );
 }

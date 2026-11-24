@@ -49,7 +49,14 @@ h3{font:600 11.5px var(--body);color:var(--muted);margin:0 0 6px}
 .sl select{display:block;width:100%;margin:6px 0 0;font:inherit}
 .grp>.chip{margin-top:8px}
 .hint{position:absolute;top:12px;left:max(16px,env(safe-area-inset-left,0px));font:12px var(--body);color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 9px}
-.panel{background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding-block:20px 28px;padding-left:20px;padding-right:max(16px,env(safe-area-inset-right,0px))}
+.panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.panel-body{flex:1;min-height:0;overflow-y:auto;scroll-padding-block:56px 64px;padding-block:20px 28px;padding-left:20px;padding-right:max(16px,env(safe-area-inset-right,0px))}
+.panel-body:has(>.panel-head){padding-top:0}
+/* undo and redo, pinned to the panel's foot */
+.panel-foot{position:sticky;bottom:0;z-index:3;display:flex;gap:6px;padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) 20px;background:var(--panel);border-top:1px solid var(--line)}
+.panel-foot button{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:7px 12px;min-height:34px;cursor:pointer}
+.panel-foot button:hover:not(:disabled){border-color:var(--line)}
+.panel-foot button:disabled{opacity:.45;cursor:default}
 h1{font:700 26px/1.1 var(--display);margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
 .sub{color:var(--muted);margin:0 0 16px;font-size:13px}
 .strip{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:18px}
@@ -92,12 +99,30 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
   .lightbar{top:46px;left:max(16px,env(safe-area-inset-left,0px));right:auto;justify-content:flex-start}
   .app{display:block;height:auto}
   .stage-wrap{position:sticky;top:env(safe-area-inset-top,0px);height:56vh;z-index:5}
-  .panel{border-left:0;border-top:1px solid var(--line);overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .panel{border-left:0;border-top:1px solid var(--line);display:block}
+  .panel-body{overflow:visible;padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .panel-foot{padding-left:max(16px,env(safe-area-inset-left,0px))}
+  .panel .panel-head{top:calc(env(safe-area-inset-top,0px) + 56vh)}
+  /* what scrolls into view (a focused control, a found row) stops clear of the sticky 3D view, header and undo bar */
+  html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 56vh + 48px);scroll-padding-bottom:calc(64px + env(safe-area-inset-bottom,0px))}
 }
 .nowebgl.show{display:flex}
 .rug-empty{width:48px;height:64px;border:1px dashed var(--line);border-radius:3px}
 .chips.mt8{margin-top:8px}.chips.mt6{margin-top:6px}
 /* back to all rooms, apartment room list, furniture checklist */
+/* the panel's header: the way back up and undo/redo, kept in view while a page scrolls */
+.panel-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:14px 0 8px;background:var(--panel);border-bottom:1px solid transparent}
+.crumbs{display:flex;align-items:baseline;gap:6px;min-width:0;font:500 12.5px var(--body);color:var(--muted)}
+.crumbs ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:2px 0}
+.crumbs li+li::before{content:'›';margin:0 6px;color:var(--muted)}
+.crumb{font:inherit;color:var(--muted);background:none;border:0;border-radius:4px;padding:2px 0;cursor:pointer;text-align:left}
+.crumb:hover{color:var(--fg);text-decoration:underline}
+.crumbs li:last-child .crumb{color:var(--fg)}
+.linkish{font:inherit;color:var(--accent);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.linkish:disabled{color:var(--muted);cursor:default}
+.reset{margin:16px 0 0;font-size:12.5px}
+.chip.mt8{margin-top:8px}
+.chip:disabled{opacity:.5;cursor:default}
 .back{display:inline-flex;align-items:center;gap:6px;font:500 12.5px var(--body);color:var(--muted);background:none;border:0;border-radius:6px;padding:4px 8px 4px 0;margin:0 0 10px;cursor:pointer}
 .back:hover{color:var(--fg)}
 .back:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -158,12 +183,35 @@ h1:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .total{margin:10px 0 0;display:flex;justify-content:space-between;align-items:baseline;font:600 14px var(--body)}
 .total b{font:700 15px var(--mono)}
 .bars{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
-.barhead{font:500 11px var(--mono);color:var(--muted)}
+.barhead{font:500 12px var(--mono);color:var(--muted)}
 .bar{display:flex;gap:2px;margin-top:3px;overflow-x:auto;padding-bottom:2px}
-.cut{flex-basis:0;min-width:36px;background:var(--chip-on);border:1px solid var(--accent);border-radius:3px;font:500 10px var(--mono);padding:3px 4px;text-align:center;overflow:hidden}
+.cut{flex-basis:0;min-width:36px;background:var(--chip-on);border:1px solid var(--accent);border-radius:3px;font:500 11px var(--mono);padding:3px 4px;text-align:center;overflow:hidden}
 .offcut{flex-basis:0;min-width:0;background:repeating-linear-gradient(135deg,transparent 0 4px,var(--line) 4px 5px);border:1px dashed var(--line);border-radius:3px;font:400 10px var(--mono);color:var(--muted);padding:3px 4px;text-align:center;overflow:hidden}
 .cutlist{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:6px;font:400 12px var(--body)}
 .cutlist li{display:grid;gap:1px}
 .cutlist b{font:600 12px var(--body)}
 .acc-note.warn{color:var(--accent)}
-.barcuts{list-style:none;margin:3px 0 0;padding:0;display:grid;gap:1px;font:400 10.5px var(--mono);color:var(--muted)}
+.barcuts{list-style:none;margin:3px 0 0;padding:0;display:grid;gap:1px;font:400 11.5px var(--mono);color:var(--muted)}
+/* the shopping list: summary first, then what to buy, then the folds with the cuts */
+.emptystate p{margin:0;font-size:13px}
+.chip.primary{background:var(--accent);color:var(--accent-fg)}
+.chip.primary:hover{border-color:var(--accent)}
+.optstate{display:inline-block;margin:0 0 10px;font:500 11.5px var(--body);color:var(--muted);background:var(--chip);border-radius:999px;padding:3px 10px}
+.summary{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--bg)}
+.sumtotal{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.sumtotal span{font:600 13px var(--body)}
+.sumtotal b{font:700 22px var(--mono);font-variant-numeric:tabular-nums}
+.sumtotal small{font:400 11.5px var(--body);color:var(--accent)}
+.summary dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;margin:10px 0 0}
+.summary dt{font:500 10.5px var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.summary dd{margin:2px 0 0;font:600 13px var(--mono);font-variant-numeric:tabular-nums}
+.buy li.unpriced b{color:var(--accent);font-weight:500}
+.buyfoot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-top:12px;font-size:12.5px}
+.copybox{display:block;width:100%;margin-top:8px;font:400 11.5px var(--mono);color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:8px}
+.foldhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.foldhead .linkish{font-size:12px}
+.barhead b{color:var(--fg);font-weight:600}
+.barhead .times{color:var(--accent);font-weight:600}
+.lenhead{font:500 10.5px var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:8px}
+.reset-view{border-style:dashed!important}
+.stage-canvas:focus{outline:none}.stage-canvas:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}

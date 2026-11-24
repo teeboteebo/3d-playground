@@ -48,7 +48,7 @@ describe('options', () => {
     const parent = new THREE.Group();
     const room = buildBedroom(parent, '#B5654A');
     room.apply(applyPatch(DEFAULTS, { room: 'bedroom' }));
-    expect(paths(parent, 'bedroom')).toEqual(['accent', 'moulding/bed', 'moulding/dresser', 'painting', 'pendant', 'pillows', 'rug', 'wardrobes']);
+    expect(paths(parent, 'bedroom')).toEqual(['accent', 'ceiling', 'moulding/bed', 'moulding/dresser', 'painting', 'pillows', 'rug', 'wardrobes']);
   });
 
   it('keep the moulding tagged when a setting rebuilds it', () => {

@@ -30,8 +30,8 @@ export function buildOffice(parent: THREE.Object3D): Office {
   const piece = (name: string, build: (k: Kit) => void) => {
     const g = new THREE.Group();
     g.name = name;
-    /* the cabinets, desk, drawers and chair are described on the Furniture page */
-    tagOption([g], 'office', ['furniture']);
+    /* the cabinets, desk, drawers and chair are described on the About the room page */
+    tagOption([g], 'office', ['about']);
     parent.add(g);
     const k = kit(g);
     mergeMeshes(k.collect(() => build(k)));

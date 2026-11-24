@@ -280,7 +280,7 @@ export interface CameraPose {
 
 export type IconName =
   | 'sun' | 'moon' | 'pendant' | 'overview' | 'bed' | 'wardrobe' | 'dresser' | 'top' | 'check' | 'plus'
-  | 'plan' | 'hall' | 'sofa' | 'room';
+  | 'plan' | 'hall' | 'sofa' | 'room' | 'undo' | 'redo' | 'home' | 'copy';
 
 
 export interface CameraView {

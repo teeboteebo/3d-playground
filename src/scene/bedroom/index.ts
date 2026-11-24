@@ -61,7 +61,7 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   tagOption(made(dresserParts, m.vase), 'bedroom', ['accent']);
   tagOption(wardrobeParts, 'bedroom', ['wardrobes']);
   tagOption(paintParts, 'bedroom', ['painting']);
-  tagOption(pendant.parts, 'bedroom', ['pendant']);
+  tagOption(pendant.parts, 'bedroom', ['ceiling']);
   tagOption([rug.mesh], 'bedroom', ['rug']);
   let current: BedroomSettings | null = null;
 

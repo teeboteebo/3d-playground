@@ -102,6 +102,8 @@ test('shopping list, on a phone', async ({ page }) => {
   await page.locator('[data-topic="moulding"]').click();
   await page.locator('[data-topic="shopping"]').click();
   await expect(page.getByTestId('shop-total')).toBeVisible({ timeout: 30_000 });
-  /* the 3D view sticks over the top of the page on a phone: mask it, so the picture is the list alone */
+  /* the 3D view sticks over the top of the page on a phone: mask it; the panel header and undo bar stick too, so they
+     stay in the flow here; so the picture is the list alone */
+  await page.addStyleTag({ content: '.panel-head, .panel-foot { position: static !important }' });
   await expect(page.getByTestId('shopping-list')).toHaveScreenshot('shopping-list-phone.png', { mask: [page.locator('canvas.stage-canvas, .hint, .lightbar, .viewbar')] });
 });

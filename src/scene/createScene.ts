@@ -64,6 +64,8 @@ export function createApartmentScene(
   onPick?: (pick: Pick) => void,
   /** called as the mouse moves onto, along and off a menu option of the selected room (null when off) */
   onHover?: (hover: Hover | null) => void,
+  /** called whenever the user moves the camera themselves (drag, pinch, wheel or keys) */
+  onCameraMove?: () => void,
 ): ApartmentScene {
   applyLegacyLook();
   let renderer: THREE.WebGLRenderer;
@@ -157,7 +159,7 @@ export function createApartmentScene(
   const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => {
     setHover(null);
     onPick?.(pick(ndc, camera, scene.children, ROOMS));
-  });
+  }, onCameraMove);
 
   /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
      rooms a click would select */

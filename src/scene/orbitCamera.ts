@@ -11,16 +11,34 @@ export interface OrbitCamera {
   dispose(): void;
 }
 
+/** how far one press of an arrow key turns the camera (rad), and one press of + or - zooms */
+const KEY_TURN = 0.12;
+const KEY_TILT = 0.08;
+const KEY_ZOOM = 0.85;
+
+/** the camera's limits: how far it tilts (rad from straight down) and how near and far it goes (m) */
+const PHI = { min: 0.15, max: 1.5 };
+const DIST = { min: 3, max: 32 };
+
+/** whether the user has asked for less motion: the camera then jumps to a pose instead of easing there */
+function reducedMotion(): () => boolean {
+  const q = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  return () => !!q?.matches;
+}
+
 /**
- * Orbits `camera` around a pivot: drag to rotate, wheel or pinch to zoom, eased towards a goal pose.
- * A press that neither drags nor pinches is a click, reported in normalised device coordinates.
+ * Orbits `camera` around a pivot: drag to rotate, wheel or pinch to zoom, eased towards a goal pose; with the canvas
+ * focused, the arrow keys turn and tilt it and + and - zoom. A press that neither drags nor pinches is a click,
+ * reported in normalised device coordinates. `onUserMove` is told whenever the user moves the camera themselves.
  */
 export function orbitCamera(
   canvas: HTMLCanvasElement,
   camera: THREE.PerspectiveCamera,
   start: CameraPose,
   onClick: (ndc: { x: number; y: number }) => void,
+  onUserMove?: () => void,
 ): OrbitCamera {
+  const still = reducedMotion();
   const cur: CameraPose = { ...start };
   const goal: CameraPose = { ...start };
   const pts = new Map<number, { x: number; y: number }>();
@@ -57,12 +75,13 @@ export function orbitCamera(
     p.y = e.clientY;
     if (pts.size === 1) {
       goal.theta -= dx * 0.006;
-      goal.phi = clamp(goal.phi - dy * 0.005, 0.15, 1.5);
+      goal.phi = clamp(goal.phi - dy * 0.005, PHI.min, PHI.max);
     } else if (pts.size === 2) {
       const d = pinchDistance();
-      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, 3, 32);
+      if (lastPinch > 0) goal.dist = clamp((goal.dist * lastPinch) / d, DIST.min, DIST.max);
       lastPinch = d;
     }
+    if (dx !== 0 || dy !== 0) onUserMove?.();
   };
   const onUp = (e: PointerEvent) => {
     const last = pts.size === 1 && pts.has(e.pointerId);
@@ -76,13 +95,29 @@ export function orbitCamera(
   };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
-    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), 3, 32);
+    goal.dist = clamp(goal.dist * Math.exp(e.deltaY * 0.0012), DIST.min, DIST.max);
+    onUserMove?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+      case 'ArrowLeft': goal.theta += KEY_TURN; break;
+      case 'ArrowRight': goal.theta -= KEY_TURN; break;
+      case 'ArrowUp': goal.phi = clamp(goal.phi - KEY_TILT, PHI.min, PHI.max); break;
+      case 'ArrowDown': goal.phi = clamp(goal.phi + KEY_TILT, PHI.min, PHI.max); break;
+      case '+': case '=': case 'PageUp': goal.dist = clamp(goal.dist * KEY_ZOOM, DIST.min, DIST.max); break;
+      case '-': case '_': case 'PageDown': goal.dist = clamp(goal.dist / KEY_ZOOM, DIST.min, DIST.max); break;
+      default: return;
+    }
+    e.preventDefault();
+    onUserMove?.();
   };
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
   canvas.addEventListener('wheel', onWheel, { passive: false });
+  canvas.addEventListener('keydown', onKey);
 
   const keys = Object.keys(cur) as (keyof CameraPose)[];
   return {
@@ -92,7 +127,7 @@ export function orbitCamera(
     update() {
       /* ease towards the goal, and snap onto it once close, so the camera comes to rest exactly there */
       const moved = keys.some((k) => cur[k] !== goal[k]);
-      const arriving = keys.every((k) => Math.abs(goal[k] - cur[k]) < 1e-3);
+      const arriving = still() || keys.every((k) => Math.abs(goal[k] - cur[k]) < 1e-3);
       for (const k of keys) cur[k] = arriving ? goal[k] : cur[k] + (goal[k] - cur[k]) * 0.14;
       /* pull back on narrow (portrait) screens so the room still fits across */
       const d = cur.dist * Math.max(1, 1.15 / camera.aspect);
@@ -110,6 +145,7 @@ export function orbitCamera(
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onUp);
       canvas.removeEventListener('wheel', onWheel);
+      canvas.removeEventListener('keydown', onKey);
     },
   };
 }

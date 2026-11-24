@@ -3,7 +3,11 @@ import { mouldProfile, mouldRoom } from '../scene/mouldProfile';
 import { wallLayouts, type MouldWallDef } from '../scene/mouldWalls';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
-import type { Topic } from './Menu';
+import type { MenuNav, Topic } from './Menu';
+import { resetFields } from './roomTopics';
+import { equal } from '../lib/equal';
+import { DEFAULTS } from '../state/settings';
+import { EXAMPLE_LENGTHS, SHOP_DEFAULTS } from '../state/mouldShop';
 import { MouldSectionControls } from './MouldSectionControls';
 import { MouldShopControls } from './MouldShopControls';
 import { ShoppingListPage } from './ShoppingListPage';
@@ -17,7 +21,7 @@ const COLOUR_SHORT: Record<MouldFields['mouldColour'], string> = { white: 'White
  * The room's wall moulding as a menu page: colour, which walls carry it and the room's spacing and dado on the page
  * itself, and a page of its own for each wall section's columns.
  */
-export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], settings: Settings, update: Update, shopping: ShoppingState): Topic {
+export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], settings: Settings, update: Update, shopping: ShoppingState, menu: MenuNav): Topic {
   const b: MouldFields = settings[room];
   const set = (patch: Partial<MouldFields>) => update({ [room]: patch } as Parameters<Update>[0]);
   const layouts = walls.map((def) => wallLayouts(def, mouldRoom(b, settings.mouldShop), b.mouldWalls, room === 'bedroom' ? BEDX : undefined));
@@ -26,6 +30,7 @@ export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], se
     id: 'moulding',
     title: 'Wall moulding',
     summary: onWalls.length ? `${COLOUR_SHORT[b.mouldColour]} · ${onWalls.join(', ')}` : 'Off',
+    reset: resetFields(settings, update, room, ['mouldColour', 'mouldSpacing', 'mouldDado', 'mouldWalls', ...walls.map((w) => w.toggle as keyof Settings[MouldRoom])]),
     sub: 'Panel moulding split by a rail at dado height. Each wall section has its own spacing and columns.',
     content: <MouldingRoomControls room={room} walls={walls} b={b} layouts={layouts} railHeight={mouldProfile(settings.mouldShop).railHeight} frameWidth={mouldProfile(settings.mouldShop).frameWidth} set={set} />,
     topicsTitle: 'Walls and shopping list',
@@ -40,6 +45,7 @@ export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], se
           id: sec.key,
           title: label,
           summary: on ? `${columns} · ${wall.spacing ?? b.mouldSpacing} cm spacing` : 'Hidden',
+          reset: equal(wall, DEFAULTS[room].mouldWalls[sec.key as never]) ? undefined : () => set({ mouldWalls: { ...b.mouldWalls, [sec.key]: DEFAULTS[room].mouldWalls[sec.key as never] } }),
           content: (
             <MouldSectionControls
               def={sec}
@@ -53,18 +59,18 @@ export function mouldingTopic(room: MouldRoom, walls: MouldWallDef<string>[], se
           ),
         };
       }),
-    ).concat(shoppingTopic(settings, update, shopping)),
+    ).concat(shoppingTopic(room, settings, update, shopping, menu)),
   };
 }
 
 const shoppingSummary = (s: ShoppingState): string =>
   s.status === 'empty' ? 'Nothing to buy'
-  : s.status === 'needs-products' ? 'Add products'
-  : s.result ? `${formatKr(s.result.total)}${s.status === 'working' ? ' · checking' : ''}`
+  : s.status === 'needs-products' ? 'Add store lengths'
+  : s.result ? `${formatKr(s.result.total)}${s.result.missing.length ? ' · prices to fill in' : s.status === 'working' ? ' · optimising' : ''}`
   : 'Working it out…';
 
 /** what to buy for the room's moulding, with the products it is bought from on a page of its own */
-function shoppingTopic(settings: Settings, update: Update, shopping: ShoppingState): Topic {
+function shoppingTopic(room: MouldRoom, settings: Settings, update: Update, shopping: ShoppingState, menu: MenuNav): Topic {
   const { panel, railSeparate, rail } = settings.mouldShop;
   const lengths = panel.lengths.length;
   return {
@@ -72,7 +78,21 @@ function shoppingTopic(settings: Settings, update: Update, shopping: ShoppingSta
     title: 'Shopping list',
     summary: shoppingSummary(shopping),
     sub: 'What to buy for this room’s wall moulding, and every cut to make. It follows what you see in the 3D view.',
-    content: <ShoppingListPage state={shopping} />,
+    content: (
+      <ShoppingListPage
+        state={shopping}
+        shop={settings.mouldShop}
+        title={`Wall moulding, ${room === 'bedroom' ? 'bedroom' : 'living room'}`}
+        actions={{
+          openProducts: () => menu.go(['moulding', 'shopping', 'products']),
+          useExamples: () => {
+            const shop = settings.mouldShop;
+            const fill = (p: typeof shop.panel) => (p.lengths.length ? p : { ...p, lengths: EXAMPLE_LENGTHS });
+            update({ mouldShop: { ...shop, panel: fill(shop.panel), rail: shop.railSeparate ? fill(shop.rail) : shop.rail } });
+          },
+        }}
+      />
+    ),
     topicsTitle: 'Settings',
     topics: [
       {
@@ -81,6 +101,7 @@ function shoppingTopic(settings: Settings, update: Update, shopping: ShoppingSta
         summary: `${panel.width} × ${panel.depth} mm · ${lengths === 1 ? '1 length' : `${lengths} lengths`}${railSeparate ? ` · rail ${rail.width} mm` : ''}`,
         sub: 'The moulding your store sells. They are shared by every room, and the 3D view is drawn at their size.',
         content: <MouldShopControls shop={settings.mouldShop} onChange={(mouldShop) => update({ mouldShop })} />,
+        reset: equal(settings.mouldShop, SHOP_DEFAULTS) ? undefined : () => update({ mouldShop: SHOP_DEFAULTS }),
       },
     ],
   };

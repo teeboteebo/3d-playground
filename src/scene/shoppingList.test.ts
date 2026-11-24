@@ -115,17 +115,17 @@ describe('shoppingResult', () => {
     expect(p.buy.reduce((t, l) => t + l.count, 0)).toBe(plans[0].bars.length);
     for (const l of p.buy) {
       expect(l.unitPrice).toBe(l.length === 240 ? 89 : 109);
-      expect(l.price).toBe(l.count * l.unitPrice);
+      expect(l.price).toBe(l.count * l.unitPrice!);
     }
     expect(p.spare).toBeNull();
-    expect(result.total).toBe(p.buy.reduce((t, l) => t + l.price, 0));
+    expect(result.total).toBe(p.buy.reduce((t, l) => t + l.price!, 0));
   });
 
   it('adds one spare of the longest length, priced into the total', () => {
     const { result } = run(settings(shop()));
     const [p] = result.products;
     expect(p.spare).toEqual({ length: 300, count: 1, unitPrice: 109, price: 109 });
-    expect(result.total).toBe(p.buy.reduce((t, l) => t + l.price, 0) + 109);
+    expect(result.total).toBe(p.buy.reduce((t, l) => t + l.price!, 0) + 109);
   });
 
   it('prices a length listed twice at its cheapest price, for buying and for the spare (review finding)', () => {
@@ -170,5 +170,37 @@ describe('shoppingResult', () => {
     const { result } = run(settings(SHOP_DEFAULTS));
     expect(result.products[0].spare).toBeNull();
     expect(result.total).toBe(0);
+  });
+
+  it('prices a length with no price yet from the others per cm for the search, and leaves it out of the total', () => {
+    const s = settings(shop({ panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 96 }, { length: 300, price: null }] } }));
+    const req = shoppingRequest('bedroom', s);
+    expect(req.jobs[0].stocks).toEqual([{ length: 2400, price: 9600 }, { length: 3000, price: 12000 }]);
+    expect(req.jobs[0].unpriced).toEqual([1]);
+    const { result } = run(s);
+    const [p] = result.products;
+    expect(p.spare).toEqual({ length: 300, count: 1, unitPrice: null, price: null });
+    expect(result.missing).toEqual([300]);
+    expect(result.total).toBe(p.buy.reduce((t, l) => t + (l.price ?? 0), 0));
+  });
+
+  it('takes a length to cost 1 kr per cm for the search when no length has a price', () => {
+    const s = settings(shop({ panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: null }, { length: 300, price: null }] } }));
+    expect(shoppingRequest('bedroom', s).jobs[0].stocks).toEqual([{ length: 2400, price: 24000 }, { length: 3000, price: 30000 }]);
+    const { result } = run(s);
+    expect(result.total).toBe(0);
+    expect(result.missing).toEqual(result.products[0].buy.map((l) => l.length).concat(300).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => a - b));
+  });
+
+  it('sums up the list: lengths, metres of moulding, the part lost to offcuts and saw cuts, and joins', () => {
+    const { req, result } = run(settings(shop()));
+    const [p] = result.products;
+    const pieceMm = req.jobs[0].pieces.reduce((t, x) => t + x.length, 0);
+    const boughtMm = p.plan.bars.reduce((t, b) => t + p.stocks[b.stock].length, 0);
+    expect(result.stats.lengths).toBe(p.plan.bars.length);
+    expect(result.stats.spares).toBe(1);
+    expect(result.stats.metres).toBeCloseTo(pieceMm / 1000, 6);
+    expect(result.stats.waste).toBeCloseTo((boughtMm - pieceMm) / boughtMm, 6);
+    expect(result.stats.joins).toBe(p.plan.bars.flatMap((b) => b.cuts).filter((c) => c.part && c.part.index > 1).length);
   });
 });

@@ -96,7 +96,7 @@ describe('App', () => {
     expect(daynight).toHaveAttribute('aria-checked', 'true');
     await user.click(daynight);
     expect(lastApplied().time).toBe('day');
-    goTo('Ceiling pendant');
+    goTo('Ceiling light');
     await user.click(screen.getByRole('button', { name: 'Pendant on' }));
     expect(screen.getByRole('button', { name: 'Pendant off' })).toHaveAttribute('aria-pressed', 'false');
     expect(lastApplied().bedroom.pendant).toBe('off');
@@ -334,7 +334,7 @@ describe('App', () => {
     const user = userEvent.setup();
     await renderApp();
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
-    goTo('Furniture');
+    goTo('Show or hide furniture');
     expect(screen.getByRole('group', { name: 'Furniture' })).toBeInTheDocument();
     expect(lastApplied().room).toBe('living');
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
@@ -380,27 +380,27 @@ describe('App', () => {
   it('hides living-room furniture and repaints a room', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Furniture');
+    goTo('Show or hide furniture');
     await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('checkbox', { name: 'Sofa' }));
     expect(lastApplied().living.hidden).toEqual(['sofa']);
     up('Living room');
-    expect(row('Furniture')).toHaveTextContent(/5 of 6 shown|\d+ of \d+ shown/);
+    expect(row('Show or hide furniture')).toHaveTextContent(/5 of 6 shown|\d+ of \d+ shown/);
     await user.click(back());
     await user.click(within(roomList()).getByRole('button', { name: /Hall/ }));
-    goTo('Walls');
+    goTo('Wall colour');
     await user.click(within(screen.getByRole('group', { name: 'Wall colour' })).getByRole('button', { name: 'Chalk white' }));
     expect(lastApplied().walls.hall).toBe('chalk');
   });
 
-  it('shows the office with its furniture note', async () => {
+  it('shows the office with its furniture under About the room', async () => {
     await renderIn('office');
     expect(screen.getByRole('heading', { name: 'Office' })).toBeVisible();
-    goTo('Furniture');
-    expect(screen.getByRole('heading', { name: 'Furniture' })).toBeVisible();
+    goTo('About the room');
+    expect(screen.getByRole('heading', { name: 'About the room' })).toBeVisible();
     expect(screen.getByText(/METOD high cabinets/)).toBeVisible();
     expect(screen.getByText(/IDÅSEN desk/)).toBeVisible();
     up('Office');
-    goTo('Walls');
+    goTo('Wall colour');
     expect(screen.getByRole('group', { name: 'Wall colour' })).toBeVisible();
   });
 
@@ -417,8 +417,8 @@ describe('App', () => {
   it('offers the Jotun wall colours', async () => {
     const user = userEvent.setup();
     await renderIn('office');
-    expect(row('Walls')).toHaveTextContent('Devine 12083');
-    goTo('Walls');
+    expect(row('Wall colour')).toHaveTextContent('Devine 12083');
+    goTo('Wall colour');
     const walls = screen.getByRole('group', { name: 'Wall colour' });
     expect(within(walls).getByRole('button', { name: 'Devine 12083' })).toHaveAttribute('aria-pressed', 'true');
     await user.click(within(walls).getByRole('button', { name: 'Froströk 1376' }));
@@ -438,7 +438,7 @@ describe('App', () => {
     expect(screen.queryByRole('button', { name: /Pendant/ })).toBeNull();
     unmount();
     await renderIn('bedroom');
-    goTo('Ceiling pendant');
+    goTo('Ceiling light');
     expect(screen.getByRole('button', { name: 'Pendant on' })).toBeInTheDocument();
   });
 });
@@ -448,11 +448,14 @@ const esc = (t: string) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 describe.each(['living', 'office'] as const)('lighting in the %s', (room) => {
   it('offers pendants and floor lamps and applies the choice', async () => {
     await renderIn(room);
-    goTo('Lighting');
-    const pendants = screen.getByRole('group', { name: 'Pendant' });
+    goTo('Ceiling light');
+    const pendants = screen.getByRole('group', { name: 'Ceiling light' });
     await userEvent.click(within(pendants).getByRole('button', { name: new RegExp(esc(PENDANTS[1].name)) }));
     expect(lastApplied()[room].pendant).toBe(PENDANTS[1].id);
     expect(stored()[room].pendant).toBe(PENDANTS[1].id);
+    up(room === 'living' ? 'Living room' : 'Office');
+    expect(row('Ceiling light')).toHaveTextContent(PENDANTS[1].name);
+    goTo('Floor lamp');
     const floor = screen.getByRole('group', { name: 'Floor lamp' });
     await userEvent.click(within(floor).getByRole('button', { name: new RegExp(esc(FLOOR_LAMPS[1].name)) }));
     expect(lastApplied()[room].floorLamp).toBe(FLOOR_LAMPS[1].id);
@@ -460,8 +463,8 @@ describe.each(['living', 'office'] as const)('lighting in the %s', (room) => {
   });
   it('does not select a lamp when its shop link is clicked', async () => {
     await renderIn(room);
-    goTo('Lighting');
-    const link = within(screen.getByRole('group', { name: 'Pendant' })).getAllByRole('link')[0];
+    goTo('Ceiling light');
+    const link = within(screen.getByRole('group', { name: 'Ceiling light' })).getAllByRole('link')[0];
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(lastApplied()[room].pendant).toBe('none');
@@ -472,12 +475,12 @@ describe('reading corner in the office', () => {
   const lists = [
     ['Reading chair', READING_CHAIRS, 'readingChair'],
     ['Dresser', DRESSERS, 'dresser'],
-    ['Round rug', ROUND_RUGS, 'roundRug'],
+    ['Rug', ROUND_RUGS, 'roundRug'],
   ] as const;
-  it.each(lists)('offers the %s list and applies the choice', async (name, items, key) => {
+  it.each(lists)('offers the %s list on a page of its own and applies the choice', async (name, items, key) => {
     await renderIn('office');
-    goTo('Reading corner');
-    expect(screen.getByRole('heading', { name: 'Reading corner' })).toBeInTheDocument();
+    goTo(name);
+    expect(screen.getByRole('heading', { level: 1, name })).toBeInTheDocument();
     const group = screen.getByRole('group', { name });
     await userEvent.click(within(group).getByRole('button', { name: new RegExp(esc(items[2].name)) }));
     expect(lastApplied().office[key]).toBe(items[2].id);
@@ -485,7 +488,7 @@ describe('reading corner in the office', () => {
   });
   it.each(lists)('does not select in the %s list when a shop link is clicked', async (name, items, key) => {
     await renderIn('office');
-    goTo('Reading corner');
+    goTo(name);
     const card = within(screen.getByRole('group', { name })).getByRole('button', { name: new RegExp(esc(items[2].name)) });
     const link = within(card).getByRole('link');
     link.addEventListener('click', (e) => e.preventDefault());
@@ -509,7 +512,7 @@ describe('sofa fabric', () => {
   it('filters the grid by search', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Sofa fabric');
+    goTo('Sofa');
     await user.type(search(), f.family);
     const labels = within(grid()).getAllByRole('button').map((b) => b.getAttribute('aria-label')!);
     expect(labels.length).toBeGreaterThan(1);
@@ -519,7 +522,7 @@ describe('sofa fabric', () => {
   it('selects a fabric, applies and stores it, and shows its price and link', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Sofa fabric');
+    goTo('Sofa');
     const btn = within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` });
     await user.click(btn);
     expect(lastApplied().living.sofaFabric).toBe(f.code);
@@ -534,7 +537,7 @@ describe('sofa fabric', () => {
   it('says so when nothing matches, and still shows the selected fabric', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Sofa fabric');
+    goTo('Sofa');
     await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
     await user.type(search(), 'zzzz');
     expect(screen.getByText('No fabrics match')).toBeInTheDocument();
@@ -545,7 +548,7 @@ describe('sofa fabric', () => {
   it('shows 24 fabrics and 24 more on request', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Sofa fabric');
+    goTo('Sofa');
     expect(within(grid()).getAllByRole('button')).toHaveLength(25);
     await user.click(screen.getByRole('button', { name: 'Show more' }));
     expect(within(grid()).getAllByRole('button')).toHaveLength(49);
@@ -554,7 +557,7 @@ describe('sofa fabric', () => {
   it('goes back to the original fabric', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Sofa fabric');
+    goTo('Sofa');
     await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
     await user.click(own());
     expect(lastApplied().living.sofaFabric).toBe('original');
@@ -564,15 +567,15 @@ describe('sofa fabric', () => {
 });
 
 describe('room menu', () => {
-  const rowTitles = () =>
-    within(screen.getByRole('list', { name: /options$/ }))
-      .getAllByRole('button')
-      .map((b) => b.querySelector('strong')!.textContent);
+  const rowTitles = () => [...document.querySelectorAll('.topic strong')].map((b) => b.textContent);
+  /** the section headings of a room's first page */
+  const sections = () => screen.queryAllByRole('heading', { level: 2 }).map((h) => h.textContent);
 
   it('opens a room on a summary of its options, with no controls on it', async () => {
     await renderIn('bedroom');
+    expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture', 'Textiles and decor']);
     expect(rowTitles()).toEqual([
-      'Walls', 'Ceiling pendant', 'Accent colour', 'Wall moulding', 'Wardrobes', 'Pillows and throw', 'Painting', 'Rug', 'About the room',
+      'Wall colour', 'Wall moulding', 'Ceiling light', 'Wardrobes', 'Rug', 'Pillows and throw', 'Painting', 'Accent colour', 'About the room',
     ]);
     expect(row('Wall moulding')).toHaveTextContent('White · Bed wall, Dresser wall');
     expect(row('Painting')).toHaveTextContent('Clay sun · brass frame');
@@ -583,12 +586,18 @@ describe('room menu', () => {
 
   it('lists the other rooms\' options', async () => {
     const { unmount } = await renderIn('living');
-    expect(rowTitles()).toEqual(['Walls', 'Lighting', 'Sofa fabric', 'Wall moulding', 'Furniture']);
-    expect(row('Lighting')).toHaveTextContent('No lamps');
-    expect(row('Sofa fabric')).toHaveTextContent('Original');
+    expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture']);
+    expect(rowTitles()).toEqual(['Wall colour', 'Wall moulding', 'Ceiling light', 'Floor lamp', 'Sofa', 'Show or hide furniture', 'About the room']);
+    expect(row('Ceiling light')).toHaveTextContent('None');
+    expect(row('Sofa')).toHaveTextContent('Original fabric');
     unmount();
-    await renderIn('office');
-    expect(rowTitles()).toEqual(['Walls', 'Lighting', 'Reading corner', 'Furniture']);
+    const office = await renderIn('office');
+    expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture', 'Textiles and decor']);
+    expect(rowTitles()).toEqual(['Wall colour', 'Ceiling light', 'Floor lamp', 'Reading chair', 'Dresser', 'Rug', 'About the room']);
+    office.unmount();
+    await renderIn('hall');
+    expect(sections()).toEqual(['Walls']);
+    expect(rowTitles()).toEqual(['Wall colour', 'About the room']);
   });
 
   it('keeps the moulding walls a level below the moulding page', async () => {
@@ -661,23 +670,27 @@ describe('clicking options in 3D', () => {
   });
 
   it.each([
-    ['bedroom', ['walls'], 'Walls'],
-    ['bedroom', ['pendant'], 'Ceiling pendant'],
+    ['bedroom', ['walls'], 'Wall colour'],
+    ['bedroom', ['ceiling'], 'Ceiling light'],
     ['bedroom', ['accent'], 'Accent colour'],
     ['bedroom', ['moulding', 'dresser'], 'Dresser wall'],
     ['bedroom', ['wardrobes'], 'Wardrobes'],
     ['bedroom', ['pillows'], 'Pillows and throw'],
     ['bedroom', ['painting'], 'Painting'],
     ['bedroom', ['rug'], 'Rug'],
-    ['hall', ['walls'], 'Walls'],
-    ['living', ['lighting'], 'Lighting'],
-    ['living', ['sofa'], 'Sofa fabric'],
+    ['hall', ['walls'], 'Wall colour'],
+    ['living', ['ceiling'], 'Ceiling light'],
+    ['living', ['floorLamp'], 'Floor lamp'],
+    ['living', ['sofa'], 'Sofa'],
     ['living', ['moulding', 'sofa'], 'Sofa wall'],
     ['living', ['moulding', 'tv'], 'TV wall'],
-    ['living', ['furniture'], 'Furniture'],
-    ['office', ['lighting'], 'Lighting'],
-    ['office', ['corner'], 'Reading corner'],
-    ['office', ['furniture'], 'Furniture'],
+    ['living', ['furniture'], 'Show or hide furniture'],
+    ['office', ['ceiling'], 'Ceiling light'],
+    ['office', ['floorLamp'], 'Floor lamp'],
+    ['office', ['chair'], 'Reading chair'],
+    ['office', ['dresser'], 'Dresser'],
+    ['office', ['rug'], 'Rug'],
+    ['office', ['about'], 'About the room'],
   ] as const)('opens %s › %j as the "%s" page', async (room, path, title) => {
     await renderIn(room);
     await click3d(room, [...path]);
@@ -720,12 +733,14 @@ describe('moulding shopping list', () => {
   it('asks for products, then lists what to buy once a length is added', async () => {
     await renderBedWall();
     goTo('Wall moulding');
-    expect(row('Shopping list')).toHaveTextContent('Add products');
+    expect(row('Shopping list')).toHaveTextContent('Add store lengths');
     goTo('Shopping list');
-    expect(screen.getByText(/Add the lengths your store sells/)).toBeInTheDocument();
-    goTo('Products and settings');
+    fireEvent.click(screen.getByRole('button', { name: 'Add your store’s lengths' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Products and settings');
     fireEvent.click(screen.getByRole('button', { name: 'Add panel length' }));
-    fireEvent.change(field('Panel price 1 (kr)'), { target: { value: '89' } });
+    expect(field('Panel price 1, kronor')).toHaveValue(null);
+    expect(stored().mouldShop.panel.lengths).toEqual([{ length: 240, price: null }]);
+    fireEvent.change(field('Panel price 1, kronor'), { target: { value: '89' } });
     expect(stored().mouldShop.panel.lengths).toEqual([{ length: 240, price: 89 }]);
     up('Shopping list');
     expect(await screen.findByText(/^\d+ × 240 cm$/, undefined, { timeout: 3000 })).toBeInTheDocument();
@@ -746,20 +761,24 @@ describe('moulding shopping list', () => {
   it('keeps a typed width inside its limits', async () => {
     await renderBedWall();
     goTo('Wall moulding', 'Shopping list', 'Products and settings');
-    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '-5' } });
+    fireEvent.change(field('Panel profile width, millimetres'), { target: { value: '-5' } });
     expect(stored().mouldShop.panel.width).toBe(10);
-    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '45' } });
+    fireEvent.change(field('Panel profile width, millimetres'), { target: { value: '45' } });
     expect(stored().mouldShop.panel.width).toBe(45);
-    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '' } });
+    fireEvent.change(field('Panel profile width, millimetres'), { target: { value: '' } });
     expect(stored().mouldShop.panel.width).toBe(45);
   });
 
   it('shows the rail product only when the rail is a different product, and saves the switches', async () => {
     await renderBedWall();
     goTo('Wall moulding', 'Shopping list', 'Products and settings');
-    expect(screen.queryByRole('spinbutton', { name: 'Rail height (mm)' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Rail is a different product' }));
-    expect(field('Rail height (mm)')).toHaveValue(40);
+    expect(screen.queryByRole('spinbutton', { name: 'Rail height, millimetres' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'A different moulding' }));
+    expect(field('Rail height, millimetres')).toHaveValue(40);
+    expect(stored().mouldShop.rail.lengths).toEqual([{ length: 240, price: null }, { length: 300, price: null }]);
+    expect(field('Rail price 1, kronor')).toHaveFocus();
+    fireEvent.change(field('Rail price 1, kronor'), { target: { value: '59' } });
+    expect(stored().mouldShop.rail.lengths[0]).toEqual({ length: 240, price: 59 });
     expect(stored().mouldShop.railSeparate).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Allow joins in panel frames' }));
     expect(stored().mouldShop.joins).toBe(true);
@@ -770,7 +789,135 @@ describe('moulding shopping list', () => {
   it('draws the moulding at the product width', async () => {
     await renderBedWall();
     goTo('Wall moulding', 'Shopping list', 'Products and settings');
-    fireEvent.change(field('Panel profile width (mm)'), { target: { value: '45' } });
+    fireEvent.change(field('Panel profile width, millimetres'), { target: { value: '45' } });
     expect(lastApplied().mouldShop.panel.width).toBe(45);
+  });
+});
+
+describe('moulding shopping list, example lengths', () => {
+  it('starts from the usual lengths with prices to fill in, and lists them at once', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, room: 'bedroom', bedroom: { mouldDresserWall: 'off' } }));
+    await renderApp();
+    goTo('Wall moulding', 'Shopping list');
+    fireEvent.click(screen.getByRole('button', { name: 'Use 240 and 300 cm' }));
+    expect(stored().mouldShop.panel.lengths).toEqual([{ length: 240, price: null }, { length: 300, price: null }]);
+    expect(await screen.findByText(/No price yet for/, undefined, { timeout: 3000 })).toBeInTheDocument();
+    expect(screen.getByTestId('shop-total')).toHaveTextContent('0 kr');
+  });
+});
+
+describe('undo, redo and reset', () => {
+  const undoButton = () => screen.getByRole('button', { name: 'Undo' });
+  const redoButton = () => screen.getByRole('button', { name: 'Redo' });
+
+  it('undoes and redoes a change from the header, keeping the room open', async () => {
+    await renderIn('bedroom');
+    expect(undoButton()).toBeDisabled();
+    goTo('Rug');
+    fireEvent.click(screen.getAllByRole('button', { pressed: false }).find((b) => b.classList.contains('rug'))!);
+    const picked = stored().bedroom.rug;
+    expect(picked).not.toBe(DEFAULTS.bedroom.rug);
+    fireEvent.click(undoButton());
+    expect(stored().bedroom.rug).toBe(DEFAULTS.bedroom.rug);
+    expect(stored().room).toBe('bedroom');
+    fireEvent.click(redoButton());
+    expect(stored().bedroom.rug).toBe(picked);
+  });
+
+  it('undoes with ⌘Z or Ctrl+Z and redoes with Shift, but leaves the keys to a text field', async () => {
+    await renderIn('bedroom');
+    goTo('Wardrobes');
+    const other = within(screen.getByRole('group', { name: 'Wardrobes' })).getAllByRole('button', { pressed: false })[0];
+    fireEvent.click(other);
+    const picked = stored().bedroom.wardrobes;
+    fireEvent.keyDown(window, { key: 'z', metaKey: true });
+    expect(stored().bedroom.wardrobes).toBe(DEFAULTS.bedroom.wardrobes);
+    fireEvent.keyDown(window, { key: 'Z', ctrlKey: true, shiftKey: true });
+    expect(stored().bedroom.wardrobes).toBe(picked);
+    up('Bedroom');
+    goTo('Accent colour');
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Accent hex' }), { key: 'z', metaKey: true });
+    expect(stored().bedroom.wardrobes).toBe(picked);
+  });
+
+  it('puts one page back to how the room started', async () => {
+    await renderIn('living');
+    goTo('Show or hide furniture');
+    expect(screen.queryByRole('button', { name: 'Reset show or hide furniture' })).toBeNull();
+    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    expect(stored().living.hidden).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide furniture' }));
+    expect(stored().living.hidden).toEqual([]);
+    expect(screen.queryByRole('button', { name: 'Reset show or hide furniture' })).toBeNull();
+  });
+
+  it('starts every room over from the apartment page, keeps the store lengths, and can undo it', async () => {
+    const lengths = [{ length: 240, price: 89 }];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, room: 'all', bedroom: { rug: 'none' }, mouldShop: { panel: { lengths } } }));
+    await renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Start over' }));
+    expect(stored().bedroom.rug).toBe(DEFAULTS.bedroom.rug);
+    expect(stored().mouldShop.panel.lengths).toEqual(lengths);
+    const note = screen.getByText(/back to how it started/);
+    fireEvent.click(within(note).getByRole('button', { name: 'Undo' }));
+    expect(stored().bedroom.rug).toBe('none');
+  });
+});
+
+describe('panel header', () => {
+  it('shows every page above the open one, and goes to any of them', async () => {
+    await renderIn('living');
+    goTo('Wall moulding', 'Sofa wall');
+    const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+    expect(within(crumbs).getAllByRole('button').map((b) => b.textContent)).toEqual(['All rooms', 'Living room', 'Wall moulding']);
+    fireEvent.click(within(crumbs).getByRole('button', { name: 'Living room' }));
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room');
+  });
+
+  it('goes up a page with Escape, then out of the room', async () => {
+    await renderIn('living');
+    goTo('Wall moulding');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Living room');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(stored().room).toBe('all');
+  });
+});
+
+describe('camera views', () => {
+  const views = () => within(screen.getByRole('group', { name: 'Camera views' }));
+
+  it('marks the view the camera is on, and offers a way back once the user moves it', async () => {
+    await renderIn('bedroom');
+    const main = mainView('bedroom').name;
+    const other = VIEWS.find((v) => v.room === 'bedroom' && v.name !== main)!.name;
+    expect(views().getByRole('button', { name: main })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(views().getByRole('button', { name: other }));
+    expect(views().getByRole('button', { name: other })).toHaveAttribute('aria-pressed', 'true');
+    expect(views().getByRole('button', { name: main })).toHaveAttribute('aria-pressed', 'false');
+    const onCameraMove = createApartmentScene.mock.calls.at(-1)![5] as () => void;
+    await act(async () => onCameraMove());
+    expect(views().queryAllByRole('button', { pressed: true })).toHaveLength(0);
+    fireEvent.click(views().getByRole('button', { name: 'Reset view' }));
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('bedroom').pose);
+    expect(views().getByRole('button', { name: mainView('bedroom').name })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('picks a view with a number key and the room view with Home on the focused canvas', async () => {
+    const { container } = await renderIn('bedroom');
+    const canvas = container.querySelector('canvas')!;
+    expect(canvas).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(canvas, { key: '2' });
+    expect(scene.setView).toHaveBeenLastCalledWith(VIEWS.filter((v) => v.room === 'bedroom')[1].pose);
+    fireEvent.keyDown(canvas, { key: 'Home' });
+    expect(scene.setView).toHaveBeenLastCalledWith(mainView('bedroom').pose);
+  });
+
+  it('says what a click in 3D did', async () => {
+    await renderIn('all');
+    await click3d('living');
+    expect(screen.getByText('Living room selected')).toBeInTheDocument();
+    await click3d('living', ['moulding', 'sofa']);
+    expect(screen.getByText(/^Opened Wall moulding/)).toBeInTheDocument();
   });
 });
