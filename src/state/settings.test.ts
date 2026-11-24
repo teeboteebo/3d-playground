@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
-import { DEFAULTS, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
+import { OFFICE } from '../data/office';
+import { DEFAULTS, type Settings, LEGACY_STORAGE_KEY, STORAGE_KEY, applyPatch, loadSettings, sanitizeSettings, saveSettings } from './settings';
 import { SHOP_DEFAULTS } from './mouldShop';
 
 const v2 = (patch: Record<string, unknown>) => ({ version: 2, ...patch });
+const allShown = { sofa: true, tv: true, 'tv-bench': true, shelving: true, plant: true, rug: true };
+/** which living-room furniture pieces are shown */
+const shownIn = (s: Settings) =>
+  Object.fromEntries(Object.entries(s.living.components).filter(([id]) => id in allShown).map(([id, c]) => [id, c.shown]));
 
 describe('sanitizeSettings', () => {
   it('returns defaults for empty or garbage input', () => {
@@ -30,7 +35,7 @@ describe('sanitizeSettings', () => {
 
   it('drops removed living-room furniture from saved hidden lists', () => {
     const s = sanitizeSettings(v2({ living: { hidden: ['armchairs', 'side-table', 'sofa'] } }));
-    expect(s.living.hidden).toEqual(['sofa']);
+    expect(shownIn(s)).toEqual({ ...allShown, sofa: false });
   });
 
   it('replaces unknown rooms, swatches and furniture ids', () => {
@@ -38,7 +43,7 @@ describe('sanitizeSettings', () => {
     expect(s.room).toBe('all');
     expect(s.walls.living).toBe('chalk');
     expect(s.walls.office).toBe('devine');
-    expect(s.living.hidden).toEqual(['sofa']);
+    expect(shownIn(s)).toEqual({ ...allShown, sofa: false });
   });
 
   it('keeps a valid selected room', () => {
@@ -60,7 +65,7 @@ describe('migrating flat settings from before version 2', () => {
   });
 
   it('moves the hidden furniture under living', () => {
-    expect(sanitizeSettings({ hidden: ['sofa', 'piano'] }).living.hidden).toEqual(['sofa']);
+    expect(shownIn(sanitizeSettings({ hidden: ['sofa', 'piano'] }))).toEqual({ ...allShown, sofa: false });
   });
 
   it("renames the office from 'end', in the selection and the wall colours", () => {
@@ -137,7 +142,7 @@ describe('office settings', () => {
       version: 2,
       office: { pendant: P, floorLamp: 'none', readingChair: 'none', dresser: D2, roundRug: 'gone' },
     }).office.components;
-    expect(c.pendant).toEqual({ shown: true, variant: P, options: {} });
+    expect(c['ceiling-light']).toEqual({ shown: true, variant: P, options: {} });
     expect(c['floor-lamp']).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id, options: {} });
     expect(c['reading-chair']).toEqual({ shown: false, variant: READING_CHAIRS[1].id, options: {} });
     expect(c.dresser).toEqual({ shown: true, variant: D2, options: {} });
@@ -146,9 +151,16 @@ describe('office settings', () => {
   it('migrates a version 1 save to the default office', () => {
     expect(sanitizeSettings({ room: 'living' }).office).toEqual(DEFAULTS.office);
   });
-  it('reads version 3 as saved', () => {
+  it('reads version 4 as saved', () => {
     expect(sanitizeSettings(DEFAULTS)).toEqual(DEFAULTS);
-    expect(DEFAULTS.version).toBe(3);
+    expect(DEFAULTS.version).toBe(4);
+  });
+  it('renames the office pendant', () => {
+    const v3 = { version: 3, office: { components: { pendant: { shown: true, variant: P } } } };
+    const c = sanitizeSettings(v3).office.components;
+    expect(c['ceiling-light']).toEqual({ shown: true, variant: P, options: {} });
+    expect('pendant' in c).toBe(false);
+    expect(Object.keys(c)).toEqual(OFFICE.components.map((x) => x.id));
   });
   it('merges a patch into one component', () => {
     const s = applyPatch(DEFAULTS, { office: { components: { desk: { shown: false } } } });
@@ -156,36 +168,61 @@ describe('office settings', () => {
   });
 });
 
-describe('living lamp settings', () => {
+describe('living room components', () => {
   const P = PENDANTS[1].id;
-  it('defaults every lamp to none', () => {
-    expect(sanitizeSettings(null).living).toMatchObject({ pendant: 'none', floorLamp: 'none' });
+  const F = BEMZ_FABRICS[0].code;
+  const living = (l: object, version = 2) => sanitizeSettings({ version, living: l }).living;
+  it('defaults the lamps to hidden, the furniture to shown and the sofa to its own fabric', () => {
+    const c = sanitizeSettings(null).living.components;
+    expect(c['ceiling-light'].shown).toBe(false);
+    expect(c['floor-lamp'].shown).toBe(false);
+    expect(c.sofa).toEqual({ shown: true, variant: 'nockeby', options: { fabric: 'original' } });
+    expect(c.rug.shown).toBe(true);
+  });
+  it('migrates the version 3 living room', () => {
+    const l = sanitizeSettings({
+      version: 3,
+      living: { hidden: ['sofa', 'plant'], pendant: P, floorLamp: 'none', sofaFabric: F, mouldColour: 'tone', mouldSpacing: 12 },
+    }).living;
+    expect(l.components.sofa).toEqual({ shown: false, variant: 'nockeby', options: { fabric: F } });
+    expect(l.components.plant.shown).toBe(false);
+    expect(l.components.tv.shown).toBe(true);
+    expect(l.components['ceiling-light']).toEqual({ shown: true, variant: P, options: {} });
+    expect(l.components['floor-lamp'].shown).toBe(false);
+    expect(l).toMatchObject({ mouldColour: 'tone', mouldSpacing: 12 });
+    for (const old of ['hidden', 'pendant', 'floorLamp', 'sofaFabric']) expect(old in l).toBe(false);
   });
   it('loads a version 2 design saved before lamps existed unchanged', () => {
     const old = { version: 2, room: 'living', time: 'eve', walls: DEFAULTS.walls, bedroom: DEFAULTS.bedroom, living: { hidden: ['sofa'] } };
-    expect(sanitizeSettings(old)).toEqual({ ...DEFAULTS, room: 'living', time: 'eve', living: { ...DEFAULTS.living, hidden: ['sofa'] } });
+    const s = sanitizeSettings(old);
+    expect(s.living.components.sofa).toEqual({ ...DEFAULTS.living.components.sofa, shown: false });
+    expect(s).toEqual({ ...DEFAULTS, room: 'living', time: 'eve', living: { ...DEFAULTS.living, components: { ...DEFAULTS.living.components, sofa: s.living.components.sofa } } });
   });
-  it('keeps valid lamp ids and drops unknown ones', () => {
-    expect(sanitizeSettings({ version: 2, living: { pendant: P, floorLamp: 'gone' } }).living).toMatchObject({ pendant: P, floorLamp: 'none' });
+  it('keeps valid lamp ids and hides unknown ones', () => {
+    const c = living({ pendant: P, floorLamp: 'gone' }).components;
+    expect(c['ceiling-light']).toMatchObject({ shown: true, variant: P });
+    expect(c['floor-lamp']).toMatchObject({ shown: false, variant: FLOOR_LAMPS[1].id });
   });
-});
-
-describe('living room sofa fabric', () => {
-  const f = (living: object) => sanitizeSettings({ version: 2, living }).living.sofaFabric;
-  it('defaults to the original sofa fabric', () => {
-    expect(DEFAULTS.living.sofaFabric).toBe('original');
-    expect(sanitizeSettings(null).living.sofaFabric).toBe('original');
-  });
-  it('keeps a known Bemz fabric code', () => {
-    expect(f({ sofaFabric: BEMZ_FABRICS[0].code })).toBe(BEMZ_FABRICS[0].code);
-  });
-  it("keeps 'original' as the sofa's own fabric", () => {
-    expect(f({ sofaFabric: 'original' })).toBe('original');
+  it('keeps a known Bemz fabric code, and the original', () => {
+    expect(living({ sofaFabric: F }).components.sofa.options.fabric).toBe(F);
+    expect(living({ sofaFabric: 'original' }).components.sofa.options.fabric).toBe('original');
   });
   it('falls back to the original fabric for unknown codes, non-strings and missing values', () => {
-    expect(f({ sofaFabric: 'XXX999' })).toBe('original');
-    expect(f({ sofaFabric: 42 })).toBe('original');
-    expect(f({})).toBe('original');
+    expect(living({ sofaFabric: 'XXX999' }).components.sofa.options.fabric).toBe('original');
+    expect(living({ sofaFabric: 42 }).components.sofa.options.fabric).toBe('original');
+    expect(living({}).components.sofa.options.fabric).toBe('original');
+  });
+  it('sanitises a saved version 4 living room', () => {
+    const c = living({ components: { sofa: { shown: false, variant: 'x', options: { fabric: F } }, rug: 'x' } }, 4).components;
+    expect(c.sofa).toEqual({ shown: false, variant: 'nockeby', options: { fabric: F } });
+    expect(c.rug).toEqual(DEFAULTS.living.components.rug);
+  });
+  it('merges a patch into one living component, options included', () => {
+    const s = applyPatch(DEFAULTS, { living: { components: { sofa: { options: { fabric: F } }, plant: { shown: false } } } });
+    expect(s.living.components.sofa).toEqual({ shown: true, variant: 'nockeby', options: { fabric: F } });
+    expect(s.living.components.plant.shown).toBe(false);
+    expect(s.living.components.tv).toEqual(DEFAULTS.living.components.tv);
+    expect(s.living.mouldSpacing).toBe(DEFAULTS.living.mouldSpacing);
   });
 });
 

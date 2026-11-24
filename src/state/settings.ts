@@ -1,9 +1,10 @@
 import {
-  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
+  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
   WARDROBES,
 } from '../data/catalog';
-import { OFFICE, type OfficeComponentId } from '../data/office';
-import { BEMZ_FABRICS } from '../data/bemzFabrics';
+import { LIVING } from '../data/living';
+import { OFFICE } from '../data/office';
+import { ROOM_DEFS, type ComponentId, type ComponentRoom } from '../data/roomDefs';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
@@ -35,33 +36,25 @@ export interface BedroomSettings {
   frame: string;
 }
 
-/** The lamps chosen for a room (catalog ids, 'none' for no lamp). */
-export interface LampSettings {
-  pendant: string;
-  floorLamp: string;
-}
-
 /** The office: each of its components, shown or hidden, and which product it is. */
 export interface OfficeSettings {
-  components: ComponentStates<OfficeComponentId>;
+  components: ComponentStates<ComponentId<'office'>>;
 }
 
 /** What can be changed in the living room. */
-export interface LivingSettings extends LampSettings {
-  /** furniture ids switched off */
-  hidden: string[];
+export interface LivingSettings {
+  /** each of its components, shown or hidden, and which product it is */
+  components: ComponentStates<ComponentId<'living'>>;
   mouldColour: 'white' | 'tone';
   mouldSofaWall: OnOff;
   mouldTvWall: OnOff;
   mouldSpacing: number;
   mouldDado: number;
   mouldWalls: Record<LivingSection, MouldWall>;
-  /** the sofa's fabric: 'original' for the sofa as modelled, or a Bemz fabric code */
-  sofaFabric: string;
 }
 
 export interface Settings {
-  version: 3;
+  version: 4;
   /** selected room, or 'all' for none */
   room: RoomSelection;
   /** lighting, shared by every room */
@@ -78,16 +71,24 @@ export interface Settings {
 /** a change to the settings: top-level fields, and any fields of a room's own settings */
 export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living' | 'office'>> & {
   bedroom?: Partial<BedroomSettings>;
-  living?: Partial<LivingSettings>;
-  office?: { components?: Partial<Record<OfficeComponentId, Partial<ComponentState>>> };
+} & {
+  /** a room made of components is patched component by component, field by field */
+  [R in ComponentRoom]?: Partial<Omit<Settings[R], 'components'>> & {
+    components?: Partial<Record<ComponentId<R>, Partial<ComponentState>>>;
+  };
 };
 
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
-  const components = { ...s.office.components };
-  for (const [id, patch] of Object.entries(p.office?.components ?? {}) as [OfficeComponentId, Partial<ComponentState>][]) {
-    components[id] = { ...components[id], ...patch };
+  const next = { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom } } as Settings;
+  for (const room of Object.keys(ROOM_DEFS) as ComponentRoom[]) {
+    const components: Record<string, ComponentState> = { ...s[room].components };
+    for (const [id, patch] of Object.entries(p[room]?.components ?? {}) as [string, Partial<ComponentState>][]) {
+      const options = patch.options ? { ...components[id].options, ...patch.options } : components[id].options;
+      components[id] = { ...components[id], ...patch, options };
+    }
+    (next as unknown as Record<string, unknown>)[room] = { ...s[room], ...p[room], components };
   }
-  return { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom }, living: { ...s.living, ...p.living }, office: { components } };
+  return next;
 }
 
 export const STORAGE_KEY = 'apartment-playground';
@@ -95,7 +96,7 @@ export const STORAGE_KEY = 'apartment-playground';
 export const LEGACY_STORAGE_KEY = 'bedroom-viz';
 
 export const DEFAULTS: Settings = {
-  version: 3,
+  version: 4,
   room: 'all',
   time: 'day',
   walls: Object.fromEntries(ROOMS.map((r) => [r.id, r.paint])) as Record<RoomId, string>,
@@ -115,16 +116,13 @@ export const DEFAULTS: Settings = {
     frame: 'brass',
   },
   living: {
-    hidden: [],
-    pendant: 'none',
-    floorLamp: 'none',
+    components: componentDefaults(LIVING),
     mouldColour: 'white',
     mouldSofaWall: 'on',
     mouldTvWall: 'on',
     mouldSpacing: 8,
     mouldDado: 77,
     mouldWalls: LIVING_MOULD_DEFAULTS,
-    sofaFabric: 'original',
   },
   office: { components: componentDefaults(OFFICE) },
   mouldShop: SHOP_DEFAULTS,
@@ -174,21 +172,13 @@ function fromVersion1(s: Raw): Raw {
   };
 }
 
-function sanitizeLamps(raw: unknown): LampSettings {
-  const l = obj(raw);
-  return {
-    pendant: oneOf(l.pendant, ids(PENDANTS), 'none'),
-    floorLamp: oneOf(l.floorLamp, ids(FLOOR_LAMPS), 'none'),
-  };
-}
-
 /**
  * the version 2 office's five catalog ids, as component states: 'none' is a hidden piece, a known id a shown one, and
  * anything else is left out so it takes the initial state (version 2 took its default, a lamp's being none)
  */
 function fromVersion2Office(raw: unknown): Raw {
   const o = obj(raw);
-  const lists: [OfficeComponentId, string, readonly { id: string }[]][] = [
+  const lists: [string, string, readonly { id: string }[]][] = [
     ['pendant', 'pendant', PENDANTS],
     ['floor-lamp', 'floorLamp', FLOOR_LAMPS],
     ['reading-chair', 'readingChair', READING_CHAIRS],
@@ -203,6 +193,30 @@ function fromVersion2Office(raw: unknown): Raw {
     /* missing or unknown: the component's initial state, as version 2 took its default */
   }
   return { components };
+}
+
+/**
+ * the version 3 living room's lamps, hidden furniture and sofa fabric, as component states, with the moulding fields
+ * left where they are; and the office's pendant under its new name. A 'none' or unknown lamp is a hidden one.
+ */
+function fromVersion3(s: Raw): Raw {
+  const l = obj(s.living);
+  const { hidden, pendant, floorLamp, sofaFabric, ...rest } = l;
+  const gone = Array.isArray(hidden) ? hidden : [];
+  const lamp = (v: unknown, list: readonly { id: string }[]): Raw =>
+    v !== 'none' && list.some((i) => i.id === v) ? { shown: true, variant: v } : { shown: false };
+  const components: Raw = {
+    'ceiling-light': lamp(pendant, PENDANTS),
+    'floor-lamp': lamp(floorLamp, FLOOR_LAMPS),
+  };
+  for (const c of LIVING.components) if (c.category !== 'lighting') components[c.id] = { shown: !gone.includes(c.id) };
+  components.sofa = { ...obj(components.sofa), options: { fabric: sofaFabric } };
+  const { pendant: oldPendant, ...officeRest } = obj(obj(s.office).components);
+  return {
+    ...s,
+    living: { ...rest, components },
+    office: { components: oldPendant === undefined ? officeRest : { ...officeRest, 'ceiling-light': oldPendant } },
+  };
 }
 
 /** room spacing and dado; a pre-wall save (no mouldWalls) takes its spacing from the old gap field */
@@ -239,8 +253,7 @@ function sanitizeLiving(raw: unknown): LivingSettings {
   const l = obj(raw);
   const d = DEFAULTS.living;
   return {
-    ...sanitizeLamps(l),
-    hidden: Array.isArray(l.hidden) ? [...new Set(l.hidden.filter((h): h is string => ids(FURNITURE).includes(h as string)))] : [],
+    components: sanitizeComponents(l.components, LIVING),
     mouldColour: oneOf(l.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldSofaWall: onOff(l.mouldSofaWall),
     mouldTvWall: onOff(l.mouldTvWall),
@@ -250,7 +263,6 @@ function sanitizeLiving(raw: unknown): LivingSettings {
       { sofa: { minColumns: 1, allowBed: false }, tv: { minColumns: 1, allowBed: false } },
       { sofa: { columns: l.mouldSofaColumns } },
     ),
-    sofaFabric: oneOf(l.sofaFabric, ['original', ...BEMZ_FABRICS.map((f) => f.code)], d.sofaFabric),
   };
 }
 
@@ -287,16 +299,18 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
  */
 export function sanitizeSettings(raw: unknown): Settings {
   const r = obj(raw);
-  const s = r.version === 2 || r.version === 3 ? r : fromVersion1(r);
-  const office = r.version === 3 ? s.office : fromVersion2Office(s.office);
+  const version = r.version === 2 || r.version === 3 || r.version === 4 ? r.version : 1;
+  let s = version === 1 ? fromVersion1(r) : r;
+  if (version < 3) s = { ...s, office: fromVersion2Office(s.office) };
+  if (version < 4) s = fromVersion3(s);
   return {
-    version: 3,
+    version: 4,
     room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
     walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
     bedroom: sanitizeBedroom(s.bedroom),
     living: sanitizeLiving(s.living),
-    office: { components: sanitizeComponents(obj(office).components, OFFICE) },
+    office: { components: sanitizeComponents(obj(s.office).components, OFFICE) },
     mouldShop: sanitizeShop(s.mouldShop),
   };
 }

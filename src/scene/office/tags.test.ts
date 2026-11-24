@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { LIVING } from '../../data/living';
 import { OFFICE, type OfficeComponentId } from '../../data/office';
 import { DEFAULTS, type Settings } from '../../state/settings';
 import { optionOf } from '../options';
@@ -20,5 +21,18 @@ describe('the office scene tags', () => {
       if (opt?.room === 'office') ids.add(opt.path[0]);
     });
     expect([...ids].sort()).toEqual(OFFICE.components.map((c) => c.id).sort());
+  });
+
+  it('open the living-room lamps as their components', () => {
+    const components = { ...DEFAULTS.living.components };
+    for (const c of LIVING.components) components[c.id] = { shown: true, variant: c.initial.variant, options: {} };
+    const g = new THREE.Group();
+    addRoomLamps(g).apply({ ...DEFAULTS, living: { ...DEFAULTS.living, components } });
+    const ids = new Set<string>();
+    g.traverse((o) => {
+      const opt = o instanceof THREE.Mesh ? optionOf(o) : null;
+      if (opt?.room === 'living') ids.add(opt.path[0]);
+    });
+    expect([...ids].sort()).toEqual(LIVING.components.filter((c) => c.category === 'lighting').map((c) => c.id).sort());
   });
 });

@@ -24,7 +24,6 @@ import { addRoomLamps } from './roomLamps';
 import { addRoomLights } from './roomLights';
 import { sofaFabric } from './sofaFabric';
 import { floorTexture, woodTexture } from './textures';
-import { tagOption } from './options';
 
 export interface ApartmentScene {
   apply(settings: Settings): void;
@@ -119,7 +118,6 @@ export function createApartmentScene(
         : Promise.resolve(piece.id === 'tv-bench' ? sideboard() : quebecRug()),
     invalidate,
     (id, obj) => {
-      tagOption([obj], 'living', [id === 'sofa' ? 'sofa' : 'furniture']);
       if (id === 'sofa') fabric.attach(obj);
     },
   );
@@ -142,8 +140,9 @@ export function createApartmentScene(
     office.apply(s);
     livingMoulding.apply(s);
     for (const r of ROOMS) apartment.rooms[r.id].wall.color.copy(lin(findById(PAINTS, s.walls[r.id]).hex));
-    furniture.setHidden(s.living.hidden);
-    fabric.set(s.living.sofaFabric);
+    const living = s.living.components;
+    furniture.setShown((id) => living[id as keyof typeof living]?.shown ?? true);
+    fabric.set(living.sofa.options.fabric ?? 'original');
     sky.setEvening(evening);
     pipeline.setEvening(evening);
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);

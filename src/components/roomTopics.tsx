@@ -1,11 +1,10 @@
 import type { ReactNode } from 'react';
-import { FLOOR_LAMPS, PAINTS, PENDANTS, findById } from '../data/catalog';
+import { PAINTS, findById } from '../data/catalog';
 import type { RoomId } from '../data/rooms';
 import { equal } from '../lib/equal';
 import { DEFAULTS, type Settings, type SettingsPatch } from '../state/settings';
 import type { Update } from '../state/useSettings';
 import { FinishSection } from './FinishSection';
-import { LampSection } from './LampSection';
 import type { Topic } from './Menu';
 import { ROWS, type RowId } from './menuStructure';
 
@@ -42,23 +41,6 @@ export function wallsTopic(room: RoomId, settings: Settings, update: Update): To
     content: <FinishSection room={room} settings={settings} update={update} />,
     reset: settings.walls[room] === start ? undefined : () => update({ walls: { ...settings.walls, [room]: start } }),
   });
-}
-
-/** the living room's ceiling pendant and floor lamp, each a row of its own (the office's lamps are components) */
-export function lampTopics(room: 'living', settings: Settings, update: Update): Topic[] {
-  const { pendant, floorLamp } = settings[room];
-  return [
-    roomRow('ceiling', {
-      summary: pendant === 'none' ? 'None' : findById(PENDANTS, pendant).name,
-      content: <LampSection room={room} kind="pendant" settings={settings} update={update} />,
-      reset: resetFields(settings, update, room, ['pendant']),
-    }),
-    roomRow('floorLamp', {
-      summary: floorLamp === 'none' ? 'None' : findById(FLOOR_LAMPS, floorLamp).name,
-      content: <LampSection room={room} kind="floorLamp" settings={settings} update={update} />,
-      reset: resetFields(settings, update, room, ['floorLamp']),
-    }),
-  ];
 }
 
 /** what the room is, how big, and what the model assumes: the last row of every room */

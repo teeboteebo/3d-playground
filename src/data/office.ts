@@ -87,8 +87,8 @@ export const OFFICE = {
       initial: { shown: true, variant: ROUND_RUGS[1].id },
     },
     {
-      id: 'pendant',
-      name: 'Ceiling pendant',
+      id: 'ceiling-light',
+      name: 'Ceiling light',
       category: 'lighting',
       note: lampNote,
       variants: real(PENDANTS),

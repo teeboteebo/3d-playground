@@ -1,15 +1,16 @@
-import { FURNITURE } from '../data/catalog';
-import { BEMZ_FABRICS } from '../data/bemzFabrics';
+import { LIVING } from '../data/living';
+import type { ComponentId } from '../data/roomDefs';
 import { roomById, roomSize } from '../data/rooms';
 import { LIVING_MOULD_WALLS } from '../scene/mouldWalls';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
+import { componentGroups, componentTopic } from './componentTopic';
 import { Menu, type MenuNav, type Topic } from './Menu';
+import { ROWS } from './menuStructure';
 import { mouldingTopic } from './mouldingTopic';
-import { useShoppingList } from './useShoppingList';
 import { ShowHideSection } from './ShowHideSection';
-import { SofaFabricSection } from './SofaFabricSection';
-import { aboutTopic, lampTopics, resetFields, roomRow, wallsTopic, type RoomExit } from './roomTopics';
+import { useShoppingList } from './useShoppingList';
+import { aboutTopic, wallsTopic, type RoomExit } from './roomTopics';
 
 interface Props {
   settings: Settings;
@@ -18,37 +19,47 @@ interface Props {
   menu: MenuNav;
 }
 
+type LivingId = ComponentId<'living'>;
+
 export function LivingPanel({ settings, update, exit, menu }: Props) {
-  const { hidden, sofaFabric } = settings.living;
+  const { components } = settings.living;
   const shopping = useShoppingList('living', settings);
-  const fabric = BEMZ_FABRICS.find((f) => f.code === sofaFabric);
-  const shown = FURNITURE.length - FURNITURE.filter((f) => hidden.includes(f.id)).length;
+  const state = (id: string) => components[id as LivingId];
+  const setShown = (ids: string[], shown: boolean) =>
+    update({ living: { components: Object.fromEntries(ids.map((id) => [id, { shown }])) } });
+  const shownCount = LIVING.components.filter((c) => state(c.id).shown).length;
+  const changed = LIVING.components.filter((c) => state(c.id).shown !== c.initial.shown);
+  const showHide: Topic = {
+    id: 'furniture',
+    title: ROWS.furniture.title,
+    summary: shownCount === LIVING.components.length ? 'All shown' : `${shownCount} of ${LIVING.components.length} shown`,
+    content: (
+      <ShowHideSection
+        groups={componentGroups(LIVING, (def) => ({ id: def.id, title: def.name, summary: '' }))}
+        shown={(id) => state(id).shown}
+        set={setShown}
+        point={(id) => menu.point?.(id ? [id] : null)}
+      />
+    ),
+    /* back to how the room starts: the lamps off, everything else shown */
+    reset: changed.length === 0 ? undefined : () => update({ living: { components: Object.fromEntries(changed.map((c) => [c.id, { shown: c.initial.shown }])) } }),
+  };
   const root: Topic = {
     id: 'living',
     title: 'Living room',
     summary: '',
     sub: `${roomSize(roomById('living'))} · An angled bay window, with the furniture from the SketchUp model in its places.`,
+    groups: [
+      {
+        title: 'Room',
+        topics: [wallsTopic('living', settings, update), mouldingTopic('living', LIVING_MOULD_WALLS, settings, update, shopping, menu), showHide],
+      },
+      ...componentGroups(LIVING, (def) =>
+        componentTopic(def, state(def.id), (patch) => update({ living: { components: { [def.id]: patch } } })),
+      ),
+    ],
+    /* after the groups: the last row of every room */
     topics: [
-      wallsTopic('living', settings, update),
-      { ...mouldingTopic('living', LIVING_MOULD_WALLS, settings, update, shopping, menu), section: 'walls' },
-      ...lampTopics('living', settings, update),
-      roomRow('sofa', {
-        summary: fabric ? `Bemz ${fabric.family}, ${fabric.colour}` : 'Original fabric',
-        swatch: fabric?.hex,
-        reset: resetFields(settings, update, 'living', ['sofaFabric']),
-        content: <SofaFabricSection value={sofaFabric} onChange={(code) => update({ living: { sofaFabric: code } })} />,
-      }),
-      roomRow('furniture', {
-        summary: shown === FURNITURE.length ? 'All shown' : `${shown} of ${FURNITURE.length} shown`,
-        reset: resetFields(settings, update, 'living', ['hidden']),
-        content: (
-          <ShowHideSection
-            groups={[{ title: 'Furniture', topics: FURNITURE.map((f) => ({ id: f.id, title: f.name, summary: '' })) }]}
-            shown={(id) => !hidden.includes(id)}
-            set={(ids, on) => update({ living: { hidden: on ? hidden.filter((h) => !ids.includes(h)) : [...new Set([...hidden, ...ids])] } })}
-          />
-        ),
-      }),
       aboutTopic(
         <>
           The room is 500 × 465 cm with an angled bay window. The sofa, shelving, plant, rug and other pieces are the models from the SketchUp file,

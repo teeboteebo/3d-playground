@@ -382,9 +382,9 @@ describe('App', () => {
     await renderIn('living');
     goTo('Show or hide pieces');
     await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('switch', { name: 'Sofa' }));
-    expect(lastApplied().living.hidden).toEqual(['sofa']);
+    expect(lastApplied().living.components.sofa.shown).toBe(false);
     up('Living room');
-    expect(row('Show or hide pieces')).toHaveTextContent(/5 of 6 shown|\d+ of \d+ shown/);
+    expect(row('Show or hide pieces')).toHaveTextContent('5 of 8 shown');
     await user.click(back());
     await user.click(within(roomList()).getByRole('button', { name: /Hall/ }));
     goTo('Wall colour');
@@ -450,16 +450,22 @@ describe.each(['living'] as const)('lighting in the %s', (room) => {
     await renderIn(room);
     goTo('Ceiling light');
     const pendants = screen.getByRole('group', { name: 'Ceiling light' });
+    expect(within(pendants).getAllByRole('button')).toHaveLength(PENDANTS.length - 1);
     await userEvent.click(within(pendants).getByRole('button', { name: new RegExp(esc(PENDANTS[1].name)) }));
-    expect(lastApplied()[room].pendant).toBe(PENDANTS[1].id);
-    expect(stored()[room].pendant).toBe(PENDANTS[1].id);
-    up(room === 'living' ? 'Living room' : 'Office');
-    expect(row('Ceiling light')).toHaveTextContent(PENDANTS[1].name);
+    expect(lastApplied()[room].components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[1].id, options: {} });
+    expect(stored()[room].components['ceiling-light'].variant).toBe(PENDANTS[1].id);
+    up('Living room');
+    expect(row('Ceiling light')).toHaveTextContent(PENDANTS[1].name.split(',')[0]);
     goTo('Floor lamp');
     const floor = screen.getByRole('group', { name: 'Floor lamp' });
     await userEvent.click(within(floor).getByRole('button', { name: new RegExp(esc(FLOOR_LAMPS[1].name)) }));
-    expect(lastApplied()[room].floorLamp).toBe(FLOOR_LAMPS[1].id);
-    expect(lastApplied()[room].pendant).toBe(PENDANTS[1].id);
+    expect(lastApplied()[room].components['floor-lamp']).toEqual({ shown: true, variant: FLOOR_LAMPS[1].id, options: {} });
+    expect(lastApplied()[room].components['ceiling-light'].variant).toBe(PENDANTS[1].id);
+  });
+  it('starts with the lamps hidden', async () => {
+    await renderIn(room);
+    expect(row('Ceiling light')).toHaveTextContent('Hidden');
+    expect(row('Floor lamp')).toHaveTextContent('Hidden');
   });
   it('does not select a lamp when its shop link is clicked', async () => {
     await renderIn(room);
@@ -467,7 +473,7 @@ describe.each(['living'] as const)('lighting in the %s', (room) => {
     const link = within(screen.getByRole('group', { name: 'Ceiling light' })).getAllByRole('link')[0];
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(lastApplied()[room].pendant).toBe('none');
+    expect(lastApplied()[room].components['ceiling-light'].shown).toBe(false);
   });
 });
 
@@ -505,7 +511,7 @@ describe('showing and hiding the office pieces together', () => {
     goTo('Show or hide pieces');
     fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
     fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide pieces' }));
-    expect(pieces().pendant.shown).toBe(false);
+    expect(pieces()['ceiling-light'].shown).toBe(false);
     expect(pieces().desk.shown).toBe(true);
   });
 
@@ -522,7 +528,7 @@ describe('office pieces', () => {
     ['Reading chair', READING_CHAIRS, 'reading-chair'],
     ['Dresser', DRESSERS, 'dresser'],
     ['Round rug', ROUND_RUGS, 'round-rug'],
-    ['Ceiling pendant', PENDANTS, 'pendant'],
+    ['Ceiling light', PENDANTS, 'ceiling-light'],
     ['Floor lamp', FLOOR_LAMPS, 'floor-lamp'],
   ] as const;
   it.each(lists)('offers the %s products and applies the choice', async (name, items, id) => {
@@ -546,12 +552,12 @@ describe('office pieces', () => {
     expect(row('Reading chair')).toHaveFocus();
   });
   it('shows a hidden piece when a product is picked', async () => {
-    const hidden = { ...DEFAULTS.office.components, pendant: { shown: false, variant: PENDANTS[1].id, options: {} } };
+    const hidden = { ...DEFAULTS.office.components, 'ceiling-light': { shown: false, variant: PENDANTS[1].id, options: {} } };
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, room: 'office', office: { components: hidden } }));
     await renderApp();
-    goTo('Ceiling pendant');
-    await userEvent.click(within(screen.getByRole('group', { name: 'Ceiling pendant' })).getByRole('button', { name: new RegExp(esc(PENDANTS[2].name)) }));
-    expect(lastApplied().office.components.pendant).toEqual({ shown: true, variant: PENDANTS[2].id, options: {} });
+    goTo('Ceiling light');
+    await userEvent.click(within(screen.getByRole('group', { name: 'Ceiling light' })).getByRole('button', { name: new RegExp(esc(PENDANTS[2].name)) }));
+    expect(lastApplied().office.components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[2].id, options: {} });
   });
   it('does not pick a product when its shop link is clicked', async () => {
     await renderIn('office');
@@ -592,8 +598,8 @@ describe('sofa fabric', () => {
     goTo('Sofa');
     const btn = within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` });
     await user.click(btn);
-    expect(lastApplied().living.sofaFabric).toBe(f.code);
-    expect(stored().living.sofaFabric).toBe(f.code);
+    expect(lastApplied().living.components.sofa.options.fabric).toBe(f.code);
+    expect(stored().living.components.sofa.options.fabric).toBe(f.code);
     expect(btn).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(new RegExp(fabricPrice(f).replace(/[()]/g, '\\$&')))).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /View on Bemz/ });
@@ -621,13 +627,35 @@ describe('sofa fabric', () => {
     expect(within(grid()).getAllByRole('button')).toHaveLength(49);
   });
 
+  it('says which fabric the sofa has on its row, with its swatch', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    expect(row('Sofa')).toHaveTextContent('Original fabric');
+    goTo('Sofa');
+    await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
+    up('Living room');
+    expect(row('Sofa')).toHaveTextContent(`Bemz ${f.family}, ${f.colour}`);
+    expect(row('Sofa').querySelector<HTMLElement>('.swatch, [style]')?.getAttribute('style') ?? '').toMatch(/background/);
+  });
+
+  it("puts the sofa's fabric back to the original with the page's Reset", async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    goTo('Sofa');
+    await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
+    expect(stored().living.components.sofa.options.fabric).toBe(f.code);
+    await user.click(screen.getByRole('button', { name: 'Reset sofa' }));
+    expect(stored().living.components.sofa.options.fabric).toBe('original');
+    expect(screen.queryByRole('button', { name: 'Reset sofa' })).toBeNull();
+  });
+
   it('goes back to the original fabric', async () => {
     const user = userEvent.setup();
     await renderIn('living');
     goTo('Sofa');
     await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
     await user.click(own());
-    expect(lastApplied().living.sofaFabric).toBe('original');
+    expect(lastApplied().living.components.sofa.options.fabric).toBe('original');
     expect(screen.getByText("The sofa's own dark grey")).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /View on Bemz/ })).not.toBeInTheDocument();
   });
@@ -653,14 +681,17 @@ describe('room menu', () => {
 
   it('lists the other rooms\' options', async () => {
     const { unmount } = await renderIn('living');
-    expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture']);
-    expect(rowTitles()).toEqual(['Wall colour', 'Wall moulding', 'Ceiling light', 'Floor lamp', 'Sofa', 'Show or hide pieces', 'About the room']);
-    expect(row('Ceiling light')).toHaveTextContent('None');
+    expect(sections()).toEqual(['Room', 'Lighting', 'Furniture', 'Textiles and decor']);
+    expect(rowTitles()).toEqual([
+      'Wall colour', 'Wall moulding', 'Show or hide pieces', 'Ceiling light', 'Floor lamp', 'Sofa', 'Frame TV', 'Sideboard', 'String shelving', 'Plant',
+      'Rug', 'About the room',
+    ]);
+    expect(row('Ceiling light')).toHaveTextContent('Hidden');
     expect(row('Sofa')).toHaveTextContent('Original fabric');
     unmount();
     const office = await renderIn('office');
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Show or hide pieces', 'Ceiling pendant', 'Floor lamp', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug',
+      'Wall colour', 'Show or hide pieces', 'Ceiling light', 'Floor lamp', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug',
       'About the room',
     ]);
     for (const name of ['Room', 'Lighting', 'Furniture', 'Textiles and decor']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
@@ -778,17 +809,21 @@ describe('clicking options in 3D', () => {
     ['bedroom', ['painting'], 'Painting'],
     ['bedroom', ['rug'], 'Rug'],
     ['hall', ['walls'], 'Wall colour'],
-    ['living', ['ceiling'], 'Ceiling light'],
-    ['living', ['floorLamp'], 'Floor lamp'],
+    ['living', ['ceiling-light'], 'Ceiling light'],
+    ['living', ['floor-lamp'], 'Floor lamp'],
     ['living', ['sofa'], 'Sofa'],
+    ['living', ['tv'], 'Frame TV'],
+    ['living', ['tv-bench'], 'Sideboard'],
+    ['living', ['shelving'], 'String shelving'],
+    ['living', ['plant'], 'Plant'],
+    ['living', ['rug'], 'Rug'],
     ['living', ['moulding', 'sofa'], 'Sofa wall'],
     ['living', ['moulding', 'tv'], 'TV wall'],
-    ['living', ['furniture'], 'Show or hide pieces'],
     ['office', ['cabinets'], 'Cabinets'],
     ['office', ['desk'], 'Desk'],
     ['office', ['drawers'], 'Drawer unit'],
     ['office', ['desk-chair'], 'Desk chair'],
-    ['office', ['pendant'], 'Ceiling pendant'],
+    ['office', ['ceiling-light'], 'Ceiling light'],
     ['office', ['floor-lamp'], 'Floor lamp'],
     ['office', ['reading-chair'], 'Reading chair'],
     ['office', ['dresser'], 'Dresser'],
@@ -819,6 +854,19 @@ describe('clicking options in 3D', () => {
     const label = container.querySelector<HTMLElement>('.pick-label')!;
     await hover3d('office', ['round-rug']);
     expect(label).toHaveTextContent('Round rug');
+  });
+
+  it('names a living-room piece under the mouse', async () => {
+    const { container } = await renderIn('living');
+    const label = container.querySelector<HTMLElement>('.pick-label')!;
+    await hover3d('living', ['sofa']);
+    expect(label).toHaveTextContent('Sofa');
+  });
+
+  it('points at the living-room piece whose row is hovered', async () => {
+    await renderIn('living');
+    fireEvent.mouseEnter(row('Sofa'));
+    expect(scene.pointAt.mock.calls.at(-1)?.[0]).toEqual({ room: 'living', path: ['sofa'] });
   });
 
   it('names the room a click would select', async () => {
@@ -955,9 +1003,9 @@ describe('undo, redo and reset', () => {
     goTo('Show or hide pieces');
     expect(screen.queryByRole('button', { name: 'Reset show or hide pieces' })).toBeNull();
     fireEvent.click(within(screen.getByRole('group', { name: 'Furniture' })).getAllByRole('switch')[0]);
-    expect(stored().living.hidden).toHaveLength(1);
+    expect(Object.values(stored().living.components).filter((c) => !c.shown)).toHaveLength(3);
     fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide pieces' }));
-    expect(stored().living.hidden).toEqual([]);
+    expect(Object.values(stored().living.components).filter((c) => !c.shown)).toHaveLength(2);
     expect(screen.queryByRole('button', { name: 'Reset show or hide pieces' })).toBeNull();
   });
 
