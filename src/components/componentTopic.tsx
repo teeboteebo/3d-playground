@@ -56,7 +56,9 @@ export function componentGroups(room: RoomDef, topic: (def: ComponentDef) => Top
   ] as const;
   return categories.flatMap(({ category, title }) => {
     const defs = room.components.filter((c) => c.category === category);
-    const topics = defs.filter((c) => !c.group).map(topic);
+    const declared = new Set((room.groups ?? []).map((g) => g.id));
+    /* a component whose group is not declared is listed as ungrouped, never dropped */
+    const topics = defs.filter((c) => !c.group || !declared.has(c.group)).map(topic);
     const groups = (room.groups ?? [])
       .map((g) => ({ title: g.name, topics: defs.filter((c) => c.group === g.id).map(topic) }))
       .filter((g) => g.topics.length > 0);

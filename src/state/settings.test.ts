@@ -13,6 +13,11 @@ describe('sanitizeSettings', () => {
     expect(sanitizeSettings(v2({ time: 'noon', bedroom: { rug: 'flying-carpet', accent: 'red' } }))).toEqual(DEFAULTS);
   });
 
+  it('gives the default office for a malformed one', () => {
+    expect(sanitizeSettings({ version: 3, office: 'x' }).office).toEqual(DEFAULTS.office);
+    expect(sanitizeSettings({ version: 3, office: { components: [] } }).office).toEqual(DEFAULTS.office);
+  });
+
   it('keeps valid values and upper-cases the accent', () => {
     const s = sanitizeSettings(v2({ time: 'eve', bedroom: { accent: '#2f5d62', rug: 'palma', pillows: 'ink', pendant: 'off', mouldColour: 'tone' } }));
     expect(s.time).toBe('eve');

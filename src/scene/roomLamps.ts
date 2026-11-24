@@ -4,6 +4,7 @@ import { CEILING, centroid, roomById } from '../data/rooms';
 import { drawn } from '../state/components';
 import type { Settings } from '../state/settings';
 import { buildLamp, type BuiltLamp } from './lamps';
+import type { OfficeComponentId } from '../data/office';
 import { tagOption } from './options';
 
 type LampRoom = 'living' | 'office';
@@ -95,7 +96,10 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
       const evening = s.time === 'eve';
       for (const room of LAMP_ROOMS) {
         const ids = lampIds(s, room);
-        const tags = room === 'living' ? { pendant: 'lighting', floor: 'lighting' } : { pendant: 'pendant', floor: 'floor-lamp' };
+        const tags: { pendant: string; floor: string } =
+          room === 'living'
+            ? { pendant: 'lighting', floor: 'lighting' }
+            : ({ pendant: 'pendant', floor: 'floor-lamp' } satisfies Record<'pendant' | 'floor', OfficeComponentId>);
         const pendantName = `${room}-pendant`;
         const pendant = place(
           pendantName,

@@ -14,6 +14,7 @@ import { getRoundRugCanvases } from '../canvas';
 import { std } from '../materials';
 import { canvasTexture } from '../textures';
 import { CORNER, LIFT, placeReadingChair } from './dimensions';
+import type { OfficeComponentId } from '../../data/office';
 import { tagOption } from '../options';
 
 export interface Corner {
@@ -181,7 +182,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
   /** the menu row each piece opens */
   const ROW_OF: Record<string, string> = { 'office-reading-chair': 'chair', 'office-dresser': 'dresser', 'office-round-rug': 'rug' };
   /** the piece called `name` for `id`, built if it changed; null (and none in the scene) for no shape */
-  function place<S>(name: string, path: string, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
+  function place<S>(name: string, path: OfficeComponentId, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
     if (!shape) {
       remove(name);
       return null;

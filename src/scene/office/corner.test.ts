@@ -12,6 +12,7 @@ import { buildOffice } from './index';
 const NAMES = ['office-reading-chair', 'office-dresser', 'office-round-rug'];
 type Pieces = { readingChair?: string; dresser?: string; roundRug?: string };
 const IDS = { readingChair: 'reading-chair', dresser: 'dresser', roundRug: 'round-rug' } as const;
+/* a piece left out of `o` is hidden */
 const settings = (o: Pieces): Settings => {
   const components = { ...DEFAULTS.office.components };
   for (const [key, id] of Object.entries(IDS) as [keyof Pieces, (typeof IDS)[keyof Pieces]][]) {

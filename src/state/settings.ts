@@ -1,7 +1,7 @@
 import {
-  ACCENT_DEFAULT, ARTS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, RUGS, WARDROBES,
+  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, FURNITURE, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
+  WARDROBES,
 } from '../data/catalog';
-import { DRESSERS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
 import { OFFICE, type OfficeComponentId } from '../data/office';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';

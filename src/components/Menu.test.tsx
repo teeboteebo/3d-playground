@@ -44,3 +44,13 @@ describe('Menu groups', () => {
     expect(screen.getByRole('button', { name: /^Reading chair/ })).toHaveFocus();
   });
 });
+
+describe('Menu group without rows', () => {
+  it('renders no list for a group that only holds sub-groups', () => {
+    const only: Topic = { id: 'r', title: 'Office', summary: '', groups: [{ title: 'Outer', topics: [], groups: [{ title: 'Inner', topics: [chair] }] }] };
+    render(<Menu root={only} exit={exit} nav={{ path: [], go: () => {} }} />);
+    expect(screen.getByRole('heading', { level: 2, name: 'Outer' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Outer' })).toBeNull();
+    expect(screen.getByRole('list', { name: 'Inner' })).toBeInTheDocument();
+  });
+});

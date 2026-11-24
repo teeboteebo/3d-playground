@@ -184,7 +184,7 @@ function GroupSection({ group, level, open }: { group: TopicGroup; level: 2 | 3;
   return (
     <section>
       <Heading>{group.title}</Heading>
-      <RowList title={group.title} topics={group.topics} open={open} />
+      {group.topics.length > 0 && <RowList title={group.title} topics={group.topics} open={open} />}
       {group.groups?.map((g) => (
         <GroupSection key={g.title} group={g} level={3} open={open} />
       ))}
