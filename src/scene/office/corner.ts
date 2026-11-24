@@ -177,6 +177,8 @@ export function buildCorner(parent: THREE.Object3D): Corner {
     placed.delete(name);
   }
 
+  /** the menu row each piece opens */
+  const ROW_OF: Record<string, string> = { 'office-reading-chair': 'chair', 'office-dresser': 'dresser', 'office-round-rug': 'rug' };
   /** the piece called `name` for `id`, built if it changed; null (and none in the scene) for no shape */
   function place<S>(name: string, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
     if (!shape) {
@@ -188,7 +190,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
     remove(name);
     const piece = build(shape);
     piece.group.name = name;
-    tagOption([piece.group], 'office', ['corner']);
+    tagOption([piece.group], 'office', [ROW_OF[name] ?? 'about']);
     parent.add(piece.group);
     placed.set(name, { id, piece });
     return piece.group;

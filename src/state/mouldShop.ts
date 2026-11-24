@@ -4,8 +4,8 @@ import { clamp } from '../lib/math';
 export interface StockLength {
   /** cm */
   length: number;
-  /** kr */
-  price: number;
+  /** kr; null until the user has filled it in */
+  price: number | null;
 }
 
 export interface MouldProduct {
@@ -69,15 +69,21 @@ function num(v: unknown): number | undefined {
 const limited = (v: unknown, fallback: number, l: { min: number; max: number }) => clamp(num(v) ?? fallback, l.min, l.max);
 const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
 
-/** the lengths with one price each: the cheapest, when a length is listed twice */
-export function cheapestPerLength<T extends { length: number; price: number }>(lengths: readonly T[]): T[] {
+/** the lengths with one price each: the cheapest, when a length is listed twice (a price beats none) */
+export function cheapestPerLength<T extends { length: number; price: number | null }>(lengths: readonly T[]): T[] {
   const byLength = new Map<number, T>();
   for (const l of lengths) {
     const had = byLength.get(l.length);
-    if (!had || l.price < had.price) byLength.set(l.length, l);
+    if (!had || (l.price ?? Infinity) < (had.price ?? Infinity)) byLength.set(l.length, l);
   }
   return [...byLength.values()];
 }
+
+/** example lengths for someone who has not looked up their store's yet: the usual 240 and 300 cm, prices to fill in */
+export const EXAMPLE_LENGTHS: StockLength[] = [
+  { length: 240, price: null },
+  { length: 300, price: null },
+];
 
 function sanitizeLengths(raw: unknown): StockLength[] {
   if (!Array.isArray(raw)) return [];
@@ -86,7 +92,8 @@ function sanitizeLengths(raw: unknown): StockLength[] {
     const o = obj(e);
     const length = num(o.length);
     if (length === undefined || length <= 0) continue;
-    out.push({ length: clamp(length, SHOP_LIMITS.length.min, SHOP_LIMITS.length.max), price: limited(o.price, 0, SHOP_LIMITS.price) });
+    const price = num(o.price);
+    out.push({ length: clamp(length, SHOP_LIMITS.length.min, SHOP_LIMITS.length.max), price: price === undefined ? null : clamp(price, SHOP_LIMITS.price.min, SHOP_LIMITS.price.max) });
   }
   return cheapestPerLength(out).sort((a, b) => a.length - b.length).slice(0, SHOP_LIMITS.lengths);
 }

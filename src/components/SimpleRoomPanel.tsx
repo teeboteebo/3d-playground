@@ -1,9 +1,8 @@
 import { roomById, roomSize, type RoomId } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
-import { FinishSection } from './FinishSection';
 import { Menu, type MenuNav } from './Menu';
-import { wallsTopic, type RoomExit } from './roomTopics';
+import { aboutTopic, wallsTopic, type RoomExit } from './roomTopics';
 
 const BLURB: Partial<Record<RoomId, string>> = {
   hall: 'The corridor between the bedroom and the living room.',
@@ -17,9 +16,10 @@ interface Props {
   menu: MenuNav;
 }
 
-/** A room without furniture of its own yet: just its finishes. */
+/** A room without furniture of its own yet: its walls, and what it is. */
 export function SimpleRoomPanel({ room, settings, update, exit, menu }: Props) {
   const info = roomById(room);
+  const blurb = BLURB[room];
   return (
     <Menu
       exit={exit}
@@ -28,8 +28,8 @@ export function SimpleRoomPanel({ room, settings, update, exit, menu }: Props) {
         id: room,
         title: info.name,
         summary: '',
-        sub: `${roomSize(info)}. ${BLURB[room] ?? ''}`.trim(),
-        topics: [wallsTopic(room, settings, <FinishSection room={room} settings={settings} update={update} />)],
+        sub: blurb ? `${roomSize(info)} · ${blurb}` : roomSize(info),
+        topics: [wallsTopic(room, settings, update), aboutTopic(`${roomSize(info)}, with the bedroom’s smoked oak floor. ${blurb ?? ''}`.trim())],
       }}
     />
   );

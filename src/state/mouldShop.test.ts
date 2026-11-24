@@ -36,9 +36,9 @@ describe('sanitizeShop', () => {
     expect(s.panel.lengths).toEqual([{ length: 240, price: 89 }]);
   });
 
-  it('turns an empty, null or negative price into 0', () => {
-    const s = sanitizeShop({ panel: { lengths: [{ length: 100, price: '' }, { length: 200, price: null }, { length: 300, price: -4 }] } });
-    expect(s.panel.lengths.map((l) => l.price)).toEqual([0, 0, 0]);
+  it('keeps an empty or missing price as not filled in, and turns a negative one into 0', () => {
+    const s = sanitizeShop({ panel: { lengths: [{ length: 100, price: '' }, { length: 200, price: null }, { length: 250 }, { length: 300, price: -4 }] } });
+    expect(s.panel.lengths.map((l) => l.price)).toEqual([null, null, null, 0]);
   });
 
   it('keeps the cheapest of duplicate lengths, caps the list at 10 and sorts it ascending', () => {
