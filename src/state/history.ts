@@ -22,7 +22,7 @@ const design = (s: Settings) => JSON.stringify({ ...s, room: null, time: null })
 
 /**
  * the fields a patch changes, as a key: "walls", "living.mouldWalls,living.mouldSpacing", and for a room's components each
- * component's own fields: "office.components.desk.shown"
+ * component's own fields, and each option on its own: "office.components.desk.shown", "living.components.sofa.options.fabric"
  */
 export function patchKey(p: SettingsPatch): string {
   return Object.entries(p)
@@ -30,7 +30,13 @@ export function patchKey(p: SettingsPatch): string {
       if (!v || (k !== 'bedroom' && k !== 'living' && k !== 'office')) return [k];
       return Object.entries(v).flatMap(([f, sub]) =>
         f === 'components' && sub && typeof sub === 'object'
-          ? Object.entries(sub).flatMap(([id, fields]) => Object.keys(fields ?? {}).map((x) => `${k}.components.${id}.${x}`))
+          ? Object.entries(sub).flatMap(([id, fields]) =>
+              Object.entries(fields ?? {}).flatMap(([x, value]) =>
+                x === 'options' && value && typeof value === 'object'
+                  ? Object.keys(value).map((o) => `${k}.components.${id}.options.${o}`)
+                  : [`${k}.components.${id}.${x}`],
+              ),
+            )
           : [`${k}.${f}`],
       );
     })

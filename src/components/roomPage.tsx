@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Variant } from '../data/components';
+import type { ComponentState, Variant } from '../data/components';
 import { ROOM_DEFS, type ComponentId, type ComponentRoom } from '../data/roomDefs';
 import type { Settings } from '../state/settings';
 import type { Update } from '../state/useSettings';
@@ -28,7 +28,7 @@ export function roomPage<R extends ComponentRoom>(args: {
 }): Topic {
   const { room, title, sub, settings, update, menu, roomRows = [], about, thumbs } = args;
   const def = ROOM_DEFS[room];
-  const components = settings[room].components as Record<string, Settings['office']['components'][keyof Settings['office']['components']]>;
+  const components = settings[room].components as Record<string, ComponentState>;
   const patchRoom = (patch: Record<string, unknown>) => update({ [room]: { components: patch } } as Parameters<Update>[0]);
   const setShown = (ids: string[], shown: boolean) => patchRoom(Object.fromEntries(ids.map((id) => [id, { shown }])));
   const shownCount = def.components.filter((c) => components[c.id].shown).length;
@@ -37,7 +37,9 @@ export function roomPage<R extends ComponentRoom>(args: {
     id: 'furniture',
     title: ROWS.furniture.title,
     section: ROWS.furniture.section,
-    summary: shownCount === def.components.length ? 'All shown' : `${shownCount} of ${def.components.length} shown`,
+    summary: `${shownCount} of ${def.components.length} shown`,
+    /* the checklist stands for every piece, so it highlights none; its switches each point at their own */
+    noPoint: true,
     content: (
       <ShowHideSection
         groups={componentGroups(def, (c) => ({ id: c.id, title: c.name, summary: '' }))}

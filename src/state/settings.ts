@@ -10,7 +10,7 @@ import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
 import { spacingMax, type MouldWall } from '../scene/mouldLayout';
 import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
-import { componentDefaults, sanitizeComponents, type ComponentStates } from './components';
+import { componentDefaults, patchComponents, sanitizeComponents, type ComponentStates } from './components';
 import type { ComponentState } from '../data/components';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
@@ -81,11 +81,7 @@ export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'livi
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
   const next = { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom } } as Settings;
   for (const room of Object.keys(ROOM_DEFS) as ComponentRoom[]) {
-    const components: Record<string, ComponentState> = { ...s[room].components };
-    for (const [id, patch] of Object.entries(p[room]?.components ?? {}) as [string, Partial<ComponentState>][]) {
-      const options = patch.options ? { ...components[id].options, ...patch.options } : components[id].options;
-      components[id] = { ...components[id], ...patch, options };
-    }
+    const components = patchComponents(ROOM_DEFS[room], s[room].components as ComponentStates<string>, p[room]?.components ?? {});
     (next as unknown as Record<string, unknown>)[room] = { ...s[room], ...p[room], components };
   }
   return next;

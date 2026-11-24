@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { MERGE_MS, change, patchKey, redo, startHistory, undo } from './history';
 import { DEFAULTS } from './settings';
 
@@ -9,6 +10,21 @@ describe('history', () => {
     expect(patchKey({ walls: DEFAULTS.walls })).toBe('walls');
     expect(patchKey({ living: { mouldSpacing: 9, mouldDado: 80 } })).toBe('living.mouldDado,living.mouldSpacing');
     expect(patchKey({ office: { components: { desk: { shown: false } } } })).toBe('office.components.desk.shown');
+  });
+
+  it('names each option of a component on its own', () => {
+    expect(patchKey({ living: { components: { sofa: { shown: true, options: { fabric: 'x', cushions: 'y' } } } } })).toBe(
+      'living.components.sofa.options.cushions,living.components.sofa.options.fabric,living.components.sofa.shown',
+    );
+  });
+
+  it('keeps quick changes to two options of one piece as two steps', () => {
+    let h = startHistory(DEFAULTS);
+    h = change(h, { living: { components: { sofa: { options: { fabric: BEMZ_FABRICS[0].code } } } } }, 0);
+    h = change(h, { living: { components: { sofa: { shown: false } } } }, 10);
+    expect(h.past).toHaveLength(2);
+    h = undo(h);
+    expect(h.present.living.components.sofa).toEqual({ shown: true, variant: 'nockeby', options: { fabric: BEMZ_FABRICS[0].code } });
   });
 
   it('keeps quick changes to two different office pieces as two steps', () => {

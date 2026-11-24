@@ -197,4 +197,11 @@ describe('addRoomLights', () => {
     );
     expect(at('office').intensity).toBe(0);
   });
+  it('keeps the fill of a room without catalog lamps at full strength, and leaves the bedroom without one', () => {
+    const scene = new THREE.Scene();
+    const fill = addRoomLights(scene);
+    fill.apply(withLamps({ time: 'eve', office: office(P, F), living: living(P, F) }));
+    expect(scene.children.find((l) => l.name === 'hall-fill')).toHaveProperty('intensity', 0.6);
+    expect(scene.children.find((l) => l.name === 'bedroom-fill')).toBeUndefined();
+  });
 });

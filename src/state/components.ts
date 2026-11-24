@@ -1,11 +1,11 @@
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
-import type { ComponentDef, ComponentState, OptionDef, RoomDef } from '../data/components';
+import { initialOptions, type ComponentDef, type ComponentState, type OptionDef, type RoomDef } from '../data/components';
 
 export type ComponentStates<K extends string> = Record<K, ComponentState>;
 
 export function componentDefaults<K extends string>(room: RoomDef): ComponentStates<K> {
   return Object.fromEntries(
-    room.components.map((c) => [c.id, { shown: c.initial.shown, variant: c.initial.variant, options: { ...c.initial.options } }]),
+    room.components.map((c) => [c.id, { shown: c.initial.shown, variant: c.initial.variant, options: initialOptions(c) }]),
   ) as ComponentStates<K>;
 }
 
@@ -17,9 +17,12 @@ function sanitizeOption(def: OptionDef, value: unknown): string {
   }
 }
 
+/** an own field of a saved object: a name such as 'constructor' is never one that was saved */
+const own = (o: Record<string, unknown>, key: string): unknown => (Object.hasOwn(o, key) ? o[key] : undefined);
+
 function sanitizeOptions(c: ComponentDef, raw: unknown): Record<string, string> {
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  return Object.fromEntries((c.options ?? []).map((d) => [d.id, sanitizeOption(d, o[d.id])]));
+  return Object.fromEntries((c.options ?? []).map((d) => [d.id, sanitizeOption(d, own(o, d.id))]));
 }
 
 /** each component's saved state, any invalid or missing field taken from its definition's initial state */
@@ -27,7 +30,8 @@ export function sanitizeComponents<K extends string>(raw: unknown, room: RoomDef
   const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   return Object.fromEntries(
     room.components.map((c) => {
-      const s = (o[c.id] && typeof o[c.id] === 'object' ? o[c.id] : {}) as Record<string, unknown>;
+      const saved = own(o, c.id);
+      const s = (saved && typeof saved === 'object' ? saved : {}) as Record<string, unknown>;
       const known = c.variants.some((v) => v.id === s.variant);
       return [
         c.id,
@@ -39,4 +43,31 @@ export function sanitizeComponents<K extends string>(raw: unknown, room: RoomDef
       ];
     }),
   ) as ComponentStates<K>;
+}
+
+/**
+ * a room's component states with a patch applied, each component and each option on its own; a component or option the
+ * room does not define is ignored
+ */
+export function patchComponents<K extends string>(
+  room: RoomDef,
+  states: ComponentStates<K>,
+  patch: Partial<Record<string, Partial<ComponentState>>>,
+): ComponentStates<K> {
+  const next: Record<string, ComponentState> = { ...states };
+  for (const c of room.components) {
+    const p = own(patch, c.id) as Partial<ComponentState> | undefined;
+    if (!p) continue;
+    const options = { ...next[c.id].options };
+    for (const o of c.options ?? []) {
+      const v = own(p.options ?? {}, o.id);
+      if (v !== undefined) options[o.id] = v as string;
+    }
+    next[c.id] = {
+      shown: p.shown ?? next[c.id].shown,
+      variant: p.variant ?? next[c.id].variant,
+      options,
+    };
+  }
+  return next as ComponentStates<K>;
 }

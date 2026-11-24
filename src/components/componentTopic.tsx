@@ -1,5 +1,5 @@
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
-import { CATEGORIES, type ComponentDef, type ComponentState, type OptionDef, type RoomDef, type Variant } from '../data/components';
+import { CATEGORIES, initialOptions, type ComponentDef, type ComponentState, type OptionDef, type RoomDef, type Variant } from '../data/components';
 import type { ReactNode } from 'react';
 import type { StockState } from '../data/catalog';
 import type { Topic, TopicGroup } from './Menu';
@@ -31,7 +31,7 @@ export function optionSummary(def: OptionDef, value: string): { text: string; sw
 const atInitial = (def: ComponentDef, state: ComponentState) =>
   state.shown === def.initial.shown &&
   state.variant === def.initial.variant &&
-  (def.options ?? []).every((o) => (state.options[o.id] ?? o.initial) === (def.initial.options?.[o.id] ?? o.initial));
+  (def.options ?? []).every((o) => (state.options[o.id] ?? o.initial) === o.initial);
 
 /** the menu page of one component: a show/hide switch, the products to choose from, and a note */
 export function componentTopic(
@@ -57,6 +57,8 @@ export function componentTopic(
     title: def.name,
     summary,
     swatch: state.shown ? optionText?.swatch : undefined,
+    /* a hidden piece keeps the room its swatch takes, so its list's titles stay in line */
+    swatchSpace: !!optionText?.swatch,
     content: (
       <>
         <div className="piece-show">
@@ -79,7 +81,7 @@ export function componentTopic(
         ) : null}
         {(def.options ?? []).map((o) => (
           <div key={o.id}>
-            {optionControl(o, state.options[o.id] ?? o.initial, (v) => set({ options: { ...state.options, [o.id]: v } }))}
+            {optionControl(o, state.options[o.id] ?? o.initial, (v) => set({ options: { [o.id]: v } }))}
           </div>
         ))}
         {def.note ? <p className="note">{def.note}</p> : null}
@@ -88,7 +90,7 @@ export function componentTopic(
     /* back to how the room starts; left out while the piece already is */
     reset: atInitial(def, state)
       ? undefined
-      : () => set({ shown: def.initial.shown, variant: def.initial.variant, options: { ...def.initial.options } }),
+      : () => set({ shown: def.initial.shown, variant: def.initial.variant, options: initialOptions(def) }),
   };
 }
 

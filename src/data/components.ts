@@ -25,6 +25,9 @@ export const CATEGORIES: readonly { id: Category; title: string }[] = [
 /** something about a component other than its product that can be chosen, such as the fabric of a sofa */
 export type OptionDef = { id: string; label: string; kind: 'fabric'; initial: string };
 
+/** the lamps the catalog's lamp builder draws: a ceiling pendant or a floor lamp */
+export type LampKind = 'pendant' | 'floor';
+
 /** a piece of a room: it can be shown or hidden, and it is one of its variants */
 export interface ComponentDef {
   id: string;
@@ -34,8 +37,11 @@ export interface ComponentDef {
   group?: string;
   note?: string;
   variants: readonly Variant[];
+  /** set only on a piece whose variants are the catalog's pendants or floor lamps; any other light is built by its room */
+  lamp?: LampKind;
   options?: readonly OptionDef[];
-  initial: { shown: boolean; variant: string; options?: Record<string, string> };
+  /** how the piece starts; each option starts at its own `initial` */
+  initial: { shown: boolean; variant: string };
 }
 
 export interface RoomDef {
@@ -49,3 +55,7 @@ export interface ComponentState {
   variant: string;
   options: Record<string, string>;
 }
+
+/** every option of a component at its initial value */
+export const initialOptions = (c: ComponentDef): Record<string, string> =>
+  Object.fromEntries((c.options ?? []).map((o) => [o.id, o.initial]));

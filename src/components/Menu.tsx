@@ -10,6 +10,10 @@ export interface Topic {
   summary: string;
   /** a colour shown on the row */
   swatch?: string;
+  /** the row leaves room for a swatch it is not showing now, so a list's titles stay in line */
+  swatchSpace?: boolean;
+  /** the row points at nothing in 3D while the mouse or keyboard focus is on it, such as a page that lists several things */
+  noPoint?: boolean;
   /** shown under the page heading */
   sub?: ReactNode;
   /** the page's own controls */
@@ -37,6 +41,8 @@ function sectioned(page: Topic): { title?: string; topics: Topic[] }[] {
     { title: undefined, topics: topics.filter((t) => !t.section) },
   ].filter((g) => g.topics.length > 0);
 }
+
+const hasSwatch = (t: Topic) => !!(t.swatch || t.swatchSpace);
 
 /** a heading over rows on a page; one level of sub-groups inside it */
 export interface TopicGroup {
@@ -80,7 +86,7 @@ export function Menu({ root, exit, nav }: Props) {
   }
   const page = trail.at(-1)!;
   /* a page's sectioned rows line up across their sections: any swatch leaves room for one on every row */
-  const swatches = !!page.topics?.some((t) => t.swatch);
+  const swatches = !!page.topics?.some(hasSwatch);
   const parent = trail.at(-2);
   /** where the menu is, as a key that changes with every move */
   const at = trail.map((t) => t.id).join('/');
@@ -170,7 +176,7 @@ interface RowActions {
   point: (id: string | null) => void;
 }
 
-function RowList({ title, topics, open, point, swatches = topics.some((t) => t.swatch) }: { title: string; topics: Topic[]; swatches?: boolean } & RowActions) {
+function RowList({ title, topics, open, point, swatches = topics.some(hasSwatch) }: { title: string; topics: Topic[]; swatches?: boolean } & RowActions) {
   return (
     <ul className="topics" aria-label={title}>
       {topics.map((t) => (
@@ -180,10 +186,10 @@ function RowList({ title, topics, open, point, swatches = topics.some((t) => t.s
             className="topic"
             data-topic={t.id}
             onClick={() => open(t.id)}
-            onMouseEnter={() => point(t.id)}
-            onMouseLeave={() => point(null)}
-            onFocus={() => point(t.id)}
-            onBlur={() => point(null)}
+            onMouseEnter={t.noPoint ? undefined : () => point(t.id)}
+            onMouseLeave={t.noPoint ? undefined : () => point(null)}
+            onFocus={t.noPoint ? undefined : () => point(t.id)}
+            onBlur={t.noPoint ? undefined : () => point(null)}
           >
             {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
             <span>

@@ -103,6 +103,15 @@ describe('applyPatch', () => {
   });
 });
 
+describe('applyPatch with unrecognized component ids', () => {
+  it.each(['gone', 'constructor', '__proto__'])('leaves the room as it was for %s', (id) => {
+    const patch = { office: { components: JSON.parse(`{"${id}":{"shown":false}}`) } };
+    const s = applyPatch(DEFAULTS, patch);
+    expect(s.office.components).toEqual(DEFAULTS.office.components);
+    expect(Object.keys(s.office.components)).toEqual(Object.keys(DEFAULTS.office.components));
+  });
+});
+
 describe('load/save', () => {
   it('round-trips through storage', () => {
     const s = applyPatch(DEFAULTS, { bedroom: { rug: 'rista' } });

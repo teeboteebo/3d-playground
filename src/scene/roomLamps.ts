@@ -3,16 +3,13 @@ import { FLOOR_LAMPS, PENDANTS, findById } from '../data/catalog';
 import { CEILING, centroid, roomById } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import { buildLamp, type BuiltLamp } from './lamps';
-import { ROOM_DEFS, type ComponentRoom } from '../data/roomDefs';
+import { CATALOG_LAMPS, type LampRoom } from '../data/roomDefs';
 import type { ComponentState } from '../data/components';
 import { tagOption } from './options';
 
-/** the rooms with a ceiling light and a floor lamp among their components */
-const LAMP_ROOMS = Object.keys(ROOM_DEFS) as ComponentRoom[];
-
 /** Where each room's floor lamp stands, and the turn about y that points an arc lamp's reach (along +x at 0). */
 export const FLOOR_LAMP_SPOT: Record<
-  ComponentRoom,
+  LampRoom<'floor'>,
   { x: number; z: number; rotY: number }
 > = {
   /* between the sofa's east end (x 7.24) and the plant pot (x 7.96); rotY π points an arc lamp's reach back over
@@ -40,7 +37,7 @@ interface Placed {
   intensity: number;
 }
 
-/** The pendant and floor lamp chosen for the living room and the office, each with a warm light that comes on in the evening. */
+/** The catalog pendant and floor lamp of each room that has them, each with a warm light that comes on in the evening. */
 export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
   const placed = new Map<string, Placed>();
 
@@ -88,41 +85,26 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
   return {
     apply(s) {
       const evening = s.time === 'eve';
-      for (const room of LAMP_ROOMS) {
-        const lamps: Record<string, ComponentState> = s[room].components;
-        const pendantName = `${room}-pendant`;
-        const pendant = place(
-          pendantName,
-          lamps['ceiling-light'],
-          PENDANTS,
-          CEILING - PENDANT_HEIGHT,
-        );
+      for (const { room, id, kind } of CATALOG_LAMPS) {
+        const lamp: ComponentState = (s[room].components as Record<string, ComponentState>)[id];
+        const pendant = kind === 'pendant';
+        const name = pendant ? `${room}-pendant` : `${room}-floor-lamp`;
+        const p = place(name, lamp, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
+        if (!p) continue;
+        tagOption([p.lamp.group], room, [id]);
         if (pendant) {
-          tagOption([pendant.lamp.group], room, ['ceiling-light']);
           const [x, z] = centroid(roomById(room).poly);
-          pendant.lamp.group.position.set(x, CEILING, z);
+          p.lamp.group.position.set(x, CEILING, z);
+        } else {
+          const { x, z, rotY } = FLOOR_LAMP_SPOT[room as LampRoom<'floor'>];
+          p.lamp.group.position.set(x, 0, z);
+          p.lamp.group.rotation.y = rotY;
         }
-        const floorName = `${room}-floor-lamp`;
-        const floor = place(
-          floorName,
-          lamps['floor-lamp'],
-          FLOOR_LAMPS,
-          undefined,
-        );
-        if (floor) {
-          tagOption([floor.lamp.group], room, ['floor-lamp']);
-          const { x, z, rotY } = FLOOR_LAMP_SPOT[room];
-          floor.lamp.group.position.set(x, 0, z);
-          floor.lamp.group.rotation.y = rotY;
-        }
-        for (const p of [pendant, floor]) {
-          if (!p) continue;
-          p.lamp.group.updateMatrixWorld(true);
-          p.light.position.copy(p.lamp.bulb).applyMatrix4(p.lamp.group.matrix);
-          p.light.intensity = evening ? p.intensity : 0;
-          p.light.visible = evening;
-          p.lamp.setGlow(evening);
-        }
+        p.lamp.group.updateMatrixWorld(true);
+        p.light.position.copy(p.lamp.bulb).applyMatrix4(p.lamp.group.matrix);
+        p.light.intensity = evening ? p.intensity : 0;
+        p.light.visible = evening;
+        p.lamp.setGlow(evening);
       }
     },
     dispose() {

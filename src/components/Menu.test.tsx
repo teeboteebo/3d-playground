@@ -54,3 +54,28 @@ describe('Menu group without rows', () => {
     expect(screen.getByRole('list', { name: 'Inner' })).toBeInTheDocument();
   });
 });
+
+describe('Menu swatch column', () => {
+  const rowsOf = (topics: Topic[]): HTMLElement[] => {
+    const page: Topic = { id: 'root', title: 'Living room', summary: '', groups: [{ title: 'Furniture', topics }] };
+    render(<Menu root={page} exit={exit} nav={{ path: [], go: () => {} }} />);
+    return within(screen.getByRole('list', { name: 'Furniture' })).getAllByRole('listitem');
+  };
+
+  it('leaves room on every row for the swatch of one', () => {
+    const [sofa, plant] = rowsOf([{ ...topic('sofa', 'Sofa'), swatch: '#aa5533' }, topic('plant', 'Plant')]);
+    expect(sofa.querySelector('i:not(.blank)')).not.toBeNull();
+    expect(plant.querySelector('i.blank')).not.toBeNull();
+  });
+
+  it('keeps the column for a row that has no swatch showing but holds its place', () => {
+    const [sofa, plant] = rowsOf([{ ...topic('sofa', 'Sofa'), swatchSpace: true }, topic('plant', 'Plant')]);
+    expect(sofa.querySelector('i.blank')).not.toBeNull();
+    expect(plant.querySelector('i.blank')).not.toBeNull();
+  });
+
+  it('has no column when no row has or holds a swatch', () => {
+    const [sofa] = rowsOf([topic('sofa', 'Sofa')]);
+    expect(sofa.querySelector('i')).toBeNull();
+  });
+});

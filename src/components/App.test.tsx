@@ -521,6 +521,37 @@ describe('showing and hiding the office pieces together', () => {
     fireEvent.mouseEnter(screen.getByRole('switch', { name: 'Round rug' }));
     expect(scene.pointAt.mock.calls.at(-1)?.[0]).toEqual({ room: 'office', path: ['round-rug'] });
   });
+
+  it('points at a piece while its switch is focused, and at nothing once focus leaves', async () => {
+    await renderIn('office');
+    goTo('Show or hide pieces');
+    fireEvent.focus(screen.getByRole('switch', { name: 'Desk' }));
+    expect(scene.pointAt.mock.calls.at(-1)?.[0]).toEqual({ room: 'office', path: ['desk'] });
+    fireEvent.blur(screen.getByRole('switch', { name: 'Desk' }));
+    expect(scene.pointAt.mock.calls.at(-1)?.[0]).toBeNull();
+  });
+
+  it('counts the pieces shown, as a number of the total, even when all are', async () => {
+    await renderIn('office');
+    expect(row('Show or hide pieces')).toHaveTextContent('7 of 9 shown');
+    goTo('Show or hide pieces');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    up('Office');
+    expect(row('Show or hide pieces')).toHaveTextContent('9 of 9 shown');
+    expect(row('Show or hide pieces')).not.toHaveTextContent('All shown');
+  });
+
+  it('highlights nothing while the checklist row is hovered or focused', async () => {
+    await renderIn('office');
+    fireEvent.mouseEnter(row('Desk'));
+    fireEvent.mouseLeave(row('Desk'));
+    scene.pointAt.mockClear();
+    fireEvent.mouseEnter(row('Show or hide pieces'));
+    fireEvent.focus(row('Show or hide pieces'));
+    fireEvent.mouseLeave(row('Show or hide pieces'));
+    fireEvent.blur(row('Show or hide pieces'));
+    expect(scene.pointAt.mock.calls.filter(([target]) => target !== null)).toEqual([]);
+  });
 });
 
 describe('showing and hiding the living room pieces together', () => {
@@ -664,7 +695,7 @@ describe('sofa fabric', () => {
     expect(row('Sofa').querySelector<HTMLElement>('.swatch, [style]')?.getAttribute('style') ?? '').toMatch(/background/);
   });
 
-  it('drops the sofa swatch from its row while the sofa is hidden', async () => {
+  it('shows no sofa colour on its row while the sofa is hidden, but keeps the swatch column', async () => {
     const user = userEvent.setup();
     await renderIn('living');
     goTo('Sofa');
@@ -672,7 +703,9 @@ describe('sofa fabric', () => {
     await user.click(screen.getByRole('switch', { name: 'Show in room' }));
     up('Living room');
     expect(row('Sofa')).toHaveTextContent('Hidden');
-    expect(row('Sofa').querySelector('i')).toBeNull();
+    expect(row('Sofa').querySelector('i.blank')).not.toBeNull();
+    expect(row('Sofa').querySelector<HTMLElement>('i')!.style.background).toBe('');
+    expect(row('Plant').querySelector('i.blank')).not.toBeNull();
   });
 
   it("puts the sofa's fabric back to the original with the page's Reset", async () => {
