@@ -23,7 +23,7 @@ export const ROWS = {
   sofa: { title: 'Sofa', section: 'furniture' },
   chair: { title: 'Reading chair', section: 'furniture' },
   dresser: { title: 'Dresser', section: 'furniture' },
-  furniture: { title: 'Show or hide furniture', section: 'furniture' },
+  furniture: { title: 'Show or hide pieces', section: 'furniture' },
   rug: { title: 'Rug', section: 'decor' },
   pillows: { title: 'Pillows and throw', section: 'decor' },
   painting: { title: 'Painting', section: 'decor' },

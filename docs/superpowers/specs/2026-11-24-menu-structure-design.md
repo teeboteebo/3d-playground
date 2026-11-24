@@ -339,6 +339,19 @@ The model is introduced in the simplest room first, then each room is moved over
    The bedroom and living room keep #21's sections. Steps 2 and 3 should decide whether the office's headings or #21's
    sections become the one structure for every room.
 2. **The living room.** The checklist becomes a switch on each piece's page, and the sofa fabric becomes an option.
+
+   **Done ahead of the living room**, on the office and shared by every room:
+   - **Menu hover in 3D:** a menu row under the mouse or keyboard focus lights up what it opens in 3D, with the same
+     tint as hovering in 3D. A row such as "Wall moulding" lights up everything under it, and the mouse over the 3D view
+     still wins.
+   - **The Show in room switch** is a full-width row at the top of a piece's page: name and state on the left, a
+     sliding switch on the right.
+   - **"Show or hide pieces"** (`ROWS.furniture`, renamed from "Show or hide furniture"):
+     - one page per room listing every piece under the room's headings, each with its own switch;
+     - Show all and Hide all, each a single undo step;
+     - Reset back to how the room starts.
+
+     The office has it under Room. The living room's checklist uses the same switch rows.
 3. **The bedroom.** It has the most hand-wiring:
    - splitting the bench from the bed, and the wall lamps from the tables;
    - moving the pillows onto the bed as an option;

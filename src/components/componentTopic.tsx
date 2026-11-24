@@ -2,6 +2,7 @@ import type { ComponentDef, ComponentState, RoomDef, Variant } from '../data/com
 import type { StockState } from '../data/catalog';
 import type { Topic, TopicGroup } from './Menu';
 import { ProductList } from './ProductList';
+import { ToggleRow } from './ToggleRow';
 
 /** the first part of a product name, before its colour or finish */
 const short = (name: string) => name.split(',')[0];
@@ -29,9 +30,14 @@ export function componentTopic(
     summary,
     content: (
       <>
-        <button type="button" role="switch" className="chip" aria-checked={state.shown} onClick={() => set({ shown: !state.shown })}>
-          Show in room
-        </button>
+        <div className="piece-show">
+          <ToggleRow
+            label="Show in room"
+            hint={state.shown ? 'In the room' : 'Hidden from the room'}
+            checked={state.shown}
+            onChange={(shown) => set({ shown })}
+          />
+        </div>
         {def.variants.length >= 2 ? (
           <ProductList
             label={def.name}

@@ -7,6 +7,7 @@ import type { Update } from '../state/useSettings';
 import { Menu, type MenuNav, type Topic } from './Menu';
 import { mouldingTopic } from './mouldingTopic';
 import { useShoppingList } from './useShoppingList';
+import { ShowHideSection } from './ShowHideSection';
 import { SofaFabricSection } from './SofaFabricSection';
 import { aboutTopic, lampTopics, resetFields, roomRow, wallsTopic, type RoomExit } from './roomTopics';
 
@@ -20,7 +21,6 @@ interface Props {
 export function LivingPanel({ settings, update, exit, menu }: Props) {
   const { hidden, sofaFabric } = settings.living;
   const shopping = useShoppingList('living', settings);
-  const toggle = (id: string) => update({ living: { hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id] } });
   const fabric = BEMZ_FABRICS.find((f) => f.code === sofaFabric);
   const shown = FURNITURE.length - FURNITURE.filter((f) => hidden.includes(f.id)).length;
   const root: Topic = {
@@ -42,16 +42,11 @@ export function LivingPanel({ settings, update, exit, menu }: Props) {
         summary: shown === FURNITURE.length ? 'All shown' : `${shown} of ${FURNITURE.length} shown`,
         reset: resetFields(settings, update, 'living', ['hidden']),
         content: (
-          <section>
-            <div className="checks" role="group" aria-label="Furniture">
-              {FURNITURE.map((f) => (
-                <label key={f.id}>
-                  <input type="checkbox" checked={!hidden.includes(f.id)} onChange={() => toggle(f.id)} />
-                  <span>{f.name}</span>
-                </label>
-              ))}
-            </div>
-          </section>
+          <ShowHideSection
+            groups={[{ title: 'Furniture', topics: FURNITURE.map((f) => ({ id: f.id, title: f.name, summary: '' })) }]}
+            shown={(id) => !hidden.includes(id)}
+            set={(ids, on) => update({ living: { hidden: on ? hidden.filter((h) => !ids.includes(h)) : [...new Set([...hidden, ...ids])] } })}
+          />
         ),
       }),
       aboutTopic(

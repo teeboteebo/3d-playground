@@ -10,7 +10,7 @@ import { BEDROOM_MOULD_WALLS } from '../scene/mouldWalls';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
-const scene = { apply: vi.fn(), setView: vi.fn(), dispose: vi.fn() };
+const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), dispose: vi.fn() };
 const createApartmentScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({
@@ -334,7 +334,7 @@ describe('App', () => {
     const user = userEvent.setup();
     await renderApp();
     await user.click(within(roomList()).getByRole('button', { name: /Living room/ }));
-    goTo('Show or hide furniture');
+    goTo('Show or hide pieces');
     expect(screen.getByRole('group', { name: 'Furniture' })).toBeInTheDocument();
     expect(lastApplied().room).toBe('living');
     expect(scene.setView).toHaveBeenLastCalledWith(mainView('living').pose);
@@ -380,11 +380,11 @@ describe('App', () => {
   it('hides living-room furniture and repaints a room', async () => {
     const user = userEvent.setup();
     await renderIn('living');
-    goTo('Show or hide furniture');
-    await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('checkbox', { name: 'Sofa' }));
+    goTo('Show or hide pieces');
+    await user.click(within(screen.getByRole('group', { name: 'Furniture' })).getByRole('switch', { name: 'Sofa' }));
     expect(lastApplied().living.hidden).toEqual(['sofa']);
     up('Living room');
-    expect(row('Show or hide furniture')).toHaveTextContent(/5 of 6 shown|\d+ of \d+ shown/);
+    expect(row('Show or hide pieces')).toHaveTextContent(/5 of 6 shown|\d+ of \d+ shown/);
     await user.click(back());
     await user.click(within(roomList()).getByRole('button', { name: /Hall/ }));
     goTo('Wall colour');
@@ -468,6 +468,52 @@ describe.each(['living'] as const)('lighting in the %s', (room) => {
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
     expect(lastApplied()[room].pendant).toBe('none');
+  });
+});
+
+describe('showing and hiding the office pieces together', () => {
+  const pieces = () => stored().office.components;
+
+  it('lists every piece under the office headings, each with its own switch', async () => {
+    await renderIn('office');
+    goTo('Show or hide pieces');
+    expect(within(screen.getByRole('group', { name: 'Reading corner' })).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([
+      'Reading chair', 'Dresser', 'Round rug',
+    ]);
+    expect(screen.getByRole('heading', { level: 3, name: 'Workspace' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('switch', { name: 'Dresser' }));
+    expect(pieces().dresser.shown).toBe(false);
+    expect(pieces()['reading-chair'].shown).toBe(true);
+    up('Office');
+    expect(row('Show or hide pieces')).toHaveTextContent('6 of 9 shown');
+  });
+
+  it('shows or hides them all as one step', async () => {
+    await renderIn('office');
+    goTo('Show or hide pieces');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide all' }));
+    expect(Object.values(pieces()).every((c) => !c.shown)).toBe(true);
+    expect(screen.getByRole('button', { name: 'Hide all' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(Object.values(pieces()).every((c) => c.shown)).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(Object.values(pieces()).every((c) => !c.shown)).toBe(true);
+  });
+
+  it('resets to how the office starts, lamps off', async () => {
+    await renderIn('office');
+    goTo('Show or hide pieces');
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide pieces' }));
+    expect(pieces().pendant.shown).toBe(false);
+    expect(pieces().desk.shown).toBe(true);
+  });
+
+  it('points at a piece in 3D while its switch is hovered', async () => {
+    await renderIn('office');
+    goTo('Show or hide pieces');
+    fireEvent.mouseEnter(screen.getByRole('switch', { name: 'Round rug' }));
+    expect(scene.pointAt.mock.calls.at(-1)?.[0]).toEqual({ room: 'office', path: ['round-rug'] });
   });
 });
 
@@ -608,13 +654,13 @@ describe('room menu', () => {
   it('lists the other rooms\' options', async () => {
     const { unmount } = await renderIn('living');
     expect(sections()).toEqual(['Walls', 'Lighting', 'Furniture']);
-    expect(rowTitles()).toEqual(['Wall colour', 'Wall moulding', 'Ceiling light', 'Floor lamp', 'Sofa', 'Show or hide furniture', 'About the room']);
+    expect(rowTitles()).toEqual(['Wall colour', 'Wall moulding', 'Ceiling light', 'Floor lamp', 'Sofa', 'Show or hide pieces', 'About the room']);
     expect(row('Ceiling light')).toHaveTextContent('None');
     expect(row('Sofa')).toHaveTextContent('Original fabric');
     unmount();
     const office = await renderIn('office');
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug', 'Ceiling pendant', 'Floor lamp',
+      'Wall colour', 'Show or hide pieces', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug', 'Ceiling pendant', 'Floor lamp',
       'About the room',
     ]);
     for (const name of ['Room', 'Furniture', 'Lighting']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
@@ -656,6 +702,34 @@ describe('room menu', () => {
     await click3d('bedroom');
     expect(screen.getByRole('heading', { level: 1, name: 'Bedroom' })).toBeInTheDocument();
     expect(back()).toBeInTheDocument();
+  });
+});
+
+describe('pointing at menu rows', () => {
+  const pointed = () => scene.pointAt.mock.calls.at(-1)?.[0];
+
+  it('highlights in 3D what a hovered or focused row opens, and nothing once it leaves', async () => {
+    await renderIn('office');
+    fireEvent.mouseEnter(row('Desk'));
+    expect(pointed()).toEqual({ room: 'office', path: ['desk'] });
+    fireEvent.mouseLeave(row('Desk'));
+    expect(pointed()).toBeNull();
+    fireEvent.focus(row('Round rug'));
+    expect(pointed()).toEqual({ room: 'office', path: ['round-rug'] });
+  });
+
+  it('points with the path of the page the row is on', async () => {
+    await renderIn('bedroom');
+    goTo('Wall moulding');
+    fireEvent.mouseEnter(row('Bed wall'));
+    expect(pointed()).toEqual({ room: 'bedroom', path: ['moulding', 'bed'] });
+  });
+
+  it('stops pointing when the row opens its page', async () => {
+    await renderIn('office');
+    fireEvent.mouseEnter(row('Desk'));
+    goTo('Desk');
+    expect(pointed()).toBeNull();
   });
 });
 
@@ -709,7 +783,7 @@ describe('clicking options in 3D', () => {
     ['living', ['sofa'], 'Sofa'],
     ['living', ['moulding', 'sofa'], 'Sofa wall'],
     ['living', ['moulding', 'tv'], 'TV wall'],
-    ['living', ['furniture'], 'Show or hide furniture'],
+    ['living', ['furniture'], 'Show or hide pieces'],
     ['office', ['cabinets'], 'Cabinets'],
     ['office', ['desk'], 'Desk'],
     ['office', ['drawers'], 'Drawer unit'],
@@ -878,13 +952,13 @@ describe('undo, redo and reset', () => {
 
   it('puts one page back to how the room started', async () => {
     await renderIn('living');
-    goTo('Show or hide furniture');
-    expect(screen.queryByRole('button', { name: 'Reset show or hide furniture' })).toBeNull();
-    fireEvent.click(screen.getAllByRole('checkbox')[0]);
+    goTo('Show or hide pieces');
+    expect(screen.queryByRole('button', { name: 'Reset show or hide pieces' })).toBeNull();
+    fireEvent.click(within(screen.getByRole('group', { name: 'Furniture' })).getAllByRole('switch')[0]);
     expect(stored().living.hidden).toHaveLength(1);
-    fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide furniture' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reset show or hide pieces' }));
     expect(stored().living.hidden).toEqual([]);
-    expect(screen.queryByRole('button', { name: 'Reset show or hide furniture' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reset show or hide pieces' })).toBeNull();
   });
 
   it('starts every room over from the apartment page, keeps the store lengths, and can undo it', async () => {

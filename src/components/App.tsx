@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RoomSelection } from '../data/rooms';
 import { useSettings } from '../state/useSettings';
 import { Panel } from './Panel';
@@ -16,6 +16,9 @@ export function App() {
   if (menu.room !== settings.room) setMenu({ room: settings.room, path: [] });
   const path = menu.room === settings.room ? menu.path : [];
   const go = (p: readonly string[]) => setMenu({ room: settings.room, path: p });
+  /* the page a menu row under the mouse or focus would open, shown in 3D; it belongs to the room it was pointed in */
+  const [pointed, setPointed] = useState<{ room: RoomSelection; path: readonly string[] } | null>(null);
+  const point = useCallback((p: readonly string[] | null) => setPointed(p ? { room: settings.room, path: p } : null), [settings.room]);
 
   /* keys for the whole app: undo and redo, and Escape to go up a page (or out of the room) */
   const keys = useRef({ steps, path, room: settings.room, go, update });
@@ -46,8 +49,8 @@ export function App() {
 
   return (
     <div className="app">
-      <Stage settings={settings} update={update} onOption={go} />
-      <Panel settings={settings} update={update} menu={{ path, go }} steps={steps} />
+      <Stage settings={settings} update={update} onOption={go} pointed={pointed?.room === settings.room ? pointed.path : null} />
+      <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} />
     </div>
   );
 }
