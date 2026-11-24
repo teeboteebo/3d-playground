@@ -6,18 +6,26 @@ import type { ShoppingState } from './useShoppingList';
 const kr = (n: number) => (Number.isInteger(n) ? formatKr(n) : `${n.toFixed(2)} kr`);
 
 /** pieces grouped by wall and then by frame (or rail), keeping their order */
-function groupPieces(p: ProductResult): Map<string, Map<string, { side: string; id: string; length: number }[]>> {
-  const out = new Map<string, Map<string, { side: string; id: string; length: number }[]>>();
+function groupPieces(p: ProductResult): Map<string, Map<string, { side: string; id: string; length: number; ends: [string, string] }[]>> {
+  const out = new Map<string, Map<string, { side: string; id: string; length: number; ends: [string, string] }[]>>();
   for (const piece of p.pieces) {
     const parts = piece.label.split(' · ');
     const wall = parts[0];
     const frame = piece.kind === 'frame' ? parts.slice(1, -1).join(' · ') : parts.slice(1).join(' · ') || 'rail';
     const side = piece.kind === 'frame' ? parts.at(-1)! : '';
     const frames = out.get(wall) ?? new Map();
-    frames.set(frame, [...(frames.get(frame) ?? []), { side, id: piece.id, length: piece.length }]);
+    frames.set(frame, [...(frames.get(frame) ?? []), { side, id: piece.id, length: piece.length, ends: piece.ends }]);
     out.set(wall, frames);
   }
   return out;
+}
+
+/** a piece cut in parts: each part with its two ends, and where the joins fall along it from its left end */
+function joinedText(s: { length: number; ends: [string, string] }, parts: Cut[]): string {
+  const ends = (i: number) => `${i === 0 ? s.ends[0] : 'square'} | ${i === parts.length - 1 ? s.ends[1] : 'square'}`;
+  const joins: number[] = [];
+  parts.slice(0, -1).reduce((at, c) => (joins.push(at + c.length), at + c.length), 0);
+  return `${formatMm(s.length)}: ${parts.map((c, i) => `${formatMm(c.length)} (${ends(i)})`).join(' + ')}, join${joins.length > 1 ? 's' : ''} ${joins.map(formatMm).join(' and ')} from the left end`;
 }
 
 function Product({ p, show }: { p: ProductResult; show: 'buy' | 'plan' | 'cuts' }) {
@@ -71,6 +79,14 @@ function Product({ p, show }: { p: ProductResult; show: 'buy' | 'plan' | 'cuts' 
                   </span>
                 ) : null}
               </div>
+              <ul className="barcuts">
+                {bar.cuts.map((c, k) => (
+                  <li key={k}>
+                    {formatMm(c.length)} · {labels.get(c.item) ?? c.item}
+                    {c.part ? ` · part ${c.part.index} of ${c.part.of}` : ''}
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ol>
@@ -92,13 +108,11 @@ function Product({ p, show }: { p: ProductResult; show: 'buy' | 'plan' | 'cuts' 
                 <span>
                   {sides.map((s, i) => {
                     const mine = (cuts.get(s.id) ?? []).sort((a, b) => (a.part?.index ?? 0) - (b.part?.index ?? 0));
-                    const joined = mine.length > 1 ? ` = ${mine.map((c) => c.length).join(' + ')}` : '';
                     return (
                       <span key={s.id} className="side">
-                        {i > 0 ? ', ' : ''}
+                        {i > 0 ? '; ' : ''}
                         {s.side ? `${s.side} ` : ''}
-                        {formatMm(s.length)}
-                        {joined}
+                        {mine.length > 1 ? joinedText(s, mine) : formatMm(s.length)}
                       </span>
                     );
                   })}
