@@ -3,17 +3,17 @@ import { READING_CHAIRS } from '../data/catalog';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import type { RoomDef } from '../data/components';
 import { OFFICE } from '../data/office';
-import { componentDefaults, drawn, sanitizeComponents } from './components';
+import { componentDefaults, sanitizeComponents } from './components';
 
 describe('office components state', () => {
   it('starts every component at its initial state', () => {
-    expect(componentDefaults(OFFICE)['reading-chair']).toEqual({ shown: true, variant: READING_CHAIRS[1].id, options: {} });
+    expect(componentDefaults(OFFICE)['reading-chair']).toEqual({ shown: true, variant: READING_CHAIRS[0].id, options: {} });
   });
 
   it.each(['gone', 'none'])('keeps the switch and falls back to the initial product for %s', (variant) => {
     expect(sanitizeComponents({ 'reading-chair': { shown: false, variant } }, OFFICE)['reading-chair']).toEqual({
       shown: false,
-      variant: READING_CHAIRS[1].id,
+      variant: READING_CHAIRS[0].id,
       options: {},
     });
   });
@@ -22,11 +22,6 @@ describe('office components state', () => {
     const c = sanitizeComponents({ sofa: {}, desk: { shown: 'no' } }, OFFICE) as Record<string, unknown>;
     expect('sofa' in c).toBe(false);
     expect((c.desk as { shown: boolean }).shown).toBe(true);
-  });
-
-  it('draws nothing for a hidden piece', () => {
-    expect(drawn({ shown: false, variant: 'x', options: {} })).toBe('none');
-    expect(drawn({ shown: true, variant: 'x', options: {} })).toBe('x');
   });
 });
 

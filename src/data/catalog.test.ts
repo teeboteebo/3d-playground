@@ -21,13 +21,13 @@ describe('views by room', () => {
 });
 
 describe.each([['PENDANTS', PENDANTS, 'pendant'], ['FLOOR_LAMPS', FLOOR_LAMPS, 'floor']] as const)('%s', (_n, list, kind) => {
-  it('starts with none and has unique ids', () => {
-    expect(list[0].id).toBe('none');
+  it('has no none entry and unique ids', () => {
+    expect(list.some((l) => l.id === 'none')).toBe(false);
     expect(new Set(list.map((l) => l.id)).size).toBe(list.length);
-    expect(list.length).toBeGreaterThanOrEqual(4);
+    expect(list.length).toBeGreaterThanOrEqual(3);
   });
   it('gives every product a kind, vendor, price, https link and shape', () => {
-    for (const l of list.slice(1)) {
+    for (const l of list) {
       expect(l.kind).toBe(kind);
       expect(l.vendor).not.toBe('');
       expect(l.price).not.toBe('');
@@ -41,8 +41,8 @@ it('covers every lamp archetype', () => {
   expect([...types].sort()).toEqual(['arc', 'dome', 'drum', 'globe', 'tripod', 'uplight']);
 });
 it('keeps pendant and floor shapes apart', () => {
-  for (const l of PENDANTS.slice(1)) expect(['globe', 'dome', 'drum']).toContain(l.shape!.type);
-  for (const l of FLOOR_LAMPS.slice(1)) expect(['arc', 'tripod', 'uplight']).toContain(l.shape!.type);
+  for (const l of PENDANTS) expect(['globe', 'dome', 'drum']).toContain(l.shape!.type);
+  for (const l of FLOOR_LAMPS) expect(['arc', 'tripod', 'uplight']).toContain(l.shape!.type);
 });
 it('dates the lamp check', () => {
   expect(LAMPS_CHECKED).toMatch(/^\d{1,2} \w{3} \d{4}$/);
@@ -51,14 +51,13 @@ it('dates the lamp check', () => {
 describe.each([['READING_CHAIRS', READING_CHAIRS], ['DRESSERS', DRESSERS], ['ROUND_RUGS', ROUND_RUGS]] as const)(
   '%s',
   (_n, list) => {
-    it('starts with none and has unique ids', () => {
-      expect(list[0].id).toBe('none');
-      expect(list[0].shape).toBeNull();
+    it('has no none entry and unique ids', () => {
+      expect(list.some((l) => l.id === 'none')).toBe(false);
       expect(new Set(list.map((l) => l.id)).size).toBe(list.length);
-      expect(list.length).toBeGreaterThanOrEqual(4);
+      expect(list.length).toBeGreaterThanOrEqual(3);
     });
     it('gives every product a vendor, price, https link and shape', () => {
-      for (const l of list.slice(1)) {
+      for (const l of list) {
         expect(l.vendor).not.toBe('');
         expect(l.price).not.toBe('');
         expect(l.url).toMatch(/^https:\/\//);
@@ -68,10 +67,10 @@ describe.each([['READING_CHAIRS', READING_CHAIRS], ['DRESSERS', DRESSERS], ['ROU
   },
 );
 it('keeps every dresser narrow enough for the angled wall', () => {
-  for (const d of DRESSERS.slice(1)) expect(d.shape!.w).toBeLessThanOrEqual(1.1);
+  for (const d of DRESSERS) expect(d.shape!.w).toBeLessThanOrEqual(1.1);
 });
 it('keeps every round rug between 1.6 and 2.0 m across', () => {
-  for (const r of ROUND_RUGS.slice(1)) {
+  for (const r of ROUND_RUGS) {
     expect(r.shape!.d).toBeGreaterThanOrEqual(1.6);
     expect(r.shape!.d).toBeLessThanOrEqual(2.0);
   }

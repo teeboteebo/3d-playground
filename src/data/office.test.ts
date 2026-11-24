@@ -42,11 +42,11 @@ describe('the office as components', () => {
   });
 
   it("keeps today's default office", () => {
-    expect(officeDef('ceiling-light').initial).toEqual({ shown: false, variant: PENDANTS[1].id });
-    expect(officeDef('floor-lamp').initial).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id });
-    expect(officeDef('reading-chair').initial).toEqual({ shown: true, variant: READING_CHAIRS[1].id });
-    expect(officeDef('dresser').initial).toEqual({ shown: true, variant: DRESSERS[1].id });
-    expect(officeDef('round-rug').initial).toEqual({ shown: true, variant: ROUND_RUGS[1].id });
+    expect(officeDef('ceiling-light').initial).toEqual({ shown: false, variant: PENDANTS[0].id });
+    expect(officeDef('floor-lamp').initial).toEqual({ shown: false, variant: FLOOR_LAMPS[0].id });
+    expect(officeDef('reading-chair').initial).toEqual({ shown: true, variant: READING_CHAIRS[0].id });
+    expect(officeDef('dresser').initial).toEqual({ shown: true, variant: DRESSERS[0].id });
+    expect(officeDef('round-rug').initial).toEqual({ shown: true, variant: ROUND_RUGS[0].id });
     for (const id of ['cabinets', 'desk', 'drawers', 'desk-chair'] as const) {
       expect(officeDef(id).initial.shown).toBe(true);
       expect(officeDef(id).variants).toHaveLength(1);

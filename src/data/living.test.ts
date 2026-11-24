@@ -33,8 +33,8 @@ describe('the living room as components', () => {
   });
 
   it('starts with the lamps hidden, everything else shown, and the sofa in its own fabric', () => {
-    expect(comp('ceiling-light').initial).toEqual({ shown: false, variant: PENDANTS[1].id });
-    expect(comp('floor-lamp').initial).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id });
+    expect(comp('ceiling-light').initial).toEqual({ shown: false, variant: PENDANTS[0].id });
+    expect(comp('floor-lamp').initial).toEqual({ shown: false, variant: FLOOR_LAMPS[0].id });
     for (const c of LIVING.components.filter((c) => c.category !== 'lighting')) expect(c.initial.shown).toBe(true);
     expect(comp('sofa').initial.options).toEqual({ fabric: 'original' });
     expect(comp('sofa').options).toEqual([{ id: 'fabric', label: 'Fabric', kind: 'fabric', initial: 'original' }]);

@@ -1,8 +1,7 @@
 import { FLOOR_LAMPS, LAMPS_CHECKED, PENDANTS } from './catalog';
-import type { RoomDef, Variant } from './components';
+import type { RoomDef } from './components';
 
 /** a catalog's products, without its "leave it out" entry */
-const real = (items: readonly Variant[]): readonly Variant[] => items.filter((i) => i.id !== 'none');
 
 const lampNote = `A simplified shape. Prices and stock were checked on ${LAMPS_CHECKED} and change often.`;
 
@@ -14,16 +13,16 @@ export const LIVING = {
       name: 'Ceiling light',
       category: 'lighting',
       note: lampNote,
-      variants: real(PENDANTS),
-      initial: { shown: false, variant: PENDANTS[1].id },
+      variants: PENDANTS,
+      initial: { shown: false, variant: PENDANTS[0].id },
     },
     {
       id: 'floor-lamp',
       name: 'Floor lamp',
       category: 'lighting',
       note: lampNote,
-      variants: real(FLOOR_LAMPS),
-      initial: { shown: false, variant: FLOOR_LAMPS[1].id },
+      variants: FLOOR_LAMPS,
+      initial: { shown: false, variant: FLOOR_LAMPS[0].id },
     },
     {
       id: 'sofa',

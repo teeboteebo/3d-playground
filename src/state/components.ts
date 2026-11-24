@@ -40,8 +40,3 @@ export function sanitizeComponents<K extends string>(raw: unknown, room: RoomDef
     }),
   ) as ComponentStates<K>;
 }
-
-/** the product to draw, or 'none' for a hidden piece: the bridge for scene code written around 'none' */
-export function drawn(state: ComponentState): string {
-  return state.shown ? state.variant : 'none';
-}

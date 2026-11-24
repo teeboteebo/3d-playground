@@ -135,7 +135,6 @@ export interface Lamp {
 export const LAMPS_CHECKED = '13 Nov 2026';
 
 export const PENDANTS: Lamp[] = [
-  { id: 'none', kind: 'pendant', name: 'No pendant', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
   { id: 'blasverk', kind: 'pendant', name: 'BLÅSVERK, beige 37 cm', vendor: 'IKEA', price: '299 kr', stock: 'Stock unconfirmed', st: 'un',
     url: 'https://www.ikea.com/se/en/p/blasverk-pendant-lamp-beige-60520903',
     shape: { type: 'drum', d: 0.37, h: 0.18, colour: '#D9CBB0' } },
@@ -151,7 +150,6 @@ export const PENDANTS: Lamp[] = [
 ];
 
 export const FLOOR_LAMPS: Lamp[] = [
-  { id: 'none', kind: 'floor', name: 'No floor lamp', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
   { id: 'up2', kind: 'floor', name: 'EGLO UP 2, nickel and white', vendor: 'Hornbach', price: '722 kr', stock: 'Online, ships in about 3 days', st: 'ok',
     url: 'https://www.hornbach.se/p/golvlampa-eglo-up2-e27-e14/5065355/',
     shape: { type: 'uplight', h: 1.78, bowlD: 0.275, colour: '#EDEDEA' } },
@@ -218,7 +216,6 @@ export interface ShopItem<S> {
 export const CORNER_CHECKED = '14 Nov 2026';
 
 export const READING_CHAIRS: ShopItem<ArmchairShape>[] = [
-  { id: 'none', name: 'No reading chair', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
   { id: 'strandmon', name: 'STRANDMON wing chair, Nordvalla dark grey', vendor: 'IKEA', price: '2 795 kr', stock: 'Stock unconfirmed', st: 'un',
     url: 'https://www.ikea.com/se/en/p/strandmon-wing-chair-nordvalla-dark-grey-20343224/',
     // Leg colour is not listed; dark stained wood is an estimate.
@@ -235,7 +232,6 @@ export const READING_CHAIRS: ShopItem<ArmchairShape>[] = [
 ];
 
 export const DRESSERS: ShopItem<DresserShape>[] = [
-  { id: 'none', name: 'No dresser', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
   { id: 'ankarudden', name: 'ANKARUDDEN, 4 drawers, oak effect', vendor: 'IKEA', price: '1 995 kr', stock: 'Stock unconfirmed', st: 'un',
     url: 'https://www.ikea.com/se/en/p/ankarudden-chest-of-4-drawers-oak-effect-80627149/',
     // The page lists 4 plastic feet but not their height; 0.03 m is an estimate.
@@ -252,7 +248,6 @@ export const DRESSERS: ShopItem<DresserShape>[] = [
 ];
 
 export const ROUND_RUGS: ShopItem<RoundRugShape>[] = [
-  { id: 'none', name: 'No round rug', vendor: '', price: '', stock: '', st: 'un', url: '', shape: null },
   { id: 'jute160', name: 'Natural jute, plain, Ø160', vendor: 'Hornbach', price: '579 kr', stock: 'Not available to order online', st: 'no',
     url: 'https://www.hornbach.se/p/matta-natur-rund-160cm/10447623/',
     shape: { d: 1.6, pattern: 'jute', edge: '#B79A6B' } },

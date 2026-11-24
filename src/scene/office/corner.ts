@@ -8,7 +8,6 @@ import {
   type DresserShape,
   type RoundRugShape,
 } from '../../data/catalog';
-import { drawn } from '../../state/components';
 import type { Settings } from '../../state/settings';
 import { getRoundRugCanvases } from '../canvas';
 import { std } from '../materials';
@@ -200,16 +199,16 @@ export function buildCorner(parent: THREE.Object3D): Corner {
   return {
     apply(s) {
       const c = s.office.components;
-      const chairId = drawn(c['reading-chair']);
-      const chairShape = findById(READING_CHAIRS, chairId).shape;
+      const chairId = c['reading-chair'].variant;
+      const chairShape = c['reading-chair'].shown ? findById(READING_CHAIRS, chairId).shape : null;
       const chair = place('office-reading-chair', 'reading-chair', chairId, chairShape, buildArmchair);
       if (chair && chairShape) {
         const { x, z, facing } = placeReadingChair(chairShape.w, chairShape.d);
         chair.position.set(x, 0, z);
         chair.rotation.y = turn(facing);
       }
-      const dresserId = drawn(c.dresser);
-      const dresserShape = findById(DRESSERS, dresserId).shape;
+      const dresserId = c.dresser.variant;
+      const dresserShape = c.dresser.shown ? findById(DRESSERS, dresserId).shape : null;
       const dresser = place('office-dresser', 'dresser', dresserId, dresserShape, buildDresser);
       if (dresser && dresserShape) {
         const { a, b, gap } = CORNER.dresserWall;
@@ -221,8 +220,8 @@ export function buildCorner(parent: THREE.Object3D): Corner {
         dresser.position.set((a[0] + b[0]) / 2 + nx * off, 0, (a[1] + b[1]) / 2 + nz * off);
         dresser.rotation.y = turn(Math.atan2(nz, nx));
       }
-      const rugId = drawn(c['round-rug']);
-      const rugShape = findById(ROUND_RUGS, rugId).shape;
+      const rugId = c['round-rug'].variant;
+      const rugShape = c['round-rug'].shown ? findById(ROUND_RUGS, rugId).shape : null;
       const rug = place('office-round-rug', 'round-rug', rugId, rugShape, buildRoundRug);
       if (rug && rugShape) {
         const { x, windowZ, gap } = CORNER.rug;

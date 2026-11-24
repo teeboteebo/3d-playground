@@ -12,7 +12,7 @@ describe('round rug patterns', () => {
     const canvases = getRoundRugCanvases();
     // no 2D canvas in this environment (as for the bedroom rugs): nothing to draw
     if (Object.keys(canvases).length === 0) return;
-    for (const r of ROUND_RUGS.slice(1)) {
+    for (const r of ROUND_RUGS) {
       const c = canvases[r.shape!.pattern];
       expect(c, r.id).toBeDefined();
       expect(c.width).toBe(c.height);

@@ -450,17 +450,17 @@ describe.each(['living'] as const)('lighting in the %s', (room) => {
     await renderIn(room);
     goTo('Ceiling light');
     const pendants = screen.getByRole('group', { name: 'Ceiling light' });
-    expect(within(pendants).getAllByRole('button')).toHaveLength(PENDANTS.length - 1);
-    await userEvent.click(within(pendants).getByRole('button', { name: new RegExp(esc(PENDANTS[1].name)) }));
-    expect(lastApplied()[room].components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[1].id, options: {} });
-    expect(stored()[room].components['ceiling-light'].variant).toBe(PENDANTS[1].id);
+    expect(within(pendants).getAllByRole('button')).toHaveLength(PENDANTS.length);
+    await userEvent.click(within(pendants).getByRole('button', { name: new RegExp(esc(PENDANTS[0].name)) }));
+    expect(lastApplied()[room].components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[0].id, options: {} });
+    expect(stored()[room].components['ceiling-light'].variant).toBe(PENDANTS[0].id);
     up('Living room');
-    expect(row('Ceiling light')).toHaveTextContent(PENDANTS[1].name.split(',')[0]);
+    expect(row('Ceiling light')).toHaveTextContent(PENDANTS[0].name.split(',')[0]);
     goTo('Floor lamp');
     const floor = screen.getByRole('group', { name: 'Floor lamp' });
-    await userEvent.click(within(floor).getByRole('button', { name: new RegExp(esc(FLOOR_LAMPS[1].name)) }));
-    expect(lastApplied()[room].components['floor-lamp']).toEqual({ shown: true, variant: FLOOR_LAMPS[1].id, options: {} });
-    expect(lastApplied()[room].components['ceiling-light'].variant).toBe(PENDANTS[1].id);
+    await userEvent.click(within(floor).getByRole('button', { name: new RegExp(esc(FLOOR_LAMPS[0].name)) }));
+    expect(lastApplied()[room].components['floor-lamp']).toEqual({ shown: true, variant: FLOOR_LAMPS[0].id, options: {} });
+    expect(lastApplied()[room].components['ceiling-light'].variant).toBe(PENDANTS[0].id);
   });
   it('starts with the lamps hidden', async () => {
     await renderIn(room);
@@ -561,7 +561,7 @@ describe('office pieces', () => {
     await renderIn('office');
     goTo(name);
     const group = screen.getByRole('group', { name });
-    expect(within(group).getAllByRole('button')).toHaveLength(items.length - 1);
+    expect(within(group).getAllByRole('button')).toHaveLength(items.length);
     await userEvent.click(within(group).getByRole('button', { name: new RegExp(esc(items[2].name)) }));
     expect(lastApplied().office.components[id]).toEqual({ shown: true, variant: items[2].id, options: {} });
     expect(stored().office.components[id]).toEqual({ shown: true, variant: items[2].id, options: {} });
@@ -578,21 +578,21 @@ describe('office pieces', () => {
     expect(row('Reading chair')).toHaveFocus();
   });
   it('shows a hidden piece when a product is picked', async () => {
-    const hidden = { ...DEFAULTS.office.components, 'ceiling-light': { shown: false, variant: PENDANTS[1].id, options: {} } };
+    const hidden = { ...DEFAULTS.office.components, 'ceiling-light': { shown: false, variant: PENDANTS[0].id, options: {} } };
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, room: 'office', office: { components: hidden } }));
     await renderApp();
     goTo('Ceiling light');
-    await userEvent.click(within(screen.getByRole('group', { name: 'Ceiling light' })).getByRole('button', { name: new RegExp(esc(PENDANTS[2].name)) }));
-    expect(lastApplied().office.components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[2].id, options: {} });
+    await userEvent.click(within(screen.getByRole('group', { name: 'Ceiling light' })).getByRole('button', { name: new RegExp(esc(PENDANTS[1].name)) }));
+    expect(lastApplied().office.components['ceiling-light']).toEqual({ shown: true, variant: PENDANTS[1].id, options: {} });
   });
   it('does not pick a product when its shop link is clicked', async () => {
     await renderIn('office');
     goTo('Reading chair');
-    const card = within(screen.getByRole('group', { name: 'Reading chair' })).getByRole('button', { name: new RegExp(esc(READING_CHAIRS[2].name)) });
+    const card = within(screen.getByRole('group', { name: 'Reading chair' })).getByRole('button', { name: new RegExp(esc(READING_CHAIRS[1].name)) });
     const link = within(card).getByRole('link');
     link.addEventListener('click', (e) => e.preventDefault());
     await userEvent.click(link);
-    expect(lastApplied().office.components['reading-chair'].variant).toBe(READING_CHAIRS[1].id);
+    expect(lastApplied().office.components['reading-chair'].variant).toBe(READING_CHAIRS[0].id);
   });
 });
 

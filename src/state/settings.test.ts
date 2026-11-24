@@ -136,17 +136,17 @@ describe('living room moulding settings', () => {
 });
 
 describe('office settings', () => {
-  const P = PENDANTS[1].id, D2 = DRESSERS[2].id;
+  const P = PENDANTS[0].id, D2 = DRESSERS[1].id;
   it('migrates the version 2 office', () => {
     const c = sanitizeSettings({
       version: 2,
       office: { pendant: P, floorLamp: 'none', readingChair: 'none', dresser: D2, roundRug: 'gone' },
     }).office.components;
     expect(c['ceiling-light']).toEqual({ shown: true, variant: P, options: {} });
-    expect(c['floor-lamp']).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id, options: {} });
-    expect(c['reading-chair']).toEqual({ shown: false, variant: READING_CHAIRS[1].id, options: {} });
+    expect(c['floor-lamp']).toEqual({ shown: false, variant: FLOOR_LAMPS[0].id, options: {} });
+    expect(c['reading-chair']).toEqual({ shown: false, variant: READING_CHAIRS[0].id, options: {} });
     expect(c.dresser).toEqual({ shown: true, variant: D2, options: {} });
-    expect(c['round-rug']).toEqual({ shown: true, variant: ROUND_RUGS[1].id, options: {} });
+    expect(c['round-rug']).toEqual({ shown: true, variant: ROUND_RUGS[0].id, options: {} });
   });
   it('migrates a version 1 save to the default office', () => {
     expect(sanitizeSettings({ room: 'living' }).office).toEqual(DEFAULTS.office);
@@ -169,7 +169,7 @@ describe('office settings', () => {
 });
 
 describe('living room components', () => {
-  const P = PENDANTS[1].id;
+  const P = PENDANTS[0].id;
   const F = BEMZ_FABRICS[0].code;
   const living = (l: object, version = 2) => sanitizeSettings({ version, living: l }).living;
   it('defaults the lamps to hidden, the furniture to shown and the sofa to its own fabric', () => {
@@ -201,7 +201,7 @@ describe('living room components', () => {
   it('keeps valid lamp ids and hides unknown ones', () => {
     const c = living({ pendant: P, floorLamp: 'gone' }).components;
     expect(c['ceiling-light']).toMatchObject({ shown: true, variant: P });
-    expect(c['floor-lamp']).toMatchObject({ shown: false, variant: FLOOR_LAMPS[1].id });
+    expect(c['floor-lamp']).toMatchObject({ shown: false, variant: FLOOR_LAMPS[0].id });
   });
   it('keeps a known Bemz fabric code, and the original', () => {
     expect(living({ sofaFabric: F }).components.sofa.options.fabric).toBe(F);
