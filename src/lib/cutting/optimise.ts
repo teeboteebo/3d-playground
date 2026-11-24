@@ -70,6 +70,9 @@ export const better = (a: CutPlan, b: CutPlan): boolean =>
 
 const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 
+/** the most ways to fill one bar that the search keeps, so that a job with many splittable pieces cannot stall it */
+const OPTION_LIMIT = 4000;
+
 /** the most states the search remembers before it starts again (about 100 MB at this size) */
 const MEMO_LIMIT = 250_000;
 
@@ -239,6 +242,8 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
   const chosen: Chosen[] = [];
   const memo = new Map<string, Score>();
   let stopped = false;
+  /** set when a bar had more ways to be filled than the search keeps, so that it is not exhaustive */
+  let capped = false;
   let ticks = 0;
   const tick = () => {
     if ((ticks++ & 1023) === 0) {
@@ -306,6 +311,11 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
           /* parts cut from splittable pieces to fill what is left of the bar: any number, each taking all the room it can,
              in class order so that one set of parts is tried once */
           const walk = (avail: number, from: number, tails: Tail[], extra: number): void => {
+            if (stopped || tick()) return;
+            if (options.length >= OPTION_LIMIT) {
+              capped = true;
+              return;
+            }
             if (tails.length > 0 && (take[j0] >= 1 || tails.some((t) => t.cls === j0))) {
               options.push({ stock: s, take: [...take], fill: used + extra, tails: [...tails] });
             }
@@ -317,6 +327,12 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
                  also one of the even parts the piece could be cut into */
               const fill = Math.min(avail, c.length - c.minPart);
               const sizes = [fill];
+              /* and, for a piece that may be cut in more than two, the largest part that still leaves a rest it could be
+                 cut into j more parts: a rest too short to be split again is a dead end, which filling the room can cause */
+              for (let j = 2; j < c.maxParts; j++) {
+                const keep = c.length - j * c.minPart;
+                if (keep < fill && !sizes.includes(keep)) sizes.push(keep);
+              }
               for (let n = 2; multi && n <= c.maxParts; n++) {
                 const even = Math.ceil(c.length / n);
                 if (even < fill && !sizes.includes(even)) sizes.push(even);
@@ -375,5 +391,5 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
   };
   dfs(0, 0, 0, material0);
 
-  return { ...best, proven: !stopped && splittable <= 1 };
+  return { ...best, proven: !stopped && !capped && splittable <= 1 };
 }

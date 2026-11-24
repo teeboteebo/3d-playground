@@ -107,7 +107,8 @@ A setting, **"Allow joins in panel frames"**, off by default.
   One part then has a mitre at one end and a square cut at the other.
 - Rail segments: *my call* — a segment longer than the longest stock is always split into the fewest pieces it needs.
   With joins on, any rail segment may also be split (once more than it needs) to use up offcuts; with joins off it may
-  not. Every rail piece respects the minimum piece length.
+  not. A rail cut in parts has parts of at least the minimum piece length; a rail segment shorter than that is
+  simply cut whole, since the minimum limits joins, not the length a wall leaves.
 
 ## Other settings
 
@@ -130,8 +131,8 @@ The user chose an **exact** optimiser over a fast heuristic: the list must be th
   product on its own when it is).
 - Each stock length used must fit its pieces plus a kerf per cut. A cut that ends exactly at the end of the stock needs
   no kerf after it.
-- With joins on, a side may be split at any whole-cm point that respects the minimum piece length and the corner
-  clearance; the optimiser is exact over that discrete set. Rail segments longer than the longest stock are split the
+- With joins on, a side may be split at any whole-mm point that respects the minimum piece length and the corner
+  clearance; the optimiser is exact when at most one piece can be split, and otherwise good but not proven. Rail segments longer than the longest stock are split the
   same way.
 - *My call:* the optimiser runs off the main thread (a web worker) so the scene and sliders stay responsive, and the
   list shows a "working it out" state while it runs. If it hasn't proven the optimum within a few seconds, it shows the

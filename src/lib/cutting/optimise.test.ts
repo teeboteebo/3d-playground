@@ -235,6 +235,39 @@ describe('optimise', () => {
       expectValid(p2, two, stock2, 3);
     });
 
+    it('splits a piece in three when that is the only way to use three bars (review finding)', () => {
+      const stocks = [{ length: 950, price: 100 }];
+      const all = [item('a', 690), item('b', 680), item('c', 680), splittable('x', 650, 200, 3)];
+      const plan = optimise(all, stocks, { kerf: 0 });
+      expect(plan.bars).toHaveLength(3);
+      expect(plan.proven).toBe(true);
+      expectValid(plan, all, stocks, 0);
+    });
+
+    it('matches the brute force on 100 cases where the one splittable piece may be cut in three', () => {
+      const rand = rng(990);
+      for (let c = 0; c < 100; c++) {
+        const whole = Array.from({ length: 2 + Math.floor(rand() * 3) }, (_, i) => item(`w${i}`, 600 + Math.floor(rand() * 5) * 50));
+        const all = [...whole, splittable('x', 600 + Math.floor(rand() * 5) * 50, 200, 3)];
+        const stocks: Stock[] = [{ length: 900 + Math.floor(rand() * 3) * 50, price: 100 + Math.floor(rand() * 50) }];
+        const plan = optimise(all, stocks, { kerf: 0 });
+        const brute = bruteForceSplit(all, stocks, 0, 50)!;
+        expect({ cost: plan.cost, total: plan.total, bars: plan.bars.length }, `case ${c}: ${JSON.stringify({ all, stocks })}`).toEqual(brute);
+        expect(plan.proven).toBe(true);
+        expectValid(plan, all, stocks, 0);
+      }
+    });
+
+    it('stops searching soon after its deadline, even with many pieces that may be split (review finding)', () => {
+      const all = Array.from({ length: 40 }, (_, i) => splittable(`f${i}`, 400 + (i % 7) * 100, 200));
+      const stocks = [{ length: 2400, price: 8900 }, { length: 3000, price: 10900 }];
+      const start = Date.now();
+      const plan = optimise(all, stocks, { kerf: 3, deadline: start + 300 });
+      expect(Date.now() - start).toBeLessThan(1000);
+      expect(plan.proven).toBe(false);
+      expectValid(plan, all, stocks, 3);
+    });
+
     it('joins a rail at the length of the bars when that is how it fits (1843 + 1843)', () => {
       const stocks = [{ length: 1843, price: 100 }];
       const plan = optimise([splittable('rail', 3686, 200)], stocks, { kerf: 0 });

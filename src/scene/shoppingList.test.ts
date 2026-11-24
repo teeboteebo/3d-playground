@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { optimise, type CutPlan } from '../lib/cutting/optimise';
+import { solveAll } from '../lib/cutting/solve';
 import { DEFAULTS, applyPatch, type Settings, type SettingsPatch } from '../state/settings';
 import { SHOP_DEFAULTS, type MouldShop } from '../state/mouldShop';
 import { BEDX, W } from './bedroom/dimensions';
@@ -140,6 +141,13 @@ describe('shoppingResult', () => {
     const { result } = run(s);
     const bars = result.products[0].plan.bars.length;
     expect(result.total).toBe(Math.round(bars * 8910) / 100);
+  });
+
+  it('returns soon after its budget on the default bedroom with joins on (review finding)', () => {
+    const req = shoppingRequest('bedroom', settings(shop({ joins: true, minPiece: 20 })));
+    const start = Date.now();
+    solveAll({ id: 1, jobs: req.jobs.map(({ items, stocks }) => ({ items, stocks })), kerf: req.kerf }, () => {}, { budgetMs: 750, throttleMs: 0 });
+    expect(Date.now() - start).toBeLessThan(1500);
   });
 
   it('is proven only when every plan is', () => {
