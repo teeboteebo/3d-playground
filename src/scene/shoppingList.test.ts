@@ -127,6 +127,21 @@ describe('shoppingResult', () => {
     expect(result.total).toBe(p.buy.reduce((t, l) => t + l.price, 0) + 109);
   });
 
+  it('prices a length listed twice at its cheapest price, for buying and for the spare (review finding)', () => {
+    const s = settings(shop({ panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 109 }, { length: 240, price: 89 }] } }));
+    const req = shoppingRequest('bedroom', s);
+    expect(req.jobs[0].stocks).toEqual([{ length: 2400, price: 8900 }]);
+    const [p] = run(s).result.products;
+    expect(p.spare!.unitPrice).toBe(89);
+  });
+
+  it('adds the total up in öre, so that it is exact (review finding)', () => {
+    const s = settings(shop({ panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 89.1 }] }, spare: false }));
+    const { result } = run(s);
+    const bars = result.products[0].plan.bars.length;
+    expect(result.total).toBe(Math.round(bars * 8910) / 100);
+  });
+
   it('is proven only when every plan is', () => {
     const s = settings(shop({ railSeparate: true, rail: { ...SHOP_DEFAULTS.rail, lengths: [{ length: 270, price: 120 }] } }));
     const { req, plans } = run(s);

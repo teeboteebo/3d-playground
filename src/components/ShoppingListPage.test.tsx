@@ -26,6 +26,19 @@ function joined(): ShoppingResult {
 }
 
 describe('ShoppingListPage', () => {
+  it('marks the list as not yet proven the moment it appears, not after 3 seconds (review finding)', () => {
+    const { rerender } = render(<ShoppingListPage state={{ status: 'working', result: real, slow: false }} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/not yet proven cheapest/i);
+    rerender(<ShoppingListPage state={{ status: 'done', result: { ...real, proven: true } }} />);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('shows the total to the öre (review finding)', () => {
+    const odd = { ...real, total: 1117.49 };
+    render(<ShoppingListPage state={{ status: 'done', result: odd }} />);
+    expect(screen.getByTestId('shop-total')).toHaveTextContent('1 117,49 kr');
+  });
+
   it('names every piece of the cut plan in visible text, not only in a tooltip (review finding)', () => {
     render(<ShoppingListPage state={{ status: 'done', result: real }} />);
     const plan = screen.getByRole('heading', { name: 'Cut plan' }).parentElement!;

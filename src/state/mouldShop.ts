@@ -69,20 +69,26 @@ function num(v: unknown): number | undefined {
 const limited = (v: unknown, fallback: number, l: { min: number; max: number }) => clamp(num(v) ?? fallback, l.min, l.max);
 const bool = (v: unknown, fallback: boolean) => (typeof v === 'boolean' ? v : fallback);
 
+/** the lengths with one price each: the cheapest, when a length is listed twice */
+export function cheapestPerLength<T extends { length: number; price: number }>(lengths: readonly T[]): T[] {
+  const byLength = new Map<number, T>();
+  for (const l of lengths) {
+    const had = byLength.get(l.length);
+    if (!had || l.price < had.price) byLength.set(l.length, l);
+  }
+  return [...byLength.values()];
+}
+
 function sanitizeLengths(raw: unknown): StockLength[] {
   if (!Array.isArray(raw)) return [];
-  const seen = new Set<number>();
   const out: StockLength[] = [];
   for (const e of raw) {
     const o = obj(e);
     const length = num(o.length);
     if (length === undefined || length <= 0) continue;
-    const l = clamp(length, SHOP_LIMITS.length.min, SHOP_LIMITS.length.max);
-    if (seen.has(l)) continue;
-    seen.add(l);
-    out.push({ length: l, price: limited(o.price, 0, SHOP_LIMITS.price) });
+    out.push({ length: clamp(length, SHOP_LIMITS.length.min, SHOP_LIMITS.length.max), price: limited(o.price, 0, SHOP_LIMITS.price) });
   }
-  return out.sort((a, b) => a.length - b.length).slice(0, SHOP_LIMITS.lengths);
+  return cheapestPerLength(out).sort((a, b) => a.length - b.length).slice(0, SHOP_LIMITS.lengths);
 }
 
 function sanitizeProduct(raw: unknown, d: MouldProduct): MouldProduct {

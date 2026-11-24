@@ -73,9 +73,6 @@ const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
 /** the most states the search remembers before it starts again (about 100 MB at this size) */
 const MEMO_LIMIT = 250_000;
 
-/** parts are cut on this grid, mm */
-const GRID = 10;
-
 /** pieces of one length, with the same number of parts left to split into, are interchangeable */
 interface Cls {
   length: number;
@@ -107,7 +104,7 @@ interface Tail {
 
 /**
  * The cheapest way to cut `items` from `stocks`: lowest total price, then least length bought, then fewest bars. An
- * item with `maxParts` above 1 may be cut into parts of at least `minPart` (on a 10 mm grid) that go into different
+ * item with `maxParts` above 1 may be cut into parts of at least `minPart` (whole mm) that go into different
  * bars. Starts from a first-fit plan and searches until it has proved nothing is cheaper, or the deadline passes.
  */
 export function optimise(items: readonly CutItem[], stocks: readonly Stock[], opts: OptimiseOptions): CutPlan {
@@ -117,7 +114,7 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
 
   /* a piece that cannot be split is one whose length is all it has; splitting needs room for two parts */
   const norm = (length: number, maxParts: number, minPart: number): Cls => {
-    const q = Math.max(GRID, minPart);
+    const q = Math.max(1, minPart);
     return maxParts >= 2 && length >= 2 * q ? { length, maxParts: Math.min(maxParts, Math.floor(length / q)), minPart: q } : { length, maxParts: 1, minPart: 0 };
   };
   /** the parts a piece is cut into when it must be split: as few as it takes, as even as can be, or null if that fails */
@@ -167,8 +164,9 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
         length: c.length,
         ...(parts.get(c.item)! > 1 ? { part: { index: c.done + 1, of: parts.get(c.item)! } } : {}),
       }));
-      const used = cuts.reduce((t, c) => t + c.length, 0) + kerf * (cuts.length - 1);
-      return { stock: b.stock, cuts, offcut: stocks[b.stock].length - used };
+      /* the cut that frees the offcut takes a kerf too, unless the cuts end exactly at the end of the bar */
+      const left = stocks[b.stock].length - cuts.reduce((t, c) => t + c.length, 0) - kerf * (cuts.length - 1);
+      return { stock: b.stock, cuts, offcut: left > 0 ? Math.max(0, left - kerf) : left };
     });
     out.sort((a, b) => stocks[b.stock].length - stocks[a.stock].length || b.cuts[0].length - a.cuts[0].length);
     return {
@@ -232,6 +230,11 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
   };
   const itemClass = kept.map((k) => classOf(k.c));
   for (const c of itemClass) rem[c]++;
+
+  /* the search is exact when nothing but one piece can be split; with two or more, a bar may hold parts of several, and
+     the room they share has to be divided in ways the search only partly tries, so a plan found is good but not proven */
+  const splittable = kept.filter((k) => k.c.maxParts >= 2).length;
+  const multi = splittable >= 2;
 
   const chosen: Chosen[] = [];
   const memo = new Map<string, Score>();
@@ -310,10 +313,19 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
               if (k < from) continue;
               const c = cls[k];
               if (c.maxParts < 2 || rem[k] - take[k] - tails.filter((t) => t.cls === k).length < 1) continue;
-              const part = Math.min(Math.floor(avail / GRID) * GRID, c.length - c.minPart);
-              if (part < c.minPart || c.length - part > (c.maxParts - 1) * maxLen) continue;
-              const rest = classOf(norm(c.length - part, c.maxParts - 1, c.minPart));
-              walk(avail - part - kerf, k, [...tails, { cls: k, part, rest }], extra + part + kerf);
+              /* a part takes all the room it can; and, since with two or more splittable pieces the room is better shared,
+                 also one of the even parts the piece could be cut into */
+              const fill = Math.min(avail, c.length - c.minPart);
+              const sizes = [fill];
+              for (let n = 2; multi && n <= c.maxParts; n++) {
+                const even = Math.ceil(c.length / n);
+                if (even < fill && !sizes.includes(even)) sizes.push(even);
+              }
+              for (const part of sizes) {
+                if (part < c.minPart || c.length - part > (c.maxParts - 1) * maxLen) continue;
+                const rest = classOf(norm(c.length - part, c.maxParts - 1, c.minPart));
+                walk(avail - part - kerf, k, [...tails, { cls: k, part, rest }], extra + part + kerf);
+              }
             }
           };
           walk(left - kerf, 0, [], 0);
@@ -363,8 +375,5 @@ export function optimise(items: readonly CutItem[], stocks: readonly Stock[], op
   };
   dfs(0, 0, 0, material0);
 
-  /* the search is exact when nothing but one piece can be split; with two or more, a bar may hold parts of several, and
-     the room they share has to be divided in ways the search does not try, so a plan found is good but not proven */
-  const splittable = kept.filter((k) => k.c.maxParts >= 2).length;
   return { ...best, proven: !stopped && splittable <= 1 };
 }

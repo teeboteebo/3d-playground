@@ -1,5 +1,5 @@
 import type { CutItem, CutPlan, Stock } from '../lib/cutting/optimise';
-import type { MouldProduct, MouldShop } from '../state/mouldShop';
+import { cheapestPerLength, type MouldProduct, type MouldShop } from '../state/mouldShop';
 import type { Settings } from '../state/settings';
 import { BEDX } from './bedroom/dimensions';
 import { wallPieces, type Piece } from './mouldPieces';
@@ -31,7 +31,7 @@ const WALLS = { bedroom: BEDROOM_MOULD_WALLS, living: LIVING_MOULD_WALLS } as co
 /** the shortest part a joined frame side may have, mm, whatever the setting says */
 const MIN_FRAME_PART = 100;
 
-const stocksOf = (p: MouldProduct): Stock[] => p.lengths.map((l) => ({ length: Math.round(l.length * 10), price: Math.round(l.price * 100) }));
+const stocksOf = (p: MouldProduct): Stock[] => cheapestPerLength(p.lengths).map((l) => ({ length: Math.round(l.length * 10), price: Math.round(l.price * 100) }));
 
 /** The pieces a room's moulding is cut into, from the walls that are on, grouped into the products to buy. */
 export function shoppingRequest(room: MouldRoomId, settings: Settings): ShoppingRequest {
@@ -133,6 +133,8 @@ export function shoppingResult(req: ShoppingRequest, plans: readonly CutPlan[], 
       unfit: job.pieces.filter((p) => plan.unfit.includes(p.id)),
     };
   });
-  const total = products.reduce((t, p) => t + p.buy.reduce((s, l) => s + l.price, 0) + (p.spare?.price ?? 0), 0);
+  /* summed in öre, so that the kr add up exactly */
+  const ore = products.reduce((t, p) => t + p.buy.reduce((s, l) => s + Math.round(l.price * 100), 0) + Math.round((p.spare?.price ?? 0) * 100), 0);
+  const total = ore / 100;
   return { products, total, proven: plans.every((p) => p.proven) };
 }

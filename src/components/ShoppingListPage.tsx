@@ -159,7 +159,7 @@ export function ShoppingListPage({ state }: { state: ShoppingState }) {
   const unfit = result.products.flatMap((p) => p.unfit);
   return (
     <section data-testid="shopping-list">
-      {checking && state.slow ? (
+      {checking ? (
         <p className="acc-note" role="status">
           Not yet proven cheapest, still checking.
         </p>

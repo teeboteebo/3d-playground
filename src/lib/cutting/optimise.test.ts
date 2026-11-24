@@ -37,7 +37,8 @@ function expectValid(plan: CutPlan, all: CutItem[], stocks: Stock[], kerf: numbe
   for (const b of plan.bars) {
     const used = b.cuts.reduce((t, c) => t + c.length, 0) + kerf * (b.cuts.length - 1);
     expect(used).toBeLessThanOrEqual(stocks[b.stock].length);
-    expect(b.offcut).toBe(stocks[b.stock].length - used);
+    const left = stocks[b.stock].length - used;
+    expect(b.offcut).toBe(left > 0 ? Math.max(0, left - kerf) : left);
   }
   expect(plan.cost).toBe(plan.bars.reduce((t, b) => t + stocks[b.stock].price, 0));
   expect(plan.total).toBe(plan.bars.reduce((t, b) => t + stocks[b.stock].length, 0));
@@ -188,6 +189,15 @@ describe('optimise', () => {
       expectValid(plan, all, stocks, 0);
     });
 
+    it('shares the room between two splittable rails: two 436 bars, not a 520 and a 436 (review finding)', () => {
+      const stocks = [{ length: 4360, price: 7000 }, { length: 5200, price: 10000 }];
+      const rails = [splittable('sofa', 5000, 1000), splittable('tv', 3686, 1000)];
+      const plan = optimise(rails, stocks, { kerf: 3 });
+      expect(plan.cost).toBe(14000);
+      expect(plan.proven).toBe(false);
+      expectValid(plan, rails, stocks, 3);
+    });
+
     it('matches the brute force on 150 mixed cases of splittable and whole pieces', () => {
       const rand = rng(424242);
       for (let c = 0; c < 150; c++) {
@@ -209,6 +219,34 @@ describe('optimise', () => {
         const plan = optimise(all, stocks, { kerf: 0 });
         expectAgainstBrute(plan, all, stocks, `case ${c}: ${JSON.stringify({ all, stocks })}`);
       }
+    });
+
+    it('finds a join that is not on a whole centimetre when that is the cheapest way (review finding)', () => {
+      const stocks = [{ length: 2200, price: 1200 }, { length: 2400, price: 8900 }];
+      const all = [item('a', 2093), item('b', 1790), item('c', 1368), splittable('d', 1234, 100)];
+      const plan = optimise(all, stocks, { kerf: 2 });
+      expect(plan.cost).toBe(3600);
+      expect(plan.proven).toBe(true);
+      expectValid(plan, all, stocks, 2);
+      const stock2 = [{ length: 2200, price: 100 }];
+      const two = [splittable('a', 2001, 100), item('b', 1203), item('c', 1123)];
+      const p2 = optimise(two, stock2, { kerf: 3 });
+      expect(p2.bars).toHaveLength(2);
+      expectValid(p2, two, stock2, 3);
+    });
+
+    it('joins a rail at the length of the bars when that is how it fits (1843 + 1843)', () => {
+      const stocks = [{ length: 1843, price: 100 }];
+      const plan = optimise([splittable('rail', 3686, 200)], stocks, { kerf: 0 });
+      expect(plan.bars.map((b) => b.cuts.map((c) => c.length))).toEqual([[1843], [1843]]);
+      expect(plan.proven).toBe(true);
+    });
+
+    it('measures the offcut after the cut that frees it, and not at all for an exact fit (review finding)', () => {
+      const stocks = [{ length: 4000, price: 100 }];
+      expect(optimise([item('rail', 3686)], stocks, { kerf: 3 }).bars[0].offcut).toBe(311);
+      expect(optimise([item('a', 2000), item('b', 1997)], stocks, { kerf: 3 }).bars[0].offcut).toBe(0);
+      expect(optimise([item('a', 3999)], stocks, { kerf: 3 }).bars[0].offcut).toBe(0);
     });
 
     it('uses offcuts: 2500 + 2500 + 1000 takes 2 bars when pieces may be joined, 3 when they may not', () => {

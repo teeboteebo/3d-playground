@@ -41,9 +41,11 @@ describe('sanitizeShop', () => {
     expect(s.panel.lengths.map((l) => l.price)).toEqual([0, 0, 0]);
   });
 
-  it('keeps the first of duplicate lengths, caps the list at 10 and sorts it ascending', () => {
+  it('keeps the cheapest of duplicate lengths, caps the list at 10 and sorts it ascending', () => {
     const dup = sanitizeShop({ panel: { lengths: [{ length: 300, price: 1 }, { length: 240, price: 2 }, { length: 300, price: 9 }] } });
     expect(dup.panel.lengths).toEqual([{ length: 240, price: 2 }, { length: 300, price: 1 }]);
+    const cheaper = sanitizeShop({ panel: { lengths: [{ length: 240, price: 109 }, { length: 240, price: 89 }] } });
+    expect(cheaper.panel.lengths).toEqual([{ length: 240, price: 89 }]);
     const many = sanitizeShop({ panel: { lengths: Array.from({ length: 14 }, (_, i) => ({ length: 20 + i * 10, price: i })) } });
     expect(many.panel.lengths).toHaveLength(SHOP_LIMITS.lengths);
   });
