@@ -128,4 +128,31 @@ describe('useShoppingList', () => {
     act(() => FakeWorker.all[0].onmessage!({ data: { id: 1, plans: plansA, done: true } }));
     expect(result.current).toMatchObject({ status: 'working', result: null });
   });
+
+  it('falls back to the first-fit list, marked not proven, when the worker fails (review finding)', () => {
+    class FakeWorker {
+      static all: FakeWorker[] = [];
+      onmessage: ((e: { data: unknown }) => void) | null = null;
+      onerror: (() => void) | null = null;
+      onmessageerror: (() => void) | null = null;
+      terminated = false;
+      constructor() {
+        FakeWorker.all.push(this);
+      }
+      postMessage() {}
+      terminate() {
+        this.terminated = true;
+      }
+    }
+    vi.stubGlobal('Worker', FakeWorker);
+    const { result } = renderHook(() => useShoppingList('bedroom', settings()));
+    act(() => void vi.advanceTimersByTime(150));
+    expect(result.current).toMatchObject({ status: 'working', result: null });
+    act(() => FakeWorker.all[0].onerror!());
+    expect(FakeWorker.all[0].terminated).toBe(true);
+    expect(result.current.status).toBe('done');
+    const r = (result.current as { result: { total: number; proven: boolean } }).result;
+    expect(r.total).toBeGreaterThan(0);
+    expect(r.proven).toBe(false);
+  });
 });

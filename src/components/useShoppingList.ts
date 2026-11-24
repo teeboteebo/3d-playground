@@ -47,6 +47,13 @@ export function useShoppingList(room: MouldRoomId, settings: Settings): Shopping
       }
       worker = new Worker(new URL('../lib/cutting/worker.ts', import.meta.url), { type: 'module' });
       worker.onmessage = (e: MessageEvent<SolveReply>) => apply(e.data);
+      /* a worker that cannot load, throws or is killed leaves the page with the quick first-fit list, not unproven */
+      const failed = () => {
+        worker?.terminate();
+        solveAll(payload, apply, { budgetMs: -1, throttleMs: 0 });
+      };
+      worker.onerror = failed;
+      worker.onmessageerror = failed;
       worker.postMessage(payload);
     }, WAIT_MS);
     const slow = setTimeout(() => {
