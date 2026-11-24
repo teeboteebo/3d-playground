@@ -36,7 +36,7 @@ export function LivingPanel({ settings, update, exit, menu }: Props) {
         summary: fabric ? `Bemz ${fabric.family}, ${fabric.colour}` : 'Original fabric',
         swatch: fabric?.hex,
         reset: resetFields(settings, update, 'living', ['sofaFabric']),
-        content: <SofaFabricSection settings={settings} update={update} />,
+        content: <SofaFabricSection value={sofaFabric} onChange={(code) => update({ living: { sofaFabric: code } })} />,
       }),
       roomRow('furniture', {
         summary: shown === FURNITURE.length ? 'All shown' : `${shown} of ${FURNITURE.length} shown`,

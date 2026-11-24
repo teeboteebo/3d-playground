@@ -17,7 +17,7 @@ const settings = (o: Pieces): Settings => {
   const components = { ...DEFAULTS.office.components };
   for (const [key, id] of Object.entries(IDS) as [keyof Pieces, (typeof IDS)[keyof Pieces]][]) {
     const v = o[key];
-    components[id] = v === undefined || v === 'none' ? { ...components[id], shown: false } : { shown: true, variant: v };
+    components[id] = v === undefined || v === 'none' ? { ...components[id], shown: false } : { shown: true, variant: v, options: {} };
   }
   return { ...DEFAULTS, office: { components } };
 };

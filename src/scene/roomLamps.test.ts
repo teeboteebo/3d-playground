@@ -18,8 +18,8 @@ const withLamps = (over: Partial<Settings>): Settings => ({
 const office = (pendant: string, floorLamp: string): Settings['office'] => ({
   components: {
     ...DEFAULTS.office.components,
-    pendant: { shown: pendant !== 'none', variant: pendant === 'none' ? P : pendant },
-    'floor-lamp': { shown: floorLamp !== 'none', variant: floorLamp === 'none' ? F : floorLamp },
+    pendant: { shown: pendant !== 'none', variant: pendant === 'none' ? P : pendant, options: {} },
+    'floor-lamp': { shown: floorLamp !== 'none', variant: floorLamp === 'none' ? F : floorLamp, options: {} },
   },
 });
 const names = (g: THREE.Object3D) => g.children.map((c) => c.name).sort();

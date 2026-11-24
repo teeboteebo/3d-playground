@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DRESSERS, FLOOR_LAMPS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from './catalog';
+import type { ComponentDef } from './components';
 import { OFFICE, officeDef } from './office';
 
 describe('the office as components', () => {
@@ -15,16 +16,21 @@ describe('the office as components', () => {
       { id: 'corner', name: 'Reading corner' },
     ]);
     for (const id of ['desk', 'drawers', 'desk-chair'] as const) expect(officeDef(id).group).toBe('workspace');
-    for (const id of ['reading-chair', 'dresser', 'round-rug'] as const) expect(officeDef(id).group).toBe('corner');
+    for (const id of ['reading-chair', 'dresser'] as const) expect(officeDef(id).group).toBe('corner');
     expect(officeDef('cabinets').group).toBeUndefined();
     for (const c of OFFICE.components) {
-      expect(c.category).toBe(c.id === 'pendant' || c.id === 'floor-lamp' ? 'lighting' : 'furniture');
+      expect(c.category).toBe(c.id === 'pendant' || c.id === 'floor-lamp' ? 'lighting' : c.id === 'round-rug' ? 'decor' : 'furniture');
     }
+  });
+
+  it('keeps the round rug out of every group, as decor', () => {
+    expect(officeDef('round-rug').category).toBe('decor');
+    expect(officeDef('round-rug').group).toBeUndefined();
   });
 
   it('puts every component in a declared group, or none', () => {
     const ids = (OFFICE.groups ?? []).map((g) => g.id);
-    for (const c of OFFICE.components) if (c.group !== undefined) expect(ids).toContain(c.group);
+    for (const c of OFFICE.components as readonly ComponentDef[]) if (c.group !== undefined) expect(ids).toContain(c.group);
   });
 
   it('starts each piece on a variant it has', () => {

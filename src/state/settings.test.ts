@@ -137,11 +137,11 @@ describe('office settings', () => {
       version: 2,
       office: { pendant: P, floorLamp: 'none', readingChair: 'none', dresser: D2, roundRug: 'gone' },
     }).office.components;
-    expect(c.pendant).toEqual({ shown: true, variant: P });
-    expect(c['floor-lamp']).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id });
-    expect(c['reading-chair']).toEqual({ shown: false, variant: READING_CHAIRS[1].id });
-    expect(c.dresser).toEqual({ shown: true, variant: D2 });
-    expect(c['round-rug']).toEqual({ shown: true, variant: ROUND_RUGS[1].id });
+    expect(c.pendant).toEqual({ shown: true, variant: P, options: {} });
+    expect(c['floor-lamp']).toEqual({ shown: false, variant: FLOOR_LAMPS[1].id, options: {} });
+    expect(c['reading-chair']).toEqual({ shown: false, variant: READING_CHAIRS[1].id, options: {} });
+    expect(c.dresser).toEqual({ shown: true, variant: D2, options: {} });
+    expect(c['round-rug']).toEqual({ shown: true, variant: ROUND_RUGS[1].id, options: {} });
   });
   it('migrates a version 1 save to the default office', () => {
     expect(sanitizeSettings({ room: 'living' }).office).toEqual(DEFAULTS.office);

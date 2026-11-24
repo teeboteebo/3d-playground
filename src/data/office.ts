@@ -8,6 +8,7 @@ import {
   ROUND_RUGS,
 } from './catalog';
 import type { ComponentDef, RoomDef, Variant } from './components';
+import type { ComponentId } from './roomDefs';
 
 /** a catalog's products, without its "leave it out" entry */
 const real = (items: readonly Variant[]): readonly Variant[] => items.filter((i) => i.id !== 'none');
@@ -17,7 +18,7 @@ const lampNote = `A simplified shape. Prices and stock were checked on ${LAMPS_C
 
 const fixed = (id: string, name: string): readonly Variant[] => [{ id, name }];
 
-export const OFFICE: RoomDef = {
+export const OFFICE = {
   id: 'office',
   groups: [
     { id: 'workspace', name: 'Workspace' },
@@ -80,8 +81,7 @@ export const OFFICE: RoomDef = {
     {
       id: 'round-rug',
       name: 'Round rug',
-      category: 'furniture',
-      group: 'corner',
+      category: 'decor',
       note: cornerNote,
       variants: real(ROUND_RUGS),
       initial: { shown: true, variant: ROUND_RUGS[1].id },
@@ -103,18 +103,9 @@ export const OFFICE: RoomDef = {
       initial: { shown: false, variant: FLOOR_LAMPS[1].id },
     },
   ],
-};
+} as const satisfies RoomDef;
 
-export type OfficeComponentId =
-  | 'cabinets'
-  | 'desk'
-  | 'drawers'
-  | 'desk-chair'
-  | 'reading-chair'
-  | 'dresser'
-  | 'round-rug'
-  | 'pendant'
-  | 'floor-lamp';
+export type OfficeComponentId = ComponentId<'office'>;
 
 export const officeDef = (id: OfficeComponentId): ComponentDef => {
   const def = OFFICE.components.find((c) => c.id === id);

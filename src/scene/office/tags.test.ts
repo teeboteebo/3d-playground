@@ -9,7 +9,7 @@ import { buildOffice } from './index';
 describe('the office scene tags', () => {
   it('open exactly the office components', () => {
     const components = { ...DEFAULTS.office.components };
-    for (const c of OFFICE.components) components[c.id as OfficeComponentId] = { shown: true, variant: c.initial.variant };
+    for (const c of OFFICE.components) components[c.id as OfficeComponentId] = { shown: true, variant: c.initial.variant, options: {} };
     const s: Settings = { ...DEFAULTS, office: { components } };
     const g = new THREE.Group();
     buildOffice(g).apply(s);

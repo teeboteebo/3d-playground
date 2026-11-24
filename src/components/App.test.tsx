@@ -478,7 +478,7 @@ describe('showing and hiding the office pieces together', () => {
     await renderIn('office');
     goTo('Show or hide pieces');
     expect(within(screen.getByRole('group', { name: 'Reading corner' })).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([
-      'Reading chair', 'Dresser', 'Round rug',
+      'Reading chair', 'Dresser',
     ]);
     expect(screen.getByRole('heading', { level: 3, name: 'Workspace' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('switch', { name: 'Dresser' }));
@@ -531,8 +531,8 @@ describe('office pieces', () => {
     const group = screen.getByRole('group', { name });
     expect(within(group).getAllByRole('button')).toHaveLength(items.length - 1);
     await userEvent.click(within(group).getByRole('button', { name: new RegExp(esc(items[2].name)) }));
-    expect(lastApplied().office.components[id]).toEqual({ shown: true, variant: items[2].id });
-    expect(stored().office.components[id]).toEqual({ shown: true, variant: items[2].id });
+    expect(lastApplied().office.components[id]).toEqual({ shown: true, variant: items[2].id, options: {} });
+    expect(stored().office.components[id]).toEqual({ shown: true, variant: items[2].id, options: {} });
   });
   it('hides a piece and says so on its row', async () => {
     await renderIn('office');
@@ -546,12 +546,12 @@ describe('office pieces', () => {
     expect(row('Reading chair')).toHaveFocus();
   });
   it('shows a hidden piece when a product is picked', async () => {
-    const hidden = { ...DEFAULTS.office.components, pendant: { shown: false, variant: PENDANTS[1].id } };
+    const hidden = { ...DEFAULTS.office.components, pendant: { shown: false, variant: PENDANTS[1].id, options: {} } };
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULTS, room: 'office', office: { components: hidden } }));
     await renderApp();
     goTo('Ceiling pendant');
     await userEvent.click(within(screen.getByRole('group', { name: 'Ceiling pendant' })).getByRole('button', { name: new RegExp(esc(PENDANTS[2].name)) }));
-    expect(lastApplied().office.components.pendant).toEqual({ shown: true, variant: PENDANTS[2].id });
+    expect(lastApplied().office.components.pendant).toEqual({ shown: true, variant: PENDANTS[2].id, options: {} });
   });
   it('does not pick a product when its shop link is clicked', async () => {
     await renderIn('office');
@@ -660,10 +660,10 @@ describe('room menu', () => {
     unmount();
     const office = await renderIn('office');
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Show or hide pieces', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug', 'Ceiling pendant', 'Floor lamp',
+      'Wall colour', 'Show or hide pieces', 'Ceiling pendant', 'Floor lamp', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug',
       'About the room',
     ]);
-    for (const name of ['Room', 'Furniture', 'Lighting']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
+    for (const name of ['Room', 'Lighting', 'Furniture', 'Textiles and decor']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
     for (const name of ['Workspace', 'Reading corner']) expect(screen.getByRole('heading', { level: 3, name })).toBeVisible();
     office.unmount();
     await renderIn('hall');
