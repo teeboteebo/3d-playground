@@ -10,8 +10,6 @@ import {
 import type { ComponentDef, RoomDef, Variant } from './components';
 import type { ComponentId } from './roomDefs';
 
-/** a catalog's products, without its "leave it out" entry */
-
 const cornerNote = `A simplified shape. Prices and stock were checked on ${CORNER_CHECKED} and change often.`;
 const lampNote = `A simplified shape. Prices and stock were checked on ${LAMPS_CHECKED} and change often.`;
 

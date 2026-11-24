@@ -56,7 +56,7 @@ export function componentTopic(
     id: def.id,
     title: def.name,
     summary,
-    swatch: optionText?.swatch,
+    swatch: state.shown ? optionText?.swatch : undefined,
     content: (
       <>
         <div className="piece-show">

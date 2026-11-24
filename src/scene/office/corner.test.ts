@@ -185,7 +185,7 @@ describe('buildCorner', () => {
     expect(g.children.filter((c) => c.name === 'office-reading-chair')).toHaveLength(1);
   });
 
-  it('shows nothing for none', () => {
+  it('shows nothing for a hidden piece', () => {
     const g = new THREE.Group();
     const corner = buildCorner(g);
     corner.apply(settings({ readingChair: READING_CHAIRS[0].id, dresser: DRESSERS[0].id, roundRug: ROUND_RUGS[0].id }));

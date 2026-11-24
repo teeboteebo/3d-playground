@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Menu, type MenuNav, type Topic } from './Menu';
 
 const topic = (id: string, title: string): Topic => ({ id, title, summary: `${id} summary`, content: <p>{id} page</p> });
-const walls = topic('walls', 'Walls');
+const walls = topic('walls', 'Room');
 const cabinets = topic('cabinets', 'Cabinets');
 const chair = topic('chair', 'Reading chair');
 const root: Topic = {

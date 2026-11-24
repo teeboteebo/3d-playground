@@ -664,6 +664,17 @@ describe('sofa fabric', () => {
     expect(row('Sofa').querySelector<HTMLElement>('.swatch, [style]')?.getAttribute('style') ?? '').toMatch(/background/);
   });
 
+  it('drops the sofa swatch from its row while the sofa is hidden', async () => {
+    const user = userEvent.setup();
+    await renderIn('living');
+    goTo('Sofa');
+    await user.click(within(grid()).getByRole('button', { name: `${f.family}, ${f.colour}` }));
+    await user.click(screen.getByRole('switch', { name: 'Show in room' }));
+    up('Living room');
+    expect(row('Sofa')).toHaveTextContent('Hidden');
+    expect(row('Sofa').querySelector('i')).toBeNull();
+  });
+
   it("puts the sofa's fabric back to the original with the page's Reset", async () => {
     const user = userEvent.setup();
     await renderIn('living');

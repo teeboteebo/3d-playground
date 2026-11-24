@@ -1,8 +1,6 @@
 import { FLOOR_LAMPS, LAMPS_CHECKED, PENDANTS } from './catalog';
 import type { RoomDef } from './components';
 
-/** a catalog's products, without its "leave it out" entry */
-
 const lampNote = `A simplified shape. Prices and stock were checked on ${LAMPS_CHECKED} and change often.`;
 
 export const LIVING = {
