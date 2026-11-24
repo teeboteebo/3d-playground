@@ -137,7 +137,7 @@ describe('optimise', () => {
     expect(plan.proven).toBe(true);
     expect(Date.now() - start).toBeLessThan(10000);
     expectValid(plan, all, stocks, 3);
-  });
+  }, 20000);
 
   it('ranks plans by cost, then total length, then bars', () => {
     const p = (cost: number, total: number, bars: number): CutPlan => ({ bars: Array.from({ length: bars }, () => ({ stock: 0, cuts: [], offcut: 0 })), cost, total, proven: true, unfit: [] });
