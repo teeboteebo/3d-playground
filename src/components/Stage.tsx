@@ -66,7 +66,7 @@ export function Stage({ settings, update, onOption }: Props) {
             if (current !== 'all' && next === current) {
               const path = option?.room === current ? option.path : [];
               onOptionRef.current(path);
-              say(path.length ? `Opened ${optionLabel(path)}` : `${roomById(current).name} options`);
+              say(path.length ? `Opened ${optionLabel(current, path)}` : `${roomById(current).name} options`);
               return;
             }
             if (next === current) return;
@@ -79,7 +79,7 @@ export function Stage({ settings, update, onOption }: Props) {
             if (!label) return;
             label.hidden = !hover;
             if (!hover) return;
-            label.textContent = hover.option ? optionLabel(hover.option.path) : roomById(hover.room).name;
+            label.textContent = hover.option ? optionLabel(hover.option.room, hover.option.path) : roomById(hover.room).name;
             label.style.transform = `translate(${Math.round(hover.x + 14)}px, ${Math.round(hover.y + 16)}px)`;
           },
           () => {

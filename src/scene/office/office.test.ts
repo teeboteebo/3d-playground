@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PAINTS, findById } from '../../data/catalog';
 import { DEFAULTS } from '../../state/settings';
 import { lin } from '../materials';
+import { optionOf } from '../options';
 import { buildOffice } from './index';
 
 const build = () => {
@@ -87,5 +88,23 @@ describe('buildOffice', () => {
     /* the drawer fronts stand proud of the body on its −x face */
     expect(drawers.min.x).toBeLessThan(11.84 - 0.47);
     expect(desk.max.x).toBeCloseTo(11.84, 2);
+  });
+  it('tags each fixed piece with its own page', () => {
+    const { g } = build();
+    const path = (n: string) => optionOf(g.getObjectByName(n)!)!.path;
+    expect(path('office-cabinets')).toEqual(['cabinets']);
+    expect(path('office-desk')).toEqual(['desk']);
+    expect(path('office-drawers')).toEqual(['drawers']);
+    expect(path('office-chair')).toEqual(['desk-chair']);
+  });
+  it('hides only the piece that is switched off', () => {
+    const { g, office } = build();
+    const names = ['office-cabinets', 'office-desk', 'office-drawers', 'office-chair'];
+    const vis = () => names.map((n) => g.getObjectByName(n)!.visible);
+    const comps = DEFAULTS.office.components;
+    office.apply({ ...DEFAULTS, office: { components: { ...comps, desk: { ...comps.desk, shown: false } } } });
+    expect(vis()).toEqual([true, false, true, true]);
+    office.apply(DEFAULTS);
+    expect(vis()).toEqual([true, true, true, true]);
   });
 });

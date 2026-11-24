@@ -8,11 +8,13 @@ import {
   type DresserShape,
   type RoundRugShape,
 } from '../../data/catalog';
+import { drawn } from '../../state/components';
 import type { Settings } from '../../state/settings';
 import { getRoundRugCanvases } from '../canvas';
 import { std } from '../materials';
 import { canvasTexture } from '../textures';
 import { CORNER, LIFT, placeReadingChair } from './dimensions';
+import type { OfficeComponentId } from '../../data/office';
 import { tagOption } from '../options';
 
 export interface Corner {
@@ -178,9 +180,8 @@ export function buildCorner(parent: THREE.Object3D): Corner {
   }
 
   /** the menu row each piece opens */
-  const ROW_OF: Record<string, string> = { 'office-reading-chair': 'chair', 'office-dresser': 'dresser', 'office-round-rug': 'rug' };
   /** the piece called `name` for `id`, built if it changed; null (and none in the scene) for no shape */
-  function place<S>(name: string, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
+  function place<S>(name: string, path: OfficeComponentId, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
     if (!shape) {
       remove(name);
       return null;
@@ -190,7 +191,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
     remove(name);
     const piece = build(shape);
     piece.group.name = name;
-    tagOption([piece.group], 'office', [ROW_OF[name] ?? 'about']);
+    tagOption([piece.group], 'office', [path]);
     parent.add(piece.group);
     placed.set(name, { id, piece });
     return piece.group;
@@ -198,15 +199,18 @@ export function buildCorner(parent: THREE.Object3D): Corner {
 
   return {
     apply(s) {
-      const chairShape = findById(READING_CHAIRS, s.office.readingChair).shape;
-      const chair = place('office-reading-chair', s.office.readingChair, chairShape, buildArmchair);
+      const c = s.office.components;
+      const chairId = drawn(c['reading-chair']);
+      const chairShape = findById(READING_CHAIRS, chairId).shape;
+      const chair = place('office-reading-chair', 'reading-chair', chairId, chairShape, buildArmchair);
       if (chair && chairShape) {
         const { x, z, facing } = placeReadingChair(chairShape.w, chairShape.d);
         chair.position.set(x, 0, z);
         chair.rotation.y = turn(facing);
       }
-      const dresserShape = findById(DRESSERS, s.office.dresser).shape;
-      const dresser = place('office-dresser', s.office.dresser, dresserShape, buildDresser);
+      const dresserId = drawn(c.dresser);
+      const dresserShape = findById(DRESSERS, dresserId).shape;
+      const dresser = place('office-dresser', 'dresser', dresserId, dresserShape, buildDresser);
       if (dresser && dresserShape) {
         const { a, b, gap } = CORNER.dresserWall;
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -217,8 +221,9 @@ export function buildCorner(parent: THREE.Object3D): Corner {
         dresser.position.set((a[0] + b[0]) / 2 + nx * off, 0, (a[1] + b[1]) / 2 + nz * off);
         dresser.rotation.y = turn(Math.atan2(nz, nx));
       }
-      const rugShape = findById(ROUND_RUGS, s.office.roundRug).shape;
-      const rug = place('office-round-rug', s.office.roundRug, rugShape, buildRoundRug);
+      const rugId = drawn(c['round-rug']);
+      const rugShape = findById(ROUND_RUGS, rugId).shape;
+      const rug = place('office-round-rug', 'round-rug', rugId, rugShape, buildRoundRug);
       if (rug && rugShape) {
         const { x, windowZ, gap } = CORNER.rug;
         rug.position.set(x, 0, windowZ - gap - rugShape.d / 2);

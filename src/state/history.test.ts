@@ -8,6 +8,17 @@ describe('history', () => {
   it('names the fields a patch changes, room fields by room', () => {
     expect(patchKey({ walls: DEFAULTS.walls })).toBe('walls');
     expect(patchKey({ living: { mouldSpacing: 9, mouldDado: 80 } })).toBe('living.mouldDado,living.mouldSpacing');
+    expect(patchKey({ office: { components: { desk: { shown: false } } } })).toBe('office.components.desk.shown');
+  });
+
+  it('keeps quick changes to two different office pieces as two steps', () => {
+    let h = startHistory(DEFAULTS);
+    h = change(h, { office: { components: { desk: { shown: false } } } }, 0);
+    h = change(h, { office: { components: { dresser: { shown: false } } } }, 10);
+    expect(h.past).toHaveLength(2);
+    h = undo(h);
+    expect(h.present.office.components.desk.shown).toBe(false);
+    expect(h.present.office.components.dresser.shown).toBe(true);
   });
 
   it('undoes and redoes a design change', () => {

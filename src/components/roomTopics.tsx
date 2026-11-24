@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
-import { DRESSERS, FLOOR_LAMPS, PAINTS, PENDANTS, READING_CHAIRS, ROUND_RUGS, findById } from '../data/catalog';
+import { FLOOR_LAMPS, PAINTS, PENDANTS, findById } from '../data/catalog';
 import type { RoomId } from '../data/rooms';
 import { equal } from '../lib/equal';
 import { DEFAULTS, type Settings, type SettingsPatch } from '../state/settings';
 import type { Update } from '../state/useSettings';
-import { CornerPieceSection } from './CornerPieceSection';
 import { FinishSection } from './FinishSection';
 import { LampSection } from './LampSection';
 import type { Topic } from './Menu';
@@ -45,8 +44,8 @@ export function wallsTopic(room: RoomId, settings: Settings, update: Update): To
   });
 }
 
-/** a room's ceiling pendant and floor lamp, each a row of its own */
-export function lampTopics(room: 'living' | 'office', settings: Settings, update: Update): Topic[] {
+/** the living room's ceiling pendant and floor lamp, each a row of its own (the office's lamps are components) */
+export function lampTopics(room: 'living', settings: Settings, update: Update): Topic[] {
   const { pendant, floorLamp } = settings[room];
   return [
     roomRow('ceiling', {
@@ -58,32 +57,6 @@ export function lampTopics(room: 'living' | 'office', settings: Settings, update
       summary: floorLamp === 'none' ? 'None' : findById(FLOOR_LAMPS, floorLamp).name,
       content: <LampSection room={room} kind="floorLamp" settings={settings} update={update} />,
       reset: resetFields(settings, update, room, ['floorLamp']),
-    }),
-  ];
-}
-
-/** the first part of a product name, before its colour or finish */
-const short = (name: string) => name.split(',')[0];
-
-/** the office's reading chair, dresser and round rug, each a row of its own */
-export function officePieceTopics(settings: Settings, update: Update): Topic[] {
-  const { readingChair, dresser, roundRug } = settings.office;
-  const name = (list: readonly { id: string; name: string }[], id: string) => (id === 'none' ? 'None' : short(findById(list, id).name));
-  return [
-    roomRow('chair', {
-      summary: name(READING_CHAIRS, readingChair),
-      content: <CornerPieceSection piece="readingChair" settings={settings} update={update} />,
-      reset: resetFields(settings, update, 'office', ['readingChair']),
-    }),
-    roomRow('dresser', {
-      summary: name(DRESSERS, dresser),
-      content: <CornerPieceSection piece="dresser" settings={settings} update={update} />,
-      reset: resetFields(settings, update, 'office', ['dresser']),
-    }),
-    roomRow('rug', {
-      summary: name(ROUND_RUGS, roundRug),
-      content: <CornerPieceSection piece="roundRug" settings={settings} update={update} />,
-      reset: resetFields(settings, update, 'office', ['roundRug']),
     }),
   ];
 }

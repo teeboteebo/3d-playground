@@ -20,10 +20,20 @@ export const LIMIT = 100;
 /** the part of the settings undo looks at */
 const design = (s: Settings) => JSON.stringify({ ...s, room: null, time: null });
 
-/** the fields a patch changes, as a key: "walls", "living.mouldWalls,living.mouldSpacing" */
+/**
+ * the fields a patch changes, as a key: "walls", "living.mouldWalls,living.mouldSpacing", and for a room's components each
+ * component's own fields: "office.components.desk.shown"
+ */
 export function patchKey(p: SettingsPatch): string {
   return Object.entries(p)
-    .flatMap(([k, v]) => (k === 'bedroom' || k === 'living' || k === 'office') && v ? Object.keys(v).map((f) => `${k}.${f}`) : [k])
+    .flatMap(([k, v]) => {
+      if (!v || (k !== 'bedroom' && k !== 'living' && k !== 'office')) return [k];
+      return Object.entries(v).flatMap(([f, sub]) =>
+        f === 'components' && sub && typeof sub === 'object'
+          ? Object.entries(sub).flatMap(([id, fields]) => Object.keys(fields ?? {}).map((x) => `${k}.components.${id}.${x}`))
+          : [`${k}.${f}`],
+      );
+    })
     .sort()
     .join(',');
 }
