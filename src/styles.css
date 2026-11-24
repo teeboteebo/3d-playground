@@ -149,7 +149,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-off
 /* a room's menu: one row per topic with its current choice; each opens a page of its own */
 h1:focus{outline:none}
 h1:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.topics{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.topics{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
 .topic{width:100%;display:flex;align-items:center;gap:10px;font:inherit;color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:9px 10px;cursor:pointer;text-align:left}
 .topic:hover{border-color:var(--accent)}
 .topic i{width:22px;height:22px;flex:none;border-radius:4px;border:1px solid rgba(0,0,0,.25)}

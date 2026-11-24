@@ -340,6 +340,18 @@ The model is introduced in the simplest room first, then each room is moved over
    sections become the one structure for every room.
 2. **The living room.** The checklist becomes a switch on each piece's page, and the sofa fabric becomes an option.
 
+   **Done** (`docs/superpowers/plans/2026-11-24-living-components.md`).
+   - **Living room as components.** Its lamps, sofa (with its fabric as an option), Frame TV, sideboard, shelving,
+     plant and rug are components.
+   - **Settings version 4,** migrated from versions 1–3.
+   - **One structure for every room,** chosen with the user: Room · Lighting · Furniture · Textiles and decor, then
+     About. A single `roomPage` builder draws every component room's page, and the bedroom's #21 sections take the
+     same names.
+   - **Rugs are decor everywhere,** so the office's round rug left the Reading corner group.
+   - **Shared lamp ids:** both rooms use `ceiling-light` "Ceiling light" and `floor-lamp` "Floor lamp". The office's
+     "Ceiling pendant" was renamed, and saved choices carry over.
+   - **No `'none'` entries left in the product catalogs.**
+
    **Done ahead of the living room**, on the office and shared by every room:
    - **Menu hover in 3D:** a menu row under the mouse or keyboard focus lights up what it opens in 3D, with the same
      tint as hovering in 3D. A row such as "Wall moulding" lights up everything under it, and the mouse over the 3D view
