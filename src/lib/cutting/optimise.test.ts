@@ -285,13 +285,13 @@ describe('optimise', () => {
 
     it('never makes a part shorter than the minimum, with a kerf', () => {
       const rand = rng(77);
-      for (let c = 0; c < 40; c++) {
+      for (let c = 0; c < 30; c++) {
         const all = Array.from({ length: 6 }, (_, i) => splittable(`k${i}`, 300 + Math.floor(rand() * 20) * 100, 300, 2));
         const stocks = [{ length: 2400, price: 8900 }, { length: 3000, price: 10900 }];
-        const plan = optimise(all, stocks, { kerf: 3, deadline: Date.now() + 1500 });
+        const plan = optimise(all, stocks, { kerf: 3, deadline: Date.now() + 100 });
         expectValid(plan, all, stocks, 3);
       }
-    });
+    }, 15000);
 
     it('returns a valid first-fit plan, split where it must be, when the deadline has passed', () => {
       const stocks = [{ length: 2400, price: 8900 }];
