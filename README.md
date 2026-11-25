@@ -40,9 +40,14 @@ Each drop, adjustment, or wall change is one undo step. Reloading restores the s
 
 ## Read the room plan
 
-Choose **Room plan** for a read-only overhead view. Select a footprint or its name to see its clearances.
-Select a group to highlight its members. Enter the group to inspect a single piece. **Back to 3D** returns to
-the room without changing its layout.
+Open **Room plan** for the top-down view. Choose a numbered **Wall** to face it from inside the room.
+The wall view shows its doors, windows and doorways. Numbered boxes show each piece’s projected width and height.
+Freestanding pieces appear where they project onto the wall’s width; mounted pieces appear only on their own wall.
+Open edges have no wall view.
+
+Select a piece or group to see its clearances. In a wall view the dashed lines measure to the sides, floor and ceiling.
+The list gives the distance back to the wall. Switch views to follow the same selection, or enter a group to inspect one
+member. All views are read-only; **Back to 3D** returns without changing the layout.
 
 ## Develop
 

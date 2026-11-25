@@ -72,6 +72,9 @@ test.describe('physical room groups', () => {
       await tool('Room plan').click();
       const table = () => page.locator('.room-plan__map polygon[aria-label$="Left bedside table"]');
       const before = await table().getAttribute('points');
+      const views = page.getByRole('group', { name: 'Plan view' });
+      await views.getByRole('button', { name: 'Wall 1' }).click();
+      const elevationBefore = await table().getAttribute('points');
       await page.getByRole('button', { name: 'Back to 3D' }).click();
       await expect(tool('Move pieces')).toHaveCount(0);
       await page.mouse.click(276,442);
@@ -110,7 +113,14 @@ test.describe('physical room groups', () => {
       const after = await table().getAttribute('points');
       const minX = (str: string) => Math.min(...str.split(' ').map((p) => Number(p.split(',')[0])));
       expect(minX(after!) - minX(before!)).toBeCloseTo(left!.x, 5);
+      await views.getByRole('button', { name: 'Wall 1' }).click();
+      const elevationAfter = await table().getAttribute('points');
+      const minY = (str: string) => Math.min(...str.split(' ').map((p) => Number(p.split(',')[1])));
+      expect(minY(elevationBefore!) - minY(elevationAfter!)).toBeCloseTo(left!.y, 5);
+      await expect(table()).toHaveAttribute('aria-pressed', 'true');
       await page.getByRole('button', { name: 'Undo', exact: true }).click();
+      await expect(table()).toHaveAttribute('points', elevationBefore!);
+      await views.getByRole('button', { name: 'Top down' }).click();
       await expect(table()).toHaveAttribute('points', before!);
       expect(await pair()).toEqual([null,null]);
       await page.getByRole('button', { name: 'Redo', exact: true }).click();

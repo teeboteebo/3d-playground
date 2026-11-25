@@ -1,13 +1,12 @@
 import type { ComponentState, PiecePose } from '../data/components';
 import type { Room, XZ } from '../data/rooms';
 import { leavesOf, type RoomTree } from '../data/tree';
-import { roomWalls, type Wall } from './apartment';
+import { roomWalls, tangent, type Wall } from './apartment';
 import { proposeRigidMove, type MoveProposal, type PlacedLeaf, type Translation } from './rigidPlacement';
 
 export const ZERO = { x: 0, y: 0, z: 0 } as const;
 const IDENTITY: PiecePose = { ...ZERO, yaw: 0 };
 const EPS = 1e-8;
-export const tangent = (wall: Wall): XZ => [(wall.b[0] - wall.a[0]) / wall.length, (wall.b[1] - wall.a[1]) / wall.length];
 const rotate = (x: number, z: number, yaw: number): XZ =>
   [Math.cos(yaw) * x + Math.sin(yaw) * z, -Math.sin(yaw) * x + Math.cos(yaw) * z];
 

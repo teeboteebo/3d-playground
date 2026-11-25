@@ -109,10 +109,44 @@ describe('RoomPlan', () => {
 
   it('numbers the walls and keys doors, windows and doorways present in the room', () => {
     setup();
-    expect(screen.getAllByText(/^Wall \d/).length).toBe(room.poly.length);
+    expect(within(screen.getByRole('img', { name: /Overhead/ })).getAllByText(/^Wall \d/)).toHaveLength(room.poly.length);
     const key = screen.getByText('Map key').nextElementSibling as HTMLElement;
     expect(within(key).getByText('Doorway')).toBeInTheDocument();
     expect(within(key).getByText('Window')).toBeInTheDocument();
     for (const t of document.querySelectorAll('svg text')) expect((t as SVGElement).style.strokeWidth).not.toBe('3px');
+  });
+
+  it('keeps the selected group and its numbers when switching between the plan and wall elevations', async () => {
+    setup({ initialSelection: 'set', poses: new Map([...poses, ['tv', leaf(0, { mount: { kind: 'wall', edge: 0 }, bottom: 0.5, top: 1.2 })]]) });
+    await userEvent.click(screen.getByRole('button', { name: 'Wall 1' }));
+    const elevation = screen.getByRole('img', { name: 'Living room facing Wall 1' });
+    expect(within(elevation).getByRole('button', { name: '1. Frame TV' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(elevation).getByText('210')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Wall 2' }));
+    expect(screen.queryByRole('button', { name: '1. Frame TV' })).toBeNull();
+    expect(screen.getByText('Mounted on Wall 1')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Top down' }));
+    expect(document.querySelectorAll('.room-plan__piece--sel')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument();
+  });
+
+  it('offers only physical walls and draws openings on their own wall', async () => {
+    setup({ room: ROOMS.find((r) => r.id === 'hall'), tree: { root: [], groups: {} } });
+    expect(screen.queryByRole('button', { name: 'Wall 3' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Wall 4' }));
+    const hall = screen.getByRole('img', { name: 'Hall facing Wall 4' });
+    expect(within(hall).getByText('Doorway')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Wall 1' }));
+    expect(screen.queryByText('Doorway')).toBeNull();
+  });
+
+  it('shows both arched bedroom windows viewed from inside and locates their wall on the plan', async () => {
+    setup({ room: ROOMS.find((r) => r.id === 'bedroom'), tree: { root: [], groups: {} } });
+    await userEvent.click(screen.getByRole('button', { name: 'Wall 4' }));
+    const elevation = screen.getByRole('img', { name: 'Bedroom facing Wall 4' });
+    expect(within(elevation).getAllByText('Window')).toHaveLength(2);
+    const paths = [...elevation.querySelectorAll('path')].map((p) => p.getAttribute('d'));
+    for (const path of paths) expect(path).toContain(' A ');
+    expect(screen.getByRole('img', { name: 'Wall 4 highlighted on the top-down plan' })).toBeInTheDocument();
   });
 });
