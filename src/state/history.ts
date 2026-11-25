@@ -50,17 +50,17 @@ export function change(h: History, patch: SettingsPatch, at: number): History {
   const next = applyPatch(h.present, patch);
   if (design(next) === design(h.present)) return { ...h, present: next };
   const key = patchKey(patch);
-  const changesVisibility = Object.values(patch.rooms ?? {}).some(
+  const discrete = Object.values(patch.rooms ?? {}).some(
     (room) =>
       room.tree !== undefined ||
-      Object.values<Partial<ComponentState> | undefined>(room.components ?? {}).some((piece) => piece?.shown !== undefined),
+      Object.values<Partial<ComponentState> | undefined>(room.components ?? {}).some((piece) => piece?.shown !== undefined || piece?.pose !== undefined),
   );
   const merge = h.last !== null && h.last.key === key && at - h.last.at < MERGE_MS && h.past.length > 0;
   return {
     past: merge ? h.past : [...h.past, h.present].slice(-LIMIT),
     present: next,
     future: [],
-    last: changesVisibility ? null : { key, at },
+    last: discrete ? null : { key, at },
   };
 }
 

@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
 import { MERGE_MS, change, patchKey, redo, startHistory, undo } from './history';
-import { DEFAULTS } from './settings';
+import { DEFAULTS, sanitizeSettings } from './settings';
 
 const paint = (paint: string) => ({ rooms: { bedroom: { paint } } });
 
 describe('history', () => {
+  it('saves a whole move per release even when the next move is immediate', () => {
+    const drop = (x: number) => ({ rooms: { bedroom: { components: {
+      bench: { pose: { x, y: 0, z: 0.1, yaw: 0 } }, bed: { pose: { x, y: 0, z: 0.1, yaw: 0 } },
+    } } } });
+    const first = change(startHistory(DEFAULTS), drop(0.1), 0);
+    const second = change(first, drop(0.2), 10);
+    expect(undo(second).present).toEqual(first.present);
+    const hidden = change(second, { rooms: { bedroom: { components: { bed: { shown: false } } } } }, 20);
+    expect(sanitizeSettings(JSON.parse(JSON.stringify(hidden.present)))).toEqual(hidden.present);
+    expect(hidden.present.rooms.bedroom.components.bed.pose?.x).toBe(0.2);
+    expect(undo(first).present.rooms.bedroom.components.bench.pose).toBeUndefined();
+  });
+
   it('names the fields a patch changes, room fields by room', () => {
     expect(patchKey({ rooms: { hall: { paint: 'chalk' } } })).toBe('rooms.hall.paint');
     expect(patchKey({ rooms: { living: { moulding: { mouldSpacing: 9, mouldDado: 80 } } } })).toBe('rooms.living.moulding.mouldDado,rooms.living.moulding.mouldSpacing');
