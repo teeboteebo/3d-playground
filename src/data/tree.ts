@@ -64,7 +64,7 @@ export function resolvePick(tree: RoomTree, leaf: string, entered: Parent): stri
 /** the room's pieces in its definition order, and its authored groups where their first piece stands */
 export function defaultTree(def: RoomDef): RoomTree {
   const order = def.components.map((c) => c.id);
-  const groups: Record<string, GroupNode> = {};
+  const groups = dict();
   const inner = new Set<string>();
   for (const g of def.physicalGroups ?? []) {
     groups[g.id] = { name: g.name, children: [...g.children] };
@@ -74,6 +74,9 @@ export function defaultTree(def: RoomDef): RoomTree {
   const root = [...order, ...Object.keys(groups)].filter((id) => !inner.has(id)).sort((a, b) => first(a) - first(b));
   return { root, groups };
 }
+
+/** a group map whose keys are only ever ids: a saved id such as "__proto__" is a plain key in it */
+const dict = (from: Record<string, GroupNode> = {}): Record<string, GroupNode> => Object.assign(Object.create(null), from);
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' ? (v as Record<string, unknown>) : {});
 
@@ -88,7 +91,7 @@ export function sanitizeTree(raw: unknown, def: RoomDef): RoomTree {
   const leaves = new Set(def.components.map((c) => c.id));
   const savedGroups = obj(saved.groups);
   const seen = new Set<string>();
-  const groups: Record<string, GroupNode> = {};
+  const groups = dict();
 
   const walk = (list: unknown[]): string[] =>
     list.flatMap((id): string[] => {
@@ -127,7 +130,7 @@ export function groupSiblings(tree: RoomTree, ids: readonly string[], newId: str
   const members = siblings.filter((s) => ids.includes(s));
   const at = siblings.indexOf(members[0]);
   const list = [...siblings.slice(0, at), newId, ...siblings.slice(at + 1).filter((s) => !members.includes(s))];
-  const groups = { ...tree.groups, [newId]: { name, children: members } };
+  const groups = dict({ ...tree.groups, [newId]: { name, children: members } });
   if (parent === null) return { root: list, groups };
   groups[parent] = { ...groups[parent], children: list };
   return { root: tree.root, groups };
@@ -138,7 +141,7 @@ export function ungroup(tree: RoomTree, id: string): RoomTree | null {
   const parent = parentOf(tree, id);
   if (!isGroup(tree, id) || parent === undefined) return null;
   const splice = (list: readonly string[]) => list.flatMap((c) => (c === id ? tree.groups[id].children : [c]));
-  const groups = { ...tree.groups };
+  const groups = dict(tree.groups);
   delete groups[id];
   if (parent === null) return { root: splice(tree.root), groups };
   groups[parent] = { ...groups[parent], children: splice(groups[parent].children) };
@@ -150,7 +153,7 @@ export function renameGroup(tree: RoomTree, id: string, name: string): RoomTree 
   const trimmed = name.trim();
   if (!isGroup(tree, id) || !trimmed) return null;
   if (tree.groups[id].name === trimmed) return tree;
-  return { root: tree.root, groups: { ...tree.groups, [id]: { ...tree.groups[id], name: trimmed } } };
+  return { root: tree.root, groups: dict({ ...tree.groups, [id]: { ...tree.groups[id], name: trimmed } }) };
 }
 
 export const sameTree = (a: RoomTree, b: RoomTree): boolean =>

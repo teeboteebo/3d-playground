@@ -5,6 +5,7 @@ import {
   ancestorsOf,
   defaultTree,
   groupSiblings,
+  isGroup,
   leavesOf,
   parentOf,
   renameGroup,
@@ -99,5 +100,21 @@ describe('sanitizing a saved tree', () => {
       const t = sanitizeTree(junk, OFFICE);
       expect(t.root.flatMap((n) => leavesOf(t, n)).sort()).toEqual([...all].sort());
     }
+  });
+
+  it('treats ids that name inherited object properties as ordinary, or drops them', () => {
+    const evil = JSON.parse(
+      `{"root":["__proto__","constructor","toString","${all[0]}"],"groups":{"__proto__":{"name":"P","children":["${all[1]}","hasOwnProperty"]},"constructor":{"name":"C","children":["constructor"]}}}`,
+    );
+    const t = sanitizeTree(evil, OFFICE);
+    expect(Object.getPrototypeOf(t.groups)).toBeNull();
+    expect(Object.getPrototypeOf({})).toBe(Object.prototype);
+    expect(t.root.flatMap((n) => leavesOf(t, n)).sort()).toEqual([...all].sort());
+    expect(Object.keys(t.groups).every((g) => t.groups[g].children.length > 0)).toBe(true);
+    expect(isGroup(t, 'toString')).toBe(false);
+    expect(parentOf(t, 'constructor')).toBeUndefined();
+    const grouped = groupSiblings(defaultTree(OFFICE), [all[2], all[3]], '__proto__', 'x');
+    expect(grouped && leavesOf(grouped, '__proto__')).toEqual([all[2], all[3]]);
+    expect(Object.getPrototypeOf(grouped!.groups)).toBeNull();
   });
 });
