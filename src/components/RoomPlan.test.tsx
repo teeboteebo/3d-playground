@@ -76,4 +76,43 @@ describe('RoomPlan', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     window.removeEventListener('keydown', seen);
   });
+
+  it('draws rugs beneath furniture whatever the tree order, and numbers every piece', () => {
+    const rugTree: RoomTree = { root: ['chair', 'rug'], groups: {} };
+    const rugPoses = new Map([
+      ['chair', leaf(0.1, { top: 0.9 })],
+      ['rug', leaf(0, { top: 0.02, obstructs: false })],
+    ]);
+    setup({ tree: rugTree, poses: rugPoses, components: { chair: on, rug: on } });
+    const labels = [...document.querySelectorAll('polygon.room-plan__piece')].map((p) => p.getAttribute('aria-label'));
+    expect(labels).toEqual(['2. Rug', '1. chair']);
+    expect(screen.getByRole('button', { name: /^1 chair/ })).toBeInTheDocument();
+  });
+
+  it('picking a piece outside the open group leaves the group, like the 3D editor', async () => {
+    setup();
+    await userEvent.click(screen.getByRole('button', { name: 'Enter' }));
+    await userEvent.click(screen.getByRole('button', { name: /^3\. / }));
+    expect(screen.queryByRole('button', { name: 'Up to room' })).toBeNull();
+    expect(screen.getByRole('heading', { name: /^Sofa/ })).toBeInTheDocument();
+  });
+
+  it('falls back to the room when undo removes the open group or selection', async () => {
+    const { rerender } = render(<RoomPlan room={room} tree={tree} poses={poses} components={components} onClose={() => {}} initialSelection="tv" />);
+    expect(screen.getByRole('button', { name: 'Up to room' })).toBeInTheDocument();
+    rerender(<RoomPlan room={room} tree={{ root: ['tv', 'tv-bench', 'sofa'], groups: {} }} poses={poses} components={components} onClose={() => {}} initialSelection="tv" />);
+    expect(screen.queryByRole('button', { name: 'Up to room' })).toBeNull();
+    rerender(<RoomPlan room={room} tree={{ root: ['sofa'], groups: {} }} poses={poses} components={components} onClose={() => {}} initialSelection="tv" />);
+    expect(screen.queryByRole('heading', { name: 'Frame TV' })).toBeNull();
+    expect(document.querySelectorAll('.room-plan__piece--sel')).toHaveLength(0);
+  });
+
+  it('numbers the walls and keys doors, windows and doorways present in the room', () => {
+    setup();
+    expect(screen.getAllByText(/^Wall \d/).length).toBe(room.poly.length);
+    const key = screen.getByText('Map key').nextElementSibling as HTMLElement;
+    expect(within(key).getByText('Doorway')).toBeInTheDocument();
+    expect(within(key).getByText('Window')).toBeInTheDocument();
+    for (const t of document.querySelectorAll('svg text')) expect((t as SVGElement).style.strokeWidth).not.toBe('3px');
+  });
 });

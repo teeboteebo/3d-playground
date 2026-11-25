@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CEILING, type Room, type XZ } from '../data/rooms';
 import type { PlacedLeaf } from '../scene/rigidPlacement';
-import { clearances, footprintCm } from './clearances';
+import { clearances, footprintCm, leafClearances } from './clearances';
 
 const room = (poly: XZ[]): Room => ({ id: 'office', name: 'Test', poly, paint: 'x', view: 'x' });
 const square = room([[0, 0], [4, 0], [4, 3], [0, 3]]);
@@ -58,7 +58,9 @@ describe('clearances', () => {
   it('gives a wall piece distances along its wall, to the floor and to the ceiling', () => {
     const shelf = box(1, 0, 2, 0.3, { bottom: 1.2, top: 1.5, mount: { kind: 'wall', edge: 0 } });
     const cs = clearances(square, [shelf]);
-    expect(find(cs, 'Along wall to corner').sort()).toEqual([100, 200]);
+    expect([...find(cs, 'Along wall −'), ...find(cs, 'Along wall +')].sort()).toEqual([100, 200])
+    expect(find(cs, 'Along wall −')).toEqual([100])
+    expect(find(cs, 'Along wall +')).toEqual([200]);
     expect(find(cs, 'Down to floor')).toEqual([120]);
     expect(find(cs, 'Up to ceiling')).toEqual([Math.round((CEILING - 1.5) * 1000) / 10]);
     expect(find(cs, '+Z to wall')).toEqual([]);
@@ -71,10 +73,32 @@ describe('clearances', () => {
     const len = Math.hypot(1, 3);
     const leaf = box(0, 0, 1, 1, { footprint: [[3.3, 0.9], [3.5, 1.5], [3.3, 1.5], [3.1, 0.9]], bottom: 1, top: 1.5, mount: { kind: 'wall', edge: 1 } });
     const cs = clearances(cut, [leaf]);
-    const along = cs.filter((c) => c.label === 'Along wall to corner');
+    const along = cs.filter((c) => c.label.startsWith('Along wall'));
     expect(along.length).toBe(2);
     for (const c of along) expect(Math.hypot(c.to.x - c.from.x, c.to.z - c.from.z) / len).toBeGreaterThan(0.1);
     expect(along.some((c) => Math.abs((c.to.x - c.from.x) / (c.to.z - c.from.z) - 1 / 3) < 1e-6)).toBe(true);
+  });
+});
+
+describe('leafClearances', () => {
+  it('keeps both wall distances when unrelated furniture or an overlapping neighbour stands in the way', () => {
+    const wall = { kind: 'wall', edge: 0 } as const;
+    const a = box(1, 0, 1.5, 0.4, { mount: wall });
+    const b = box(1.2, 0, 1.7, 0.4, { mount: wall });
+    const other = box(2.5, 0, 3, 0.4);
+    const cs = leafClearances(square, [a, b, other], new Set([0, 1]));
+    expect(cs.filter((c) => c.leaf === 0).map((c) => c.label)).toContain('Along wall −');
+    const ofB = cs.filter((c) => c.leaf === 1 && c.label.startsWith('Along wall'));
+    expect(ofB.map((c) => c.label)).toEqual(['Along wall +']);
+    const single = leafClearances(square, [a, other], new Set([0]));
+    expect(single.filter((c) => c.label.startsWith('Along wall')).map((c) => c.cm).sort()).toEqual([100, 250]);
+  });
+
+  it('keeps the nearest look when a selection boxes a piece in on every side', () => {
+    const mid = box(1.5, 1, 2.5, 2);
+    const ring = [box(0.5, 1, 1.5, 2), box(2.5, 1, 3.5, 2), box(1.5, 0, 2.5, 1), box(1.5, 2, 2.5, 3)];
+    const cs = leafClearances(square, [mid, ...ring], new Set([0, 1, 2, 3, 4]));
+    expect(cs.filter((c) => c.leaf === 0).length).toBe(1);
   });
 });
 

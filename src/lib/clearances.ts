@@ -92,7 +92,8 @@ function guide(label: string, p: XZ, d: XZ, t: number, y: number): Clearance {
 /**
  * Gaps for the `subjects` among `leaves`, measured from each piece's own outline to the room outline.
  * A floor piece looks along ±X and ±Z; a wall-mounted piece looks along its wall, and up and down when it is hung clear of
- * the floor. A look that runs into another solid leaf is dropped, so no guide crosses a group's empty middle.
+ * the floor. A look that runs into another solid *subject* is dropped, so no guide crosses a selection's own empty middle;
+ * unrelated leaves never hide a distance to the room. If every look is dropped, the nearest one stays.
  */
 export function leafClearances(room: Room, leaves: readonly PlacedLeaf[], subjects: ReadonlySet<number>): LeafClearance[] {
   const out: LeafClearance[] = [];
@@ -108,18 +109,24 @@ export function leafClearances(room: Room, leaves: readonly PlacedLeaf[], subjec
       const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       const u: XZ = [(b[0] - a[0]) / len, (b[1] - a[1]) / len];
       looks = [
-        { dir: [-u[0], -u[1]], label: 'Along wall to corner' },
-        { dir: u, label: 'Along wall to corner' },
+        { dir: [-u[0], -u[1]], label: 'Along wall −' },
+        { dir: u, label: 'Along wall +' },
       ];
     }
+    const open: LeafClearance[] = [];
+    const covered: LeafClearance[] = [];
     for (const { dir, label } of looks) {
       const p = support(leaf.footprint, dir);
       const t = toBoundary(room.poly, p, dir);
       if (t === undefined || t < MIN_M) continue;
-      const blocked = leaves.some((o, j) => j !== index && o.obstructs && vertical(leaf, o)
+      const found = { ...guide(label, p, dir, t, y), leaf: index };
+      const blocked = leaves.some((o, j) => j !== index && subjects.has(j) && o.obstructs && vertical(leaf, o)
         && insideLength(o.footprint, p, dir, t) > EPS);
-      if (!blocked) out.push({ ...guide(label, p, dir, t, y), leaf: index });
+      (blocked ? covered : open).push(found);
     }
+    // never leave a piece without a horizontal reference to the room
+    if (open.length === 0 && covered.length > 0) open.push(covered.reduce((a, b) => (b.cm < a.cm ? b : a)));
+    out.push(...open);
     if (mount.kind === 'wall') {
       const c: XZ = [
         leaf.footprint.reduce((s, p) => s + p[0], 0) / leaf.footprint.length,
