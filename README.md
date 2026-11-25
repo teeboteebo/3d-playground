@@ -12,7 +12,7 @@ Live: https://teeboteebo.github.io/3d-playground/
 
 Open **Group pieces** in a room. Check two or more pieces and choose **Group selected**. You can also Shift-click
 pieces in the 3D view. Name the group with **Rename**. Click any member in the room to select its group.
-An outline marks the group's visible pieces.
+Selecting a piece in 3D or opening its options in the menu outlines it. Selecting a group outlines all its visible members.
 Use **Enter** to work inside the group and **Options** to edit a single piece. **Leave group** or Escape goes back
 one level.
 

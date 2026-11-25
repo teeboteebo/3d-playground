@@ -66,12 +66,13 @@ export function App() {
     const node = resolvePick(tree, p[0], editor.parent) ?? resolvePick(tree, p[0], null);
     return node && isGroup(tree, node) ? { label: tree.groups[node].name, ids: leavesOf(tree, node) } : null;
   };
-  const selection = tree && path.length === 1 && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
+  const openPiece = pieceOf(path[0] === 'groups' ? path.slice(1) : path);
+  const selection = openPiece ? [openPiece.id]
+    : tree && path.length === 1 && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
   const openTool = (next: 'move' | 'plan') => {
     if (!room) return;
     if (next === tool) return setWorkspace(null);
-    const pageNode = path.at(-1);
-    const node = workspace?.node ?? (pageNode && pieceOf([pageNode]) ? pageNode : editor.selected.length === 1 ? editor.selected[0] : undefined);
+    const node = workspace?.node ?? openPiece?.id ?? (editor.selected.length === 1 ? editor.selected[0] : undefined);
     setWorkspace({ room: room.id, tool: next, node });
   };
   const activeNode = workspace?.node;

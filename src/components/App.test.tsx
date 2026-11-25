@@ -1288,6 +1288,28 @@ describe('group editor', () => {
     return user;
   };
 
+  it('outlines a piece selected in the scene or menu, but not a room setting with the same id', async () => {
+    await renderIn('living');
+    await click3d('living', ['sofa']);
+    expect(scene.select).toHaveBeenLastCalledWith(['sofa']);
+    up('Living room');
+    expect(scene.select).toHaveBeenLastCalledWith(null);
+    goTo('Sofa');
+    expect(scene.select).toHaveBeenLastCalledWith(['sofa']);
+    await click3d('living', ['moulding', 'sofa']);
+    expect(scene.select).toHaveBeenLastCalledWith(null);
+  });
+
+  it('outlines just the open piece in Options and restores the checked pieces on Back', async () => {
+    const user = await setup();
+    await user.click(tick('Desk'));
+    await user.click(tick('Drawer unit'));
+    await user.click(btn('Options for Desk'));
+    expect(scene.select).toHaveBeenLastCalledWith(['desk']);
+    up('Group pieces');
+    expect(scene.select).toHaveBeenLastCalledWith(['desk', 'drawers']);
+  });
+
   it('groups, renames, enters, leaves and ungroups, each edit one undo step', async () => {
     const user = await setup();
     await user.click(tick('Desk'));
