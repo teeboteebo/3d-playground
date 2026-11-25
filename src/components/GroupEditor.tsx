@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { isGroup, leavesOf, type RoomTree } from '../data/tree';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { ancestorsOf, childrenOf, isGroup, leavesOf, type RoomTree } from '../data/tree';
 import { selectedLeaves, type Editor } from '../state/useEditor';
 
 interface Props {
@@ -19,18 +19,19 @@ interface Props {
 export function GroupEditor({ roomName, editor, pieceName, shown, open }: Props) {
   const { tree, parent, selected } = editor;
   const nameOf = (id: string) => (isGroup(tree, id) ? tree.groups[id].name : pieceName(id));
-  const path: string[] = [];
-  for (let p = parent; p !== null; p = Object.keys(tree.groups).find((g) => tree.groups[g].children.includes(p!)) ?? null) path.unshift(p);
-  const here = parent === null ? tree.root : tree.groups[parent].children;
+  const path = parent === null ? [] : [...ancestorsOf(tree, parent), parent];
+  const here = childrenOf(tree, parent);
   const leaves = selectedLeaves(tree, selected);
   const single = selected.length === 1 && isGroup(tree, selected[0]) ? selected[0] : null;
   const anyGroup = selected.some((id) => isGroup(tree, id));
-  const state = (id: string) => {
-    const l = leavesOf(tree, id);
-    const on = l.filter(shown).length;
-    return on === l.length ? 'Shown' : on === 0 ? 'Hidden' : 'Partly hidden';
-  };
-
+  const list = useRef<HTMLUListElement>(null);
+  const previousParent = useRef(parent);
+  useLayoutEffect(() => {
+    if (previousParent.current === parent) return;
+    previousParent.current = parent;
+    const row = list.current?.querySelector<HTMLInputElement>('input:checked') ?? list.current?.querySelector<HTMLInputElement>('input');
+    row?.focus({ preventScroll: true });
+  }, [parent]);
   return (
     <section className="group-editor">
       <nav aria-label="Where you are" className="crumbs-line">
@@ -41,16 +42,19 @@ export function GroupEditor({ roomName, editor, pieceName, shown, open }: Props)
           </button>
         )}
       </nav>
-      <ul className="node-list" aria-label={`Pieces and groups in ${parent === null ? roomName : tree.groups[parent].name}`}>
+      <ul ref={list} className="node-list" aria-label={`Pieces and groups in ${parent === null ? roomName : tree.groups[parent].name}`}>
         {here.map((id) => {
           const group = isGroup(tree, id);
+          const members = leavesOf(tree, id);
+          const visible = members.filter(shown).length;
+          const status = visible === members.length ? 'Shown' : visible === 0 ? 'Hidden' : 'Partly hidden';
           return (
             <li key={id} className="node-row">
               <label>
-                <input type="checkbox" checked={selected.includes(id)} onChange={() => editor.toggle(id)} />
+                <input type="checkbox" aria-label={nameOf(id)} aria-describedby={`status-${id}`} checked={selected.includes(id)} onChange={() => editor.toggle(id)} />
                 <span>
                   <strong>{nameOf(id)}</strong>
-                  <small>{group ? `Group of ${leavesOf(tree, id).length} · ${state(id)}` : state(id)}</small>
+                  <small id={`status-${id}`}>{group ? `Group of ${members.length} · ${status}` : status}</small>
                 </span>
               </label>
               {group ? (

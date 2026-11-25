@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ROOM_DEFS } from '../data/roomDefs';
 import type { RoomSelection } from '../data/rooms';
-import { childrenOf, groupSiblings, isGroup, leavesOf, renameGroup, resolvePick, ungroup, type Parent, type RoomTree } from '../data/tree';
+import { childrenOf, groupSiblings, isGroup, leavesOf, parentOf, renameGroup, resolvePick, ungroup, type Parent, type RoomTree } from '../data/tree';
 import type { Settings } from './settings';
 import type { Update } from './useSettings';
 
@@ -20,7 +19,7 @@ export interface Editor {
   tree: RoomTree | null;
   parent: Parent;
   selected: readonly string[];
-  select(ids: readonly string[]): void;
+  reset(): void;
   toggle(id: string): void;
   enter(id: string): void;
   leave(): void;
@@ -37,13 +36,6 @@ export interface Editor {
 
 const NONE: Raw = { room: 'all', parent: null, selected: [] };
 
-const newId = (tree: RoomTree): string => {
-  for (;;) {
-    const id = `group-${Math.random().toString(36).slice(2, 8)}`;
-    if (!isGroup(tree, id)) return id;
-  }
-};
-
 export function useEditor(settings: Settings, update: Update): Editor {
   const room = settings.room;
   const tree = room === 'all' ? null : settings.rooms[room].tree;
@@ -52,6 +44,9 @@ export function useEditor(settings: Settings, update: Update): Editor {
   const parent = tree && mine.parent !== null && isGroup(tree, mine.parent) ? mine.parent : null;
   const here = tree ? childrenOf(tree, parent) : [];
   const selected = mine.selected.filter((id) => here.includes(id));
+  if (raw.room !== room || parent !== mine.parent || selected.length !== mine.selected.length) {
+    setRaw({ room, parent, selected });
+  }
 
   const set = (p: Parent, ids: readonly string[]) => setRaw({ room, parent: p, selected: ids });
   const edit = (next: RoomTree | null) => {
@@ -63,17 +58,16 @@ export function useEditor(settings: Settings, update: Update): Editor {
     tree,
     parent,
     selected,
-    select: (ids) => set(parent, ids),
+    reset: () => set(null, []),
     toggle: (id) => set(parent, selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]),
     enter: (id) => tree && isGroup(tree, id) && set(id, []),
     leave: () => {
       if (!tree || parent === null) return;
-      const above = Object.keys(tree.groups).find((g) => tree.groups[g].children.includes(parent));
-      set(above ?? null, [parent]);
+      set(parentOf(tree, parent) ?? null, [parent]);
     },
     group: (name = 'Group') => {
       if (!tree || selected.length < 2) return;
-      const id = newId(tree);
+      const id = `group-${crypto.getRandomValues(new Uint32Array(4)).join('-')}`;
       if (edit(groupSiblings(tree, selected, id, name))) set(parent, [id]);
     },
     ungroup: () => {
@@ -104,11 +98,7 @@ export function useEditor(settings: Settings, update: Update): Editor {
   };
 }
 
-/** the pieces a set of selected nodes stand for, in tree order, each once */
+/** Selected nodes are siblings, so their leaves never overlap. */
 export function selectedLeaves(tree: RoomTree, nodes: readonly string[]): string[] {
-  return [...new Set(nodes.flatMap((n) => leavesOf(tree, n)))];
+  return nodes.flatMap((n) => leavesOf(tree, n));
 }
-
-/** the room's pieces by id, for naming them */
-export const nameOfPiece = (room: Exclude<RoomSelection, 'all'>, id: string): string =>
-  ROOM_DEFS[room].components.find((c) => c.id === id)?.name ?? id;

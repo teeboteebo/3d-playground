@@ -50,24 +50,26 @@ export function roomPage<R extends RoomId>(args: {
     reset: changed.length === 0 ? undefined : () => patchRoom(Object.fromEntries(changed.map((c) => [c.id, { shown: c.initial.shown }]))),
   };
   const tree = state.tree;
+  const thumbOf = thumbs as Record<string, ((v: Variant) => string) | undefined> | undefined;
+  const pieces = def.components.map((c) => componentTopic(c, components[c.id], (patch) => patchRoom({ [c.id]: patch }), thumbOf?.[c.id], accent));
   const groupCount = Object.keys(tree.groups).length;
   const groups: Topic = {
     id: 'groups',
     title: 'Group pieces',
     summary: groupCount === 0 ? 'No groups' : `${groupCount} ${groupCount === 1 ? 'group' : 'groups'}`,
     noPoint: true,
-    sub: 'Select pieces, group them and show or hide them together.',
+    sub: 'Check pieces here or Shift-click them in the room. Enter a group to work on its members.',
+    linkedPages: pieces,
     content: (
       <GroupEditor
         roomName={title}
         editor={{ ...editor, tree }}
         pieceName={(id) => def.components.find((c) => c.id === id)?.name ?? id}
-        shown={(id) => components[id]?.shown ?? true}
-        open={(id) => menu.go([id])}
+        shown={(id) => components[id].shown}
+        open={(id) => menu.go(['groups', id])}
       />
     ),
   };
-  const thumbOf = thumbs as Record<string, ((v: Variant) => string) | undefined> | undefined;
   return {
     id: room,
     title,
@@ -83,7 +85,7 @@ export function roomPage<R extends RoomId>(args: {
           ...(def.components.length ? [showHide, groups] : []),
         ],
       },
-      ...componentGroups(def, (c) => componentTopic(c, components[c.id], (patch) => patchRoom({ [c.id]: patch }), thumbOf?.[c.id], accent)),
+      ...componentGroups(def, (c) => pieces.find((page) => page.id === c.id)!),
     ],
     /* after the groups: the last row of every room */
     topics: [aboutTopic(about)],

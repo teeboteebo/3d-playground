@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 
@@ -10,6 +11,7 @@ export const ENV_EVE = 0.2;
 
 export interface RenderPipeline {
   render(): void;
+  outline(objects: THREE.Object3D[]): void;
   setSize(width: number, height: number, pixelRatio: number): void;
   setEvening(evening: boolean): void;
   dispose(): void;
@@ -47,10 +49,24 @@ export function renderPipeline(renderer: THREE.WebGLRenderer, scene: THREE.Scene
   gtao.blendIntensity = 0.85;
   composer.addPass(gtao);
   composer.addPass(new OutputPass());
+  let outline: OutlinePass | undefined;
 
   return {
     render() {
       composer.render();
+    },
+    outline(objects) {
+      if (objects.length && !outline) {
+        outline = new OutlinePass(new THREE.Vector2(1, 1), scene, camera);
+        outline.visibleEdgeColor.set('#E39577');
+        // The cutaway has invisible shadow casters. Show selected silhouettes through them too.
+        outline.hiddenEdgeColor.copy(outline.visibleEdgeColor);
+        composer.insertPass(outline, composer.passes.length - 1);
+      }
+      if (outline) {
+        outline.selectedObjects = objects;
+        outline.enabled = objects.length > 0;
+      }
     },
     setSize(width, height, pixelRatio) {
       composer.setPixelRatio(pixelRatio);
@@ -64,6 +80,7 @@ export function renderPipeline(renderer: THREE.WebGLRenderer, scene: THREE.Scene
     dispose() {
       composer.dispose();
       gtao.dispose();
+      outline?.dispose();
       envMap.dispose();
     },
   };

@@ -16,7 +16,7 @@ import { buildOffice } from './office';
 import { orbitCamera } from './orbitCamera';
 import { highlighter, type HighlightTarget } from './highlight';
 import { pick, type Pick } from './pickRoom';
-import type { SceneOption } from './options';
+import { optionOf, type SceneOption } from './options';
 import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
 import { sideboard } from './sideboard';
@@ -31,7 +31,7 @@ export interface ApartmentScene {
   setView(pose: Partial<CameraPose>): void;
   /** highlights the option a menu row points at, and every option under it (null for none); the mouse over the 3D view wins */
   pointAt(option: SceneOption | null): void;
-  /** highlights these pieces of the selected room, as the selection, under what the mouse or a menu row points at (null for none) */
+  /** outlines the selected pieces even while the pointer hovers over something else */
   select(ids: readonly string[] | null): void;
   /** widens what the mouse over a piece highlights to the group it stands for: the ids of that group, or null for the piece alone */
   groupOf(resolve: ((option: SceneOption) => readonly string[] | null) | null): void;
@@ -109,6 +109,7 @@ export function createApartmentScene(
   const invalidate = () => {
     dirty = true;
   };
+  const highlight = highlighter(scene, invalidate);
 
   /* the models are meshopt-compressed (see README) */
   const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -123,6 +124,8 @@ export function createApartmentScene(
     invalidate,
     (id, obj) => {
       if (id === 'sofa') fabric.attach(obj);
+      highlight.refresh();
+      refreshOutline();
     },
   );
   let furnitureReady = false;
@@ -134,7 +137,18 @@ export function createApartmentScene(
 
   /* the selected room: hovering highlights only its options */
   let selected: RoomSelection = initial.room;
-  const highlight = highlighter(scene, invalidate);
+  let selection: readonly string[] | null = null;
+  function refreshOutline() {
+    const meshes: THREE.Mesh[] = [];
+    const ids = selection;
+    if (ids) scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const opt = optionOf(o);
+      if (opt?.room === selected && opt.path.length === 1 && ids.includes(opt.path[0])) meshes.push(o);
+    });
+    pipeline.outline(meshes);
+    invalidate();
+  }
 
   function apply(s: Settings) {
     invalidate();
@@ -154,8 +168,8 @@ export function createApartmentScene(
     roomLights.apply(s);
     /* a room change makes what is under the mouse mean something else; settings may rebuild or recolour parts */
     if (lastHover && (lastHover.room === selected) !== !!lastHover.option) setHover(null);
-    highlight.set(shown(lastHover));
     highlight.refresh();
+    refreshOutline();
   }
 
   const ndcOf = (e: { clientX: number; clientY: number }) => {
@@ -172,7 +186,6 @@ export function createApartmentScene(
   let lastHover: Hover | null = null;
   /* what a menu row points at, shown while the mouse points at nothing in 3D */
   let pointed: HighlightTarget | null = null;
-  let selection: readonly string[] | null = null;
   let groupOf: ((option: SceneOption) => readonly string[] | null) | null = null;
   const hoverTarget = (h: Hover | null): HighlightTarget | null => {
     if (!h) return null;
@@ -180,9 +193,7 @@ export function createApartmentScene(
     const ids = groupOf?.(h.option);
     return ids ? { kind: 'leaves', room: h.option.room, ids } : { kind: 'option', option: h.option };
   };
-  const selectionTarget = (): HighlightTarget | null =>
-    selection && selected !== 'all' ? { kind: 'leaves', room: selected, ids: selection } : null;
-  const shown = (h: Hover | null) => hoverTarget(h) ?? pointed ?? selectionTarget();
+  const shown = (h: Hover | null) => hoverTarget(h) ?? pointed;
   function setHover(h: Hover | null) {
     highlight.set(shown(h));
     canvas.classList.toggle('pointing', !!h);
@@ -272,7 +283,7 @@ export function createApartmentScene(
     },
     select(ids) {
       selection = ids;
-      highlight.set(shown(lastHover));
+      refreshOutline();
     },
     groupOf(resolve) {
       groupOf = resolve;

@@ -18,33 +18,43 @@ export function App() {
   const [menu, setMenu] = useState<{ room: RoomSelection; path: readonly string[] }>({ room: settings.room, path: [] });
   if (menu.room !== settings.room) setMenu({ room: settings.room, path: [] });
   const path = menu.room === settings.room ? menu.path : [];
-  const go = (p: readonly string[]) => setMenu({ room: settings.room, path: p });
   /* the page a menu row under the mouse or focus would open, shown in 3D; it belongs to the room it was pointed in */
   const [pointed, setPointed] = useState<{ room: RoomSelection; path: readonly string[] } | null>(null);
   const point = useCallback((p: readonly string[] | null) => setPointed(p ? { room: settings.room, path: p } : null), [settings.room]);
 
   const editor = useEditor(settings, update);
+  const go = (p: readonly string[]) => {
+    if (path[0] === 'groups' && p[0] !== 'groups') editor.reset();
+    setMenu({ room: settings.room, path: p });
+  };
   const { tree } = editor;
-  const isPiece = (id: string) => settings.room !== 'all' && ROOM_DEFS[settings.room].components.some((c) => c.id === id);
+  const pieceOf = (p: readonly string[]) => settings.room !== 'all' && p.length === 1
+    ? ROOM_DEFS[settings.room].components.find((c) => c.id === p[0])
+    : undefined;
   /* a click on something in 3D: a piece or group of the room's tree selects its node, anything else opens its page */
   const onOption = (p: readonly string[], add = false): string | undefined => {
-    if (tree && p.length === 1 && isPiece(p[0])) {
+    const piece = pieceOf(p);
+    if (tree && piece) {
       const node = editor.pick(p[0], add);
       if (node) {
         const group = isGroup(tree, node);
-        go(add || group ? ['groups'] : [p[0]]);
-        return group ? `Selected ${tree.groups[node].name}` : undefined;
+        go(add || group ? ['groups'] : path[0] === 'groups' ? ['groups', p[0]] : [p[0]]);
+        if (add || group) {
+          const name = group ? tree.groups[node].name : piece.name;
+          return `${add && editor.selected.includes(node) ? 'Deselected' : 'Selected'} ${name}`;
+        }
+        return;
       }
     }
     go(p);
   };
   /* what the mouse over a piece stands for when it is inside a group: the group's name, and every piece in it */
   const nodeOf = (p: readonly string[]) => {
-    if (!tree || p.length !== 1 || !isPiece(p[0])) return null;
+    if (!tree || !pieceOf(p)) return null;
     const node = resolvePick(tree, p[0], editor.parent) ?? resolvePick(tree, p[0], null);
     return node && isGroup(tree, node) ? { label: tree.groups[node].name, ids: leavesOf(tree, node) } : null;
   };
-  const selection = tree && settings.room !== 'all' && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
+  const selection = tree && path.length === 1 && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
 
   /* keys for the whole app: undo and redo, and Escape to go up a page (or out of the room) */
   const keys = useRef({ steps, path, room: settings.room, go, update, editor });
@@ -65,7 +75,7 @@ export function App() {
         e.preventDefault();
         k.steps.redo();
       } else if (e.key === 'Escape' && !mod) {
-        if (k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
+        if (k.path.length === 1 && k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
         else if (k.path.length > 0) k.go(k.path.slice(0, -1));
         else if (k.room !== 'all') k.update({ room: 'all' });
       }

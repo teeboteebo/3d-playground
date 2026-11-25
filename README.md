@@ -8,6 +8,22 @@ Built with React, TypeScript, Vite and three.js.
 
 Live: https://teeboteebo.github.io/3d-playground/
 
+## Group pieces in a room
+
+Open **Group pieces** in a room. Check two or more pieces and choose **Group selected**. You can also Shift-click
+pieces in the 3D view. Name the group with **Rename**. Click any member in the room to select its group.
+An outline marks the group's visible pieces.
+Use **Enter** to work inside the group and **Options** to edit a single piece. **Leave group** or Escape goes back
+one level.
+
+A physical group can hold pieces or other groups. For example, group the office desk and drawers, then group that
+desk set with a chair. **Ungroup** removes one level, so the desk set stays intact. Neither action moves any furniture.
+Each piece keeps its product, finish, and visibility. Undo and redo apply to group edits too.
+
+The bedroom starts with two bedside tables in one group and two wall lamps in another. Each left and right piece
+has its own identity. The office headings **Workspace** and **Reading corner** still organize the catalog; they do
+not bind pieces together. Dragging the 3D view still orbits the camera.
+
 ## Develop
 
 ```bash
@@ -43,8 +59,8 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   helpers, and the captured list of Bemz fabrics for the NOCKEBY cover (generated; do not edit by hand)
 - `scripts/bemz-fabrics.mjs`, `scripts/bemzParse.mjs`: the capture script and its parsers. Refresh the fabric list and
   prices with `node scripts/bemz-fabrics.mjs` (2-3 minutes, 0.5 s between requests) and commit the diff
-- `src/state/`: version 5 settings. Each room keeps its paint and pieces in `rooms[roomId]`, with accent and moulding
-  where applicable. The app migrates version 1–4 settings, including saves under the old `bedroom-viz` key, and
+- `src/state/`: version 6 settings. Each room keeps its paint, physical groups, and pieces in `rooms[roomId]`, with accent and moulding
+  where applicable. The app migrates version 1–5 settings, including saves under the old `bedroom-viz` key, and
   saves the result to `localStorage['apartment-playground']`.
 - `src/scene/`: the imperative three.js scene
   - `createScene.ts`: wires the pieces together: renderer, rooms, furniture, lighting, camera and the frame loop
@@ -69,6 +85,8 @@ not in CI. When a change is meant to alter the look, check the new images, then 
   - `livingMoulding.ts`: the living room's sofa-wall and TV-wall moulding, laid out like the bedroom's
     (`layout.ts`) and hidden with its wall
   - `merge.ts`: merges parts that never move apart into one mesh per material, to keep draw calls down
+  - `rigidPlacement.ts`: checks a proposed translation against the mounts and room boundaries of every leaf in a
+    selection. It reports furniture overlaps separately from blocked moves and does not change or save any positions.
   - `canvas.ts` / `textures.ts`: procedural canvas drawing (no three.js, so the panel's rug thumbnails can use it)
     and the three.js textures made from it
   - pure helpers for layout, palettes, picking rooms and freeing GPU resources, each with tests

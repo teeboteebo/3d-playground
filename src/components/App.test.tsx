@@ -1278,7 +1278,7 @@ describe('camera views', () => {
 });
 
 describe('group editor', () => {
-  const tick = (name: string) => screen.getByRole('checkbox', { name: new RegExp(`^${name}(?! chair)(?! unit)`) });
+  const tick = (name: string) => screen.getByRole('checkbox', { name });
   const btn = (name: string) => screen.getByRole('button', { name });
   const tree = () => stored().rooms.office.tree!;
   const setup = async () => {
