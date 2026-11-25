@@ -19,6 +19,8 @@ export interface Topic {
   content?: ReactNode;
   /** deeper pages, listed as rows below the content */
   topics?: Topic[];
+  /** Pages opened by custom content rather than standard topic rows. */
+  linkedPages?: Topic[];
   /** rows under headings, shown after `topics` */
   groups?: TopicGroup[];
   /** the heading over the rows, when the page has controls of its own above them */
@@ -40,7 +42,7 @@ export interface TopicGroup {
 
 const groupTopics = (g: TopicGroup): Topic[] => [...g.topics, ...(g.groups ?? []).flatMap(groupTopics)];
 /** every page opened from a page: its own rows and those under its headings, to any depth */
-const childTopics = (page: Topic): Topic[] => [...(page.topics ?? []), ...(page.groups ?? []).flatMap(groupTopics)];
+const childTopics = (page: Topic): Topic[] => [...(page.topics ?? []), ...(page.linkedPages ?? []), ...(page.groups ?? []).flatMap(groupTopics)];
 
 /** where a menu is: the ids of the topics opened from the first page, and the way to open another page */
 export interface MenuNav {

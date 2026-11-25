@@ -9,11 +9,20 @@ const PILLOW_CHOICES: ChipChoice[] = PILLOW_SETS.map((p) =>
 );
 const FRAME_CHOICES: ChipChoice[] = FRAMES.map(({ id, name, hex }) => ({ id, name, hex, summary: name.toLowerCase() }));
 
+/** the two sides of the bed, as the left and right of someone at its foot; the first is at the smaller x */
+export const BEDSIDES = ['left', 'right'] as const;
+export type BedSide = (typeof BEDSIDES)[number];
+
 export const BEDROOM = {
   id: 'bedroom',
+  physicalGroups: [
+    { id: 'bedside-tables', name: 'Bedside tables', children: ['bedside-table-left', 'bedside-table-right'] },
+    { id: 'bedside-lamps', name: 'Bedside lamps', children: ['bedside-lamp-left', 'bedside-lamp-right'] },
+  ],
   components: [
     {
       id: 'ceiling-light',
+      mount: { kind: 'fixed' },
       name: 'Ceiling light',
       category: 'lighting',
       note: 'IKEA GULLSUDARE 70 cm, rice paper, at the centre of the room, hung with about 2 m clearance below.',
@@ -21,10 +30,20 @@ export const BEDROOM = {
       initial: { shown: true, variant: 'gullsudare' },
     },
     {
-      id: 'bedside-lamps',
-      name: 'Bedside lamps',
+      id: 'bedside-lamp-left',
+      mount: { kind: 'wall', edge: 0 },
+      name: 'Left bedside lamp',
       category: 'lighting',
-      note: 'A pair of Mio Adina wall lamps (26 × 18 cm, brushed brass with a textile shade), each centred above a bedside table.',
+      note: 'A Mio Adina wall lamp (26 × 18 cm, brushed brass with a textile shade), centred above the left bedside table.',
+      variants: fixed('adina', 'Mio Adina'),
+      initial: { shown: true, variant: 'adina' },
+    },
+    {
+      id: 'bedside-lamp-right',
+      mount: { kind: 'wall', edge: 0 },
+      name: 'Right bedside lamp',
+      category: 'lighting',
+      note: 'A Mio Adina wall lamp (26 × 18 cm, brushed brass with a textile shade), centred above the right bedside table.',
       variants: fixed('adina', 'Mio Adina'),
       initial: { shown: true, variant: 'adina' },
     },
@@ -46,10 +65,20 @@ export const BEDROOM = {
       initial: { shown: true, variant: 'amigo' },
     },
     {
-      id: 'bedside-tables',
-      name: 'Bedside tables',
+      id: 'bedside-table-left',
+      mount: { kind: 'wall', edge: 0 },
+      name: 'Left bedside table',
       category: 'furniture',
-      note: 'A pair of wall-hung AC Design Furniture Cholet tables, one each side of the bed. They are drawn 40 × 23 × 30 cm, 48 cm off the floor; the product is listed at 50 × 35 × 25 cm.',
+      note: 'A wall-hung AC Design Furniture Cholet table, on the left of the bed seen from its foot. It is drawn 40 × 23 × 30 cm, 48 cm off the floor; the product is listed at 50 × 35 × 25 cm.',
+      variants: fixed('cholet', 'AC Design Cholet'),
+      initial: { shown: true, variant: 'cholet' },
+    },
+    {
+      id: 'bedside-table-right',
+      mount: { kind: 'wall', edge: 0 },
+      name: 'Right bedside table',
+      category: 'furniture',
+      note: 'A wall-hung AC Design Furniture Cholet table, on the right of the bed seen from its foot. It is drawn 40 × 23 × 30 cm, 48 cm off the floor; the product is listed at 50 × 35 × 25 cm.',
       variants: fixed('cholet', 'AC Design Cholet'),
       initial: { shown: true, variant: 'cholet' },
     },
@@ -63,6 +92,7 @@ export const BEDROOM = {
     },
     {
       id: 'mirror',
+      mount: { kind: 'wall', edge: 2 },
       name: 'Mirror',
       category: 'furniture',
       note: 'A full-length oak-framed mirror on the front wall, left of the dresser. It shows a stylised reflection.',
@@ -71,6 +101,7 @@ export const BEDROOM = {
     },
     {
       id: 'painting',
+      mount: { kind: 'wall', edge: 2 },
       name: 'Painting',
       category: 'furniture',
       note: 'The framed painting hangs above the dresser. Its picture follows the accent colour.',
@@ -83,6 +114,7 @@ export const BEDROOM = {
     },
     {
       id: 'wardrobes',
+      mount: { kind: 'wall-and-floor', edge: 1 },
       name: 'Wardrobes',
       category: 'furniture',
       note: 'Built-in Pax wardrobes along the east wall.',

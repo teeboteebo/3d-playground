@@ -12,24 +12,34 @@ interface Props {
   settings: Settings;
   update: Update;
   /** opens a page of the selected room's menu, from a click on one of its options in 3D ([] for its summary) */
-  onOption: (path: readonly string[]) => void;
+  onOption: (path: readonly string[], add: boolean) => string | undefined;
+  /** the group a piece under the mouse stands for, with its name and the pieces in it (null for the piece alone) */
+  nodeOf?: (path: readonly string[]) => { label: string; ids: readonly string[] } | null;
+  /** the pieces selected in the room's tree, highlighted in 3D (null for none) */
+  selection?: readonly string[] | null;
   /** the selected room's menu page a row points at, highlighted in 3D (null for none) */
   pointed?: readonly string[] | null;
 }
 
-export function Stage({ settings, update, onOption, pointed = null }: Props) {
+export function Stage({ settings, update, onOption, nodeOf, selection = null, pointed = null }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<ApartmentScene | null>(null);
   const settingsRef = useRef(settings);
+  const selectionRef = useRef(selection);
   /** set when a 3D click changes the room, so that change keeps the camera's rotation and zoom */
   const pickedRef = useRef(false);
   const updateRef = useRef(update);
   const onOptionRef = useRef(onOption);
+  const nodeOfRef = useRef(nodeOf);
   useEffect(() => {
     updateRef.current = update;
     onOptionRef.current = onOption;
   }, [update, onOption]);
+  useEffect(() => {
+    nodeOfRef.current = nodeOf;
+    sceneRef.current?.groupOf((o) => nodeOf?.(o.path)?.ids ?? null);
+  }, [nodeOf]);
   /* the label that follows the mouse over an option; moved directly, so hovering never re-renders */
   const labelRef = useRef<HTMLDivElement>(null);
   const [webgl, setWebgl] = useState(true);
@@ -61,14 +71,14 @@ export function Stage({ settings, update, onOption, pointed = null }: Props) {
           canvasRef.current!,
           wrapRef.current!,
           settingsRef.current,
-          ({ room, option }) => {
+          ({ room, option }, { shift }) => {
             const current = settingsRef.current.room;
             const next = room ?? 'all';
             /* inside the selected room a click opens what it landed on, or the room's summary for anything else */
             if (current !== 'all' && next === current) {
               const path = option?.room === current ? option.path : [];
-              onOptionRef.current(path);
-              say(path.length ? `Opened ${optionLabel(current, path)}` : `${roomById(current).name} options`);
+              const text = onOptionRef.current(path, shift);
+              say(text ?? (path.length ? `Opened ${optionLabel(current, path)}` : `${roomById(current).name} options`));
               return;
             }
             if (next === current) return;
@@ -81,7 +91,9 @@ export function Stage({ settings, update, onOption, pointed = null }: Props) {
             if (!label) return;
             label.hidden = !hover;
             if (!hover) return;
-            label.textContent = hover.option ? optionLabel(hover.option.room, hover.option.path) : roomById(hover.room).name;
+            label.textContent = hover.option
+              ? (nodeOfRef.current?.(hover.option.path)?.label ?? optionLabel(hover.option.room, hover.option.path))
+              : roomById(hover.room).name;
             label.style.transform = `translate(${Math.round(hover.x + 14)}px, ${Math.round(hover.y + 16)}px)`;
           },
           () => {
@@ -89,6 +101,8 @@ export function Stage({ settings, update, onOption, pointed = null }: Props) {
           },
         );
         sceneRef.current = scene;
+        scene.groupOf((o) => nodeOfRef.current?.(o.path)?.ids ?? null);
+        scene.select(selectionRef.current);
         /* the selection's view, which the effect below could not set while the scene was loading */
         scene.setView(mainView(settingsRef.current.room).pose);
       })
@@ -107,6 +121,13 @@ export function Stage({ settings, update, onOption, pointed = null }: Props) {
     settingsRef.current = settings;
     sceneRef.current?.apply(settings);
   }, [settings]);
+
+  const selectionKey = selection ? selection.join('/') : null;
+  useEffect(() => {
+    selectionRef.current = selection;
+    sceneRef.current?.select(selection);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionKey]);
 
   /* a menu row under the mouse or focus lights up what it opens */
   const pointedKey = pointed ? pointed.join('/') : '';

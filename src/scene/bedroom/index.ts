@@ -8,6 +8,7 @@ import { pillowColours } from '../palette';
 import { buildBed, buildBench } from './bed';
 import { buildBedside } from './bedside';
 import { L, W } from './dimensions';
+import type { Bulb } from './lamps';
 import { buildDresser, buildMirror, buildPainting, dresserLamp, paintingApplier } from './dresser';
 import { kit, setVisible } from './kit';
 import { bedroomMaterials } from './materials';
@@ -42,13 +43,22 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   const bedside = buildBedside(k, m);
   const pendant = buildPendant(k, m);
   const rug = buildRug(k, m);
+  const dresserLight = dresserLamp(parent);
+  const withBulb = (parts: THREE.Object3D[], bulb: Bulb) => {
+    const piece = new THREE.Group();
+    piece.add(...parts, bulb.key, bulb.glow);
+    parent.add(piece);
+    return piece;
+  };
   const pieces: Record<BedroomComponentId, THREE.Object3D[]> = {
     'ceiling-light': pendant.parts,
-    'bedside-lamps': bedside.lampParts,
+    'bedside-lamp-left': [withBulb(bedside.lampParts.left, bedside.lamps.left)],
+    'bedside-lamp-right': [withBulb(bedside.lampParts.right, bedside.lamps.right)],
     bed: mergeMeshes(buildBed(k, m)),
     bench: mergeMeshes(buildBench(k, m)),
-    'bedside-tables': bedside.tables,
-    dresser: mergeMeshes(k.collect(() => buildDresser(k, m))),
+    'bedside-table-left': bedside.tables.left,
+    'bedside-table-right': bedside.tables.right,
+    dresser: [withBulb(mergeMeshes(k.collect(() => buildDresser(k, m))), dresserLight)],
     mirror: [mirror],
     painting: mergeMeshes(buildPainting(k, m)),
     wardrobes: mergeMeshes(k.collect(() => buildWardrobes(k, m))),
@@ -56,7 +66,6 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
   };
   for (const { id } of BEDROOM.components) tagOption(pieces[id], 'bedroom', [id]);
   const windows = windowLights(parent);
-  const dresserLight = dresserLamp(parent);
   const mould = bedroomMoulding(k, m);
   const painting = paintingApplier(m);
 
@@ -98,7 +107,10 @@ export function buildBedroom(parent: THREE.Object3D, accent: string): Bedroom {
       rug.set(components.rug.variant);
 
       dresserLight.set(evening && components.dresser.shown);
-      bedside.setEvening(evening && components['bedside-lamps'].shown);
+      bedside.setEvening({
+        left: evening && components['bedside-lamp-left'].shown,
+        right: evening && components['bedside-lamp-right'].shown,
+      });
       pendant.setLit(evening && components['ceiling-light'].shown);
       m.glass.color.set(evening ? 0x1b2634 : 0xdce8ee);
       for (const { id } of BEDROOM.components) {

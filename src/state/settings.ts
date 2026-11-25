@@ -9,7 +9,8 @@ import { spacingMax, type MouldWall } from '../scene/mouldLayout';
 import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
 import { componentDefaults, patchComponents, sanitizeComponents, type ComponentStates } from './components';
 import type { ComponentState } from '../data/components';
-import { BEDROOM } from '../data/bedroom';
+import { BEDROOM, BEDSIDES } from '../data/bedroom';
+import { defaultTree, sanitizeTree, type RoomTree } from '../data/tree';
 import { HALL } from '../data/hall';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
@@ -42,6 +43,8 @@ export interface LivingMoulding {
 export interface RoomState<R extends RoomId> {
   paint: string;
   components: ComponentStates<ComponentId<R>>;
+  /** which pieces are grouped with which: a hierarchy of component ids that the user edits */
+  tree: RoomTree;
 }
 
 /** the rooms' settings; `accent` and `moulding` are only in the rooms that have them */
@@ -53,7 +56,7 @@ export interface Rooms {
 }
 
 export interface Settings {
-  version: 5;
+  version: 6;
   /** selected room, or 'all' for none */
   room: RoomSelection;
   /** lighting, shared by every room */
@@ -97,7 +100,7 @@ export const STORAGE_KEY = 'apartment-playground';
 export const LEGACY_STORAGE_KEY = 'bedroom-viz';
 
 export const DEFAULTS: Settings = {
-  version: 5,
+  version: 6,
   room: 'all',
   time: 'day',
   rooms: {
@@ -113,8 +116,9 @@ export const DEFAULTS: Settings = {
         mouldWalls: BEDROOM_MOULD_DEFAULTS,
       },
       components: componentDefaults(BEDROOM),
+      tree: defaultTree(BEDROOM),
     },
-    hall: { paint: roomById('hall').paint, components: componentDefaults(HALL) },
+    hall: { paint: roomById('hall').paint, components: componentDefaults(HALL), tree: defaultTree(HALL) },
     living: {
       paint: roomById('living').paint,
       moulding: {
@@ -126,8 +130,9 @@ export const DEFAULTS: Settings = {
         mouldWalls: LIVING_MOULD_DEFAULTS,
       },
       components: componentDefaults(LIVING),
+      tree: defaultTree(LIVING),
     },
-    office: { paint: roomById('office').paint, components: componentDefaults(OFFICE) },
+    office: { paint: roomById('office').paint, components: componentDefaults(OFFICE), tree: defaultTree(OFFICE) },
   },
   mouldShop: SHOP_DEFAULTS,
 };
@@ -309,11 +314,31 @@ function fromVersion4(s: Raw): Raw {
   };
 }
 
+/**
+ * Version 6 gave each bedside table and lamp of the pair its own component, and every room a tree of groups. A pair's one
+ * saved state is copied to both; the tree is left out, so each room starts from its authored groups.
+ */
+function fromVersion5(s: Raw): Raw {
+  const rooms = obj(s.rooms);
+  const bedroom = obj(rooms.bedroom);
+  const { 'bedside-tables': tables, 'bedside-lamps': lamps, ...rest } = obj(bedroom.components);
+  const pair = (old: string, saved: unknown) =>
+    saved === undefined ? {} : Object.fromEntries(BEDSIDES.map((side) => [`${old}-${side}`, saved]));
+  return {
+    ...s,
+    rooms: {
+      ...rooms,
+      bedroom: { ...bedroom, components: { ...rest, ...pair('bedside-table', tables), ...pair('bedside-lamp', lamps) } },
+    },
+  };
+}
+
 function sanitizeRooms(raw: unknown): Rooms {
   const r = obj(raw);
   const d = DEFAULTS.rooms;
   const paint = (id: RoomId) => oneOf(obj(r[id]).paint, ids(PAINTS), d[id].paint);
   const components = <R extends RoomId>(id: R) => sanitizeComponents<ComponentId<R>>(obj(r[id]).components, ROOM_DEFS[id]);
+  const tree = (id: RoomId) => sanitizeTree(obj(r[id]).tree, ROOM_DEFS[id]);
   const bedroom = obj(r.bedroom);
   return {
     bedroom: {
@@ -321,14 +346,16 @@ function sanitizeRooms(raw: unknown): Rooms {
       accent: isHex(bedroom.accent) ? bedroom.accent.toUpperCase() : d.bedroom.accent,
       moulding: sanitizeBedroomMoulding(bedroom.moulding),
       components: components('bedroom'),
+      tree: tree('bedroom'),
     },
-    hall: { paint: paint('hall'), components: components('hall') },
+    hall: { paint: paint('hall'), components: components('hall'), tree: tree('hall') },
     living: {
       paint: paint('living'),
       moulding: sanitizeLivingMoulding(obj(r.living).moulding),
       components: components('living'),
+      tree: tree('living'),
     },
-    office: { paint: paint('office'), components: components('office') },
+    office: { paint: paint('office'), components: components('office'), tree: tree('office') },
   };
 }
 
@@ -338,13 +365,14 @@ function sanitizeRooms(raw: unknown): Rooms {
  */
 export function sanitizeSettings(raw: unknown): Settings {
   const r = obj(raw);
-  const version = r.version === 2 || r.version === 3 || r.version === 4 || r.version === 5 ? r.version : 1;
+  const version = [2, 3, 4, 5, 6].includes(r.version as number) ? (r.version as number) : 1;
   let s = version === 1 ? fromVersion1(r) : r;
   if (version < 3) s = { ...s, office: fromVersion2Office(s.office) };
   if (version < 4) s = fromVersion3(s);
   if (version < 5) s = fromVersion4(s);
+  if (version < 6) s = fromVersion5(s);
   return {
-    version: 5,
+    version: 6,
     room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
     rooms: sanitizeRooms(s.rooms),

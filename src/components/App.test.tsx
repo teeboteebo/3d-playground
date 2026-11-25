@@ -10,7 +10,7 @@ import { BEDROOM_MOULD_WALLS } from '../scene/mouldWalls';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
-const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), dispose: vi.fn() };
+const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), select: vi.fn(), groupOf: vi.fn(), dispose: vi.fn() };
 const createApartmentScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({
@@ -53,9 +53,9 @@ const goTo = (...titles: string[]) => {
 /** go up one page of a room's menu */
 const up = (to: string) => fireEvent.click(screen.getByRole('button', { name: `Back to ${to}` }));
 /** a click in 3D as the scene reports it: the room it landed in, and the menu option of what it hit (a path in that room) */
-const click3d = async (room: string | null, path?: string[]) => {
-  const onPick = createApartmentScene.mock.calls.at(-1)![3] as (p: unknown) => void;
-  await act(async () => onPick({ room, option: room && path ? { room, path } : null }));
+const click3d = async (room: string | null, path?: string[], shift = false) => {
+  const onPick = createApartmentScene.mock.calls.at(-1)![3] as (p: unknown, m: { shift: boolean }) => void;
+  await act(async () => onPick({ room, option: room && path ? { room, path } : null }, { shift }));
 };
 /** the mouse over an option of the selected room (a path), over another room as a whole (no path), or over nothing */
 const hover3d = async (room?: string, path?: string[]) => {
@@ -745,14 +745,14 @@ describe('room menu', () => {
     await renderIn('bedroom');
     expect(sections()).toEqual(['Room', 'Lighting', 'Furniture', 'Textiles and decor']);
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Wall moulding', 'Accent colour', 'Show or hide pieces',
-      'Ceiling light', 'Bedside lamps',
-      'Bed', 'Bench', 'Bedside tables', 'Dresser', 'Mirror', 'Painting', 'Wardrobes',
+      'Wall colour', 'Wall moulding', 'Accent colour', 'Show or hide pieces', 'Group pieces',
+      'Ceiling light', 'Left bedside lamp', 'Right bedside lamp',
+      'Bed', 'Bench', 'Left bedside table', 'Right bedside table', 'Dresser', 'Mirror', 'Painting', 'Wardrobes',
       'Rug',
       'About the room',
     ]);
     expect(row('Wall moulding')).toHaveTextContent('White · Bed wall, Dresser wall');
-    expect(row('Show or hide pieces')).toHaveTextContent('10 of 10 shown');
+    expect(row('Show or hide pieces')).toHaveTextContent('12 of 12 shown');
     expect(row('Painting')).toHaveTextContent('Clay sun · brass frame');
     expect(row('Bed')).toHaveTextContent('Accent');
     expect(screen.queryByRole('group', { name: 'Show moulding on' })).toBeNull();
@@ -764,7 +764,7 @@ describe('room menu', () => {
     const { unmount } = await renderIn('living');
     expect(sections()).toEqual(['Room', 'Lighting', 'Furniture', 'Textiles and decor']);
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Wall moulding', 'Show or hide pieces', 'Ceiling light', 'Floor lamp', 'Sofa', 'Frame TV', 'Sideboard', 'String shelving', 'Plant',
+      'Wall colour', 'Wall moulding', 'Show or hide pieces', 'Group pieces', 'Ceiling light', 'Floor lamp', 'Sofa', 'Frame TV', 'Sideboard', 'String shelving', 'Plant',
       'Rug', 'About the room',
     ]);
     expect(row('Ceiling light')).toHaveTextContent('Hidden');
@@ -772,7 +772,7 @@ describe('room menu', () => {
     unmount();
     const office = await renderIn('office');
     expect(rowTitles()).toEqual([
-      'Wall colour', 'Show or hide pieces', 'Ceiling light', 'Floor lamp', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug',
+      'Wall colour', 'Show or hide pieces', 'Group pieces', 'Ceiling light', 'Floor lamp', 'Cabinets', 'Desk', 'Drawer unit', 'Desk chair', 'Reading chair', 'Dresser', 'Round rug',
       'About the room',
     ]);
     for (const name of ['Room', 'Lighting', 'Furniture', 'Textiles and decor']) expect(screen.getByRole('heading', { level: 2, name })).toBeVisible();
@@ -819,9 +819,9 @@ describe('room menu', () => {
 
 describe('bedroom pieces', () => {
   const TITLES = [
-    'Ceiling light', 'Bedside lamps', 'Bed', 'Bench', 'Bedside tables', 'Dresser', 'Mirror', 'Painting', 'Wardrobes', 'Rug',
+    'Ceiling light', 'Left bedside lamp', 'Right bedside lamp', 'Bed', 'Bench', 'Left bedside table', 'Right bedside table', 'Dresser', 'Mirror', 'Painting', 'Wardrobes', 'Rug',
   ] as const;
-  const IDS = ['ceiling-light', 'bedside-lamps', 'bed', 'bench', 'bedside-tables', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug'] as const;
+  const IDS = ['ceiling-light', 'bedside-lamp-left', 'bedside-lamp-right', 'bed', 'bench', 'bedside-table-left', 'bedside-table-right', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug'] as const;
   const pieces = () => stored().rooms.bedroom.components;
 
   it.each(TITLES)('opens the %s page with its own switch', async (title) => {
@@ -838,7 +838,7 @@ describe('bedroom pieces', () => {
     expect(Object.entries(pieces()).filter(([, c]) => !c.shown).map(([k]) => k)).toEqual([id]);
     up('Bedroom');
     expect(row(title)).toHaveTextContent('Hidden');
-    expect(row('Show or hide pieces')).toHaveTextContent('9 of 10 shown');
+    expect(row('Show or hide pieces')).toHaveTextContent('11 of 12 shown');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(Object.values(pieces()).every((c) => c.shown)).toBe(true);
   });
@@ -847,7 +847,7 @@ describe('bedroom pieces', () => {
     await renderIn('bedroom');
     goTo('Show or hide pieces');
     expect(within(screen.getByRole('group', { name: 'Furniture' })).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual(
-      TITLES.slice(2, 9),
+      TITLES.slice(3, 11),
     );
     fireEvent.click(screen.getByRole('switch', { name: 'Mirror' }));
     expect(pieces().mirror.shown).toBe(false);
@@ -994,13 +994,13 @@ describe('clicking options in 3D', () => {
   it.each([
     ['bedroom', ['walls'], 'Wall colour'],
     ['bedroom', ['ceiling-light'], 'Ceiling light'],
-    ['bedroom', ['bedside-lamps'], 'Bedside lamps'],
+    ['bedroom', ['bedside-lamp-left'], 'Group pieces'],
     ['bedroom', ['accent'], 'Accent colour'],
     ['bedroom', ['moulding', 'dresser'], 'Dresser wall'],
     ['bedroom', ['wardrobes'], 'Wardrobes'],
     ['bedroom', ['bed'], 'Bed'],
     ['bedroom', ['bench'], 'Bench'],
-    ['bedroom', ['bedside-tables'], 'Bedside tables'],
+    ['bedroom', ['bedside-table-right'], 'Group pieces'],
     ['bedroom', ['dresser'], 'Dresser'],
     ['bedroom', ['mirror'], 'Mirror'],
     ['bedroom', ['painting'], 'Painting'],
@@ -1274,5 +1274,74 @@ describe('camera views', () => {
     expect(screen.getByText('Living room selected')).toBeInTheDocument();
     await click3d('living', ['moulding', 'sofa']);
     expect(screen.getByText(/^Opened Wall moulding/)).toBeInTheDocument();
+  });
+});
+
+describe('group editor', () => {
+  const tick = (name: string) => screen.getByRole('checkbox', { name });
+  const btn = (name: string) => screen.getByRole('button', { name });
+  const tree = () => stored().rooms.office.tree!;
+  const setup = async () => {
+    const user = userEvent.setup();
+    await renderIn('office');
+    goTo('Group pieces');
+    return user;
+  };
+
+  it('groups, renames, enters, leaves and ungroups, each edit one undo step', async () => {
+    const user = await setup();
+    await user.click(tick('Desk'));
+    await user.click(tick('Drawer unit'));
+    await user.click(btn('Group selected'));
+    const id = Object.keys(tree().groups)[0];
+    expect(tree().groups[id].children.sort()).toEqual(['desk', 'drawers']);
+    const name = screen.getByRole('textbox', { name: 'Group name' });
+    await user.clear(name);
+    await user.type(name, 'Workstation');
+    await user.click(btn('Rename'));
+    expect(tree().groups[id].name).toBe('Workstation');
+    await user.click(btn('Enter Workstation'));
+    expect(screen.getByRole('list', { name: 'Pieces and groups in Workstation' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('list', { name: 'Pieces and groups in Office' })).toBeInTheDocument();
+    await user.click(btn('Ungroup'));
+    expect(Object.keys(tree().groups)).toEqual([]);
+    await user.click(btn('Undo'));
+    expect(tree().groups[id].name).toBe('Workstation');
+    await user.click(btn('Undo'));
+    expect(tree().groups[id].name).toBe('Group');
+    await user.click(btn('Undo'));
+    expect(Object.keys(tree().groups)).toEqual([]);
+  });
+
+  it('hides a whole group in one step and does not write storage for selection', async () => {
+    const user = await setup();
+    await user.click(tick('Desk'));
+    await user.click(tick('Drawer unit'));
+    await user.click(btn('Group selected'));
+    const before = localStorage.getItem(STORAGE_KEY);
+    await user.click(tick('Group'));
+    await user.click(tick('Group'));
+    expect(localStorage.getItem(STORAGE_KEY)).toBe(before);
+    await user.click(btn('Hide selection'));
+    expect(stored().rooms.office.components.desk.shown).toBe(false);
+    expect(stored().rooms.office.components.drawers.shown).toBe(false);
+    await user.click(btn('Undo'));
+    expect(stored().rooms.office.components.desk.shown).not.toBe(false);
+    expect(stored().rooms.office.components.drawers.shown).not.toBe(false);
+  });
+
+  it('selects the group on a 3D click and adds with shift', async () => {
+    const user = await setup();
+    await user.click(tick('Desk'));
+    await user.click(tick('Drawer unit'));
+    await user.click(btn('Group selected'));
+    await user.click(btn('Back to Office'));
+    await click3d('office', ['desk']);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Group pieces');
+    expect(tick('Group')).toBeChecked();
+    await click3d('office', ['dresser'], true);
+    expect(tick('Dresser')).toBeChecked();
+    expect(tick('Group')).toBeChecked();
   });
 });

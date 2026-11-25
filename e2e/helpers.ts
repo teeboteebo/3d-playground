@@ -5,7 +5,9 @@ const STORAGE_KEY = 'apartment-playground';
 /** open the app with these settings saved, as a returning visitor would have them */
 export async function openWith(page: Page, settings: Record<string, unknown>) {
   await page.addInitScript(
-    ([key, value]) => window.localStorage.setItem(key, value),
+    ([key, value]) => {
+      if (window.localStorage.getItem(key) === null) window.localStorage.setItem(key, value);
+    },
     [STORAGE_KEY, JSON.stringify({ version: 2, ...settings })] as const,
   );
   await page.goto('./');

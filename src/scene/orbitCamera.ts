@@ -35,7 +35,7 @@ export function orbitCamera(
   canvas: HTMLCanvasElement,
   camera: THREE.PerspectiveCamera,
   start: CameraPose,
-  onClick: (ndc: { x: number; y: number }) => void,
+  onClick: (ndc: { x: number; y: number }, shift: boolean) => void,
   onUserMove?: () => void,
 ): OrbitCamera {
   const still = reducedMotion();
@@ -89,7 +89,7 @@ export function orbitCamera(
     if (last) travel(e);
     if (last && e.type === 'pointerup' && isClick(pressTravel, pressPointers)) {
       const r = canvas.getBoundingClientRect();
-      onClick({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 });
+      onClick({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 }, e.shiftKey);
     }
     lastPinch = 0;
   };

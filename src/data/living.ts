@@ -8,6 +8,7 @@ export const LIVING = {
   components: [
     {
       id: 'ceiling-light',
+      mount: { kind: 'fixed' },
       name: 'Ceiling light',
       category: 'lighting',
       note: lampNote,
@@ -35,6 +36,7 @@ export const LIVING = {
     },
     {
       id: 'tv',
+      mount: { kind: 'wall', edge: 3 },
       name: 'Frame TV',
       category: 'furniture',
       note: 'The Frame TV is the model from the SketchUp file, hung centred over the sideboard.',
@@ -51,6 +53,8 @@ export const LIVING = {
     },
     {
       id: 'shelving',
+      // The rear of the String model extends 3.6 mm into its mounting wall.
+      mount: { kind: 'wall-and-floor', edge: 4, embedDepth: 0.004 },
       name: 'String shelving',
       category: 'furniture',
       note: 'The String shelving is the model from the SketchUp file, in its place, with its two left columns cut to about half height.',

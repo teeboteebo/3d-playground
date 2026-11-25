@@ -56,7 +56,8 @@ describe('nightstands', () => {
     }
     expect(left.min.x - -W / 2).toBeCloseTo(0.47, 2);
     expect(WARD_FRONT - right.max.x).toBeCloseTo(0.55, 2);
-    b.lamps.forEach((l, i) => expect(l.key.position.x).toBeCloseTo(NIGHTSTAND_X[i], 6));
+    expect(b.lamps.left.key.position.x).toBeCloseTo(NIGHTSTAND_X[0], 6);
+    expect(b.lamps.right.key.position.x).toBeCloseTo(NIGHTSTAND_X[1], 6);
   });
 
   it('stand off the wall by the moulding depth they are given, flush before that', () => {
@@ -98,43 +99,72 @@ describe('the tables and the lamps', () => {
     const parent = new THREE.Group();
     const m = bedroomMaterials('#888888');
     const b = buildBedside(kit(parent), m);
-    return { parent, m, b };
+    const tables = [...b.tables.left, ...b.tables.right];
+    const lampParts = [...b.lampParts.left, ...b.lampParts.right];
+    return { parent, m, b, tables, lampParts };
   };
-  const lampMats = (b: ReturnType<typeof build>['b']) =>
-    new Set(b.lampParts.map((o) => (o as THREE.Mesh).material));
+  const bounds = (parts: THREE.Object3D[]) => parts.reduce((box, o) => box.union(new THREE.Box3().setFromObject(o)), new THREE.Box3());
+  const mats = (parts: THREE.Object3D[]) => new Set(parts.map((o) => (o as THREE.Mesh).material));
 
   it('are separate meshes, together everything the bedside builder adds', () => {
-    const { parent, b } = build();
+    const { parent, tables, lampParts } = build();
     const meshes = parent.children.filter((o): o is THREE.Mesh => o instanceof THREE.Mesh);
-    expect(b.tables.length).toBeGreaterThan(0);
-    expect(b.lampParts.length).toBeGreaterThan(0);
-    expect(b.tables.some((o) => b.lampParts.includes(o))).toBe(false);
-    expect(new Set([...b.tables, ...b.lampParts])).toEqual(new Set(meshes));
+    expect(tables.length).toBeGreaterThan(0);
+    expect(lampParts.length).toBeGreaterThan(0);
+    expect(tables.some((o) => lampParts.includes(o))).toBe(false);
+    expect(new Set([...tables, ...lampParts])).toEqual(new Set(meshes));
   });
 
-  it('share no material, so hiding one pair leaves the other drawn', () => {
+  it('keep each table and each lamp in meshes of its own, so one side can be hidden alone', () => {
     const { b } = build();
-    const tableMats = new Set(b.tables.map((o) => (o as THREE.Mesh).material));
-    for (const mat of lampMats(b)) expect(tableMats.has(mat)).toBe(false);
+    const all = [b.tables.left, b.tables.right, b.lampParts.left, b.lampParts.right];
+    all.forEach((parts, i) => all.slice(i + 1).forEach((other) => expect(parts.some((o) => other.includes(o))).toBe(false)));
+    for (const parts of all) expect(parts.length).toBeGreaterThan(0);
+  });
+
+  it('put each table, and each lamp, on its own side of the bed at the measured places', () => {
+    const { b } = build();
+    const left = bounds(b.tables.left);
+    const right = bounds(b.tables.right);
+    for (const [box, x] of [[left, NIGHTSTAND_X[0]], [right, NIGHTSTAND_X[1]]] as const) {
+      const s = box.getSize(new THREE.Vector3());
+      expect(s.x).toBeCloseTo(NIGHTSTAND.w, 2);
+      expect(s.y).toBeCloseTo(NIGHTSTAND.h, 2);
+      expect((box.min.x + box.max.x) / 2).toBeCloseTo(x, 3);
+    }
+    expect(left.max.x).toBeLessThan(right.min.x);
+    const leftLamp = bounds(b.lampParts.left);
+    const rightLamp = bounds(b.lampParts.right);
+    expect((leftLamp.min.x + leftLamp.max.x) / 2).toBeCloseTo(NIGHTSTAND_X[0], 1);
+    expect((rightLamp.min.x + rightLamp.max.x) / 2).toBeCloseTo(NIGHTSTAND_X[1], 1);
+    expect(leftLamp.max.x).toBeLessThan(rightLamp.min.x);
+  });
+
+  it('share no material between tables and lamps, so hiding one kind leaves the other drawn', () => {
+    const { tables, lampParts } = build();
+    const tableMats = mats(tables);
+    for (const mat of mats(lampParts)) expect(tableMats.has(mat)).toBe(false);
   });
 
   it('keep the lamps in place when the tables stand off the wall', () => {
-    const { b } = build();
-    const z = (parts: THREE.Object3D[]) => parts.reduce((box, o) => box.union(new THREE.Box3().setFromObject(o)), new THREE.Box3());
-    const lamps0 = z(b.lampParts).min.z;
-    const tables0 = z(b.tables).min.z;
+    const { b, tables, lampParts } = build();
+    const lamps0 = bounds(lampParts).min.z;
+    const tables0 = bounds(tables).min.z;
     b.standOff(0.02);
-    expect(z(b.lampParts).min.z).toBeCloseTo(lamps0, 6);
-    expect(z(b.tables).min.z).toBeCloseTo(tables0 + 0.02, 6);
+    expect(bounds(lampParts).min.z).toBeCloseTo(lamps0, 6);
+    expect(bounds(tables).min.z).toBeCloseTo(tables0 + 0.02, 6);
   });
 
-  it('light both lamps, and no table', () => {
+  it('light each lamp on its own, and no table', () => {
     const { b } = build();
-    expect(b.lamps).toHaveLength(2);
-    b.setEvening(true);
-    expect(b.lamps.every((l) => l.key.intensity > 0)).toBe(true);
-    b.setEvening(false);
-    expect(b.lamps.every((l) => l.key.intensity === 0)).toBe(true);
+    b.setEvening({ left: true, right: false });
+    expect(b.lamps.left.key.intensity).toBeGreaterThan(0);
+    expect(b.lamps.right.key.intensity).toBe(0);
+    b.setEvening({ left: true, right: true });
+    expect(b.lamps.left.key.intensity).toBeGreaterThan(0);
+    expect(b.lamps.right.key.intensity).toBeGreaterThan(0);
+    b.setEvening({ left: false, right: false });
+    expect(b.lamps.left.key.intensity + b.lamps.right.key.intensity).toBe(0);
   });
 });
 

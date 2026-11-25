@@ -1,4 +1,5 @@
 import { roomById } from '../../data/rooms';
+import { footprintsOverlap } from '../../lib/footprint';
 import { FLOOR_LAMP_SPOT } from '../roomLamps';
 
 /** Sizes and positions (metres) of the office's furniture. The left wall is z = −1.925, the back wall x = 11.89. */
@@ -75,20 +76,6 @@ function rectCorners(c: P, f: P, w: number, d: number): P[] {
   ].map(([i, j]) => [c[0] + (f[0] * i * d) / 2 + (p[0] * j * w) / 2, c[1] + (f[1] * i * d) / 2 + (p[1] * j * w) / 2]);
 }
 
-/** whether two convex outlines overlap, by separating axes */
-function overlaps(a: readonly P[], b: readonly P[]): boolean {
-  for (const poly of [a, b]) {
-    for (let i = 0; i < poly.length; i++) {
-      const e = sub(poly[(i + 1) % poly.length], poly[i]);
-      const axis: P = [-e[1], e[0]];
-      const pa = a.map((q) => dot(q, axis));
-      const pb = b.map((q) => dot(q, axis));
-      if (Math.max(...pa) <= Math.min(...pb) || Math.max(...pb) <= Math.min(...pa)) return false;
-    }
-  }
-  return true;
-}
-
 /**
  * Where a reading chair of footprint w × d stands: its seat centre (x, z) and the angle its seat faces.
  *
@@ -114,7 +101,7 @@ export function placeReadingChair(w: number, d: number): { x: number; z: number;
   const fits = (c: P) => {
     const corners = rectCorners(c, f, w, d);
     if (corners.some((q) => walls.some(({ a, n }) => dot(n, sub(q, a)) < WALL_GAP - 1e-9))) return false;
-    if (overlaps(corners, desk)) return false;
+    if (footprintsOverlap(corners, desk)) return false;
     /* the lamp spot in the chair's frame, clamped to the footprint: its distance to the nearest footprint point */
     const s = sub([LAMP_SPOT.x, LAMP_SPOT.z], c);
     const u = Math.max(-d / 2, Math.min(d / 2, dot(s, f)));

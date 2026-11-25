@@ -24,6 +24,7 @@ export const OFFICE = {
   components: [
     {
       id: 'cabinets',
+      mount: { kind: 'wall-and-floor', edge: 5 },
       name: 'Cabinets',
       category: 'furniture',
       note: 'Beside the opening to the living room, against the same wall, stand two IKEA METOD high cabinets (60 × 60 × 200 cm each) on plinths, each with two METOD top cabinets (60 × 60 × 40 cm) stacked above. They are 288 cm tall in total and stop short of the 330 cm ceiling. The cabinets follow the wall colour.',
@@ -85,6 +86,7 @@ export const OFFICE = {
     },
     {
       id: 'ceiling-light',
+      mount: { kind: 'fixed' },
       name: 'Ceiling light',
       category: 'lighting',
       note: lampNote,
