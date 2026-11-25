@@ -1,4 +1,5 @@
-.placement-tools{display:flex;gap:6px;padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.plan-picker{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-left:auto;font:500 11px var(--body);color:var(--muted)}
+.plan-picker select{max-width:100%;min-height:34px;padding:4px 6px;color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:6px;font:500 12px var(--body)}
 .move-panel{margin:20px 0 0}
 .move-panel select,.move-step input{color:var(--fg);background:var(--chip);border:1px solid var(--line);padding:7px;border-radius:6px}
 .move-step{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:8px}

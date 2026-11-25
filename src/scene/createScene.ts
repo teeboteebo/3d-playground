@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FLOOR, OAK, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
-import { ROOMS, type RoomId, type RoomSelection } from '../data/rooms';
+import { ROOMS, type Room, type RoomId, type RoomSelection } from '../data/rooms';
+import { roomWalls } from './apartment';
+import { roomSurface, type PlacementSurface } from './placementSurface';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
 import { buildApartment } from './buildApartment';
@@ -47,6 +49,7 @@ export interface ApartmentScene {
   project(p: Translation): { x: number; y: number };
   /** where the pointer's ray meets the plane through `point` with `normal`; null when parallel or behind the camera */
   intersect(clientX: number, clientY: number, point: Translation, normal: Translation): Translation | null;
+  surfaceAt(room: Room, clientX: number, clientY: number): PlacementSurface | null;
   /** the visible piece option under the pointer and the exact world point hit; null for none */
   hit(clientX: number, clientY: number): { option: SceneOption; point: Translation } | null;
   dispose(): void;
@@ -203,6 +206,14 @@ export function createApartmentScene(
     setHover(null);
     onPick?.(pick(ndc, camera, scene.children, ROOMS), { shift });
   }, onCameraMove);
+  const wallsByRoom = new Map(ROOMS.map((r) => [r.id, roomWalls(r)]));
+  const pointer = new THREE.Raycaster();
+  const pointerRay = (clientX: number, clientY: number) => {
+    const { x, y } = ndcOf({ clientX, clientY });
+    camera.updateMatrixWorld();
+    pointer.setFromCamera(new THREE.Vector2(x, y), camera);
+    return pointer.ray;
+  };
 
   /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
      rooms a click would select */
@@ -274,6 +285,7 @@ export function createApartmentScene(
   fit();
 
   function draw() {
+    geometry.restoreVisibility();
     bedroom.showFrom(camera.position);
     apartment.showFrom(camera.position);
     geometry.showFrom(camera.position);
@@ -327,16 +339,18 @@ export function createApartmentScene(
       return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height };
     },
     intersect(clientX, clientY, point, normal) {
-      const { x, y } = ndcOf({ clientX, clientY });
-      camera.updateMatrixWorld();
-      const ray = new THREE.Raycaster();
-      ray.setFromCamera(new THREE.Vector2(x, y), camera);
       const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
         new THREE.Vector3(normal.x, normal.y, normal.z).normalize(),
         new THREE.Vector3(point.x, point.y, point.z),
       );
-      const at = ray.ray.intersectPlane(plane, new THREE.Vector3());
+      const at = pointerRay(clientX, clientY).intersectPlane(plane, new THREE.Vector3());
       return at && { x: at.x, y: at.y, z: at.z };
+    },
+    surfaceAt(room, x, y) {
+      const rect = canvas.getBoundingClientRect();
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+      const ray = pointerRay(x, y);
+      return roomSurface(room, wallsByRoom.get(room.id)!, ray.origin, ray.direction);
     },
     hit(clientX, clientY) {
       const h = firstHit(ndcOf({ clientX, clientY }), camera, scene.children);

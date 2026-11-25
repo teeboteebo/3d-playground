@@ -4,7 +4,8 @@ import { ROOM_DEFS } from '../data/roomDefs';
 import { isGroup, leavesOf } from '../data/tree';
 import { clearances, type Clearance } from '../lib/clearances';
 import { roomWalls, tangent } from '../scene/apartment';
-import { changeWall, constrainedDelta, translateSelection, ZERO, type Motion, type MoveResult, type MoveSelection } from '../scene/placementMove';
+import { changeWall, dragToSurface, translateSelection, ZERO, type Motion, type MoveResult, type MoveSelection } from '../scene/placementMove';
+import type { PlacementSurface } from '../scene/placementSurface';
 import type { PlacedLeaf, Translation } from '../scene/rigidPlacement';
 import type { Update } from '../state/useSettings';
 import type { StageView } from './Stage';
@@ -64,17 +65,32 @@ export function PlacementControls({ selection, motion, stage, update }: { select
   const [preview, setPreview] = useState<readonly PlacedLeaf[] | null>(null);
 
   useLayoutEffect(() => {
-    if (motion.kind === 'blocked') return;
+    if (motion.kind === 'blocked' && motion.reason !== 'pinned') return;
     const members = leavesOf(tree, node);
     scene.setPieceDrag(({ clientX, clientY }) => {
       const hit = scene.hit(clientX, clientY);
       if (!hit || hit.option.room !== room.id || hit.option.path.length !== 1 || !members.includes(hit.option.path[0])) return null;
       const origin = hit.point;
-      const [dx, dz] = motion.kind === 'wall' ? tangent(motion.wall) : [0, 0];
-      const normal = motion.kind === 'wall' && motion.lift ? { x: -dz, y: 0, z: dx } : { x: 0, y: 1, z: 0 };
+      const home: PlacementSurface | null = motion.kind === 'blocked' ? null : motion;
+      const backdrop = scene.surfaceAt(room, clientX, clientY);
+      const same = (a: PlacementSurface | null, b: PlacementSurface | null) => a?.kind === b?.kind
+        && (a?.kind !== 'wall' || (b?.kind === 'wall' && a.wall.edge === b.wall.edge));
+      // A tall floor piece can have a wall behind the point grabbed. Do not remount it on the first pixel of travel.
+      const piece = poses.get(hit.option.path[0])!;
+      const corners = piece.footprint.flatMap(([x, z]) => [piece.bottom, piece.top].map((y) => scene.project({ x, y, z })));
+      const start = scene.project(origin);
+      const xs = corners.map((p) => p.x - start.x + clientX), ys = corners.map((p) => p.y - start.y + clientY);
+      const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
+      let onGrabbedPiece = home !== null && !same(home, backdrop);
+      let targetLabel = '';
       const moveAt = (x: number, y: number) => {
-        const p = scene.intersect(x, y, origin, normal);
-        return p && translateSelection(selection, constrainedDelta(motion, { x: p.x - origin.x, y: p.y - origin.y, z: p.z - origin.z }));
+        let surface = scene.surfaceAt(room, x, y);
+        if (onGrabbedPiece && same(surface, backdrop) && x >= left && x <= right && y >= top && y <= bottom)
+          surface = home;
+        else onGrabbedPiece = false;
+        if (!surface) return { ok: false, member: node, reason: 'outside' } as const;
+        targetLabel = surface.kind === 'floor' ? 'floor' : `Wall ${surface.wall.edge + 1}`;
+        return dragToSurface(selection, motion, surface, origin, (point, normal) => scene.intersect(x, y, point, normal));
       };
       let isDragging = false;
       const release = () => {
@@ -93,7 +109,7 @@ export function PlacementControls({ selection, motion, stage, update }: { select
           }
           scene.preview(room.id, result.transforms);
           setPreview([...result.leaves.values()]);
-          say(`Release to place ${nameOf(selection, node)}.${warning(selection, result)}`);
+          say(`Release to place ${nameOf(selection, node)} on ${targetLabel}.${warning(selection, result)}`);
         },
         drop(at) {
           const result = moveAt(at.clientX, at.clientY);
@@ -107,7 +123,7 @@ export function PlacementControls({ selection, motion, stage, update }: { select
       };
     });
     return () => scene.setPieceDrag(null);
-  }, [scene, selection, motion, room.id, tree, node, poses, update]);
+  }, [scene, selection, motion, room, tree, node, poses, update]);
 
   const nearest = new Map<string, Clearance>();
   if (preview) for (const g of clearances(room, preview)) {
@@ -121,10 +137,10 @@ export function PlacementControls({ selection, motion, stage, update }: { select
       {label}
     </button>
   );
-  if (motion.kind === 'blocked') return <p className="move-panel">{why(selection, motion)}</p>;
+  if (motion.kind === 'blocked' && motion.reason !== 'pinned') return <p className="move-panel">{why(selection, motion)}</p>;
   return (
     <section className="move-panel">
-      <h2>Fine adjustment</h2>
+      {motion.kind !== 'blocked' && <><h2>Fine adjustment</h2>
       <label className="move-step">Step (cm) <input type="number" min="0.1" step="any" value={step} onChange={(e) => setStep(e.target.value)} /></label>
       <div className="chips">
         {motion.kind === 'floor' && <>
@@ -136,7 +152,8 @@ export function PlacementControls({ selection, motion, stage, update }: { select
           return nudge(sign < 0 ? 'Along wall −' : 'Along wall +', { x: sign * x, y: 0, z: sign * z });
         })}
         {motion.kind === 'wall' && motion.lift && <>{nudge('Lower', { ...ZERO, y: -1 })}{nudge('Raise', { ...ZERO, y: 1 })}</>}
-      </div>
+      </div></>}
+      <p>Drag the selection onto the floor or a wall to change its support.</p>
       {motion.kind === 'wall' && motion.canRemount && <>
         <label className="sl">Mounting wall
           <select value={target || String(motion.wall.edge)} onChange={(e) => setTarget(e.target.value)}>

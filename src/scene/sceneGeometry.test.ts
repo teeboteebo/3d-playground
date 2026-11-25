@@ -124,12 +124,35 @@ describe('scene geometry', () => {
     expect(snapshot(scene)).toEqual(base);
   });
 
+  it('detaches a painting from the original wall cutaway during a floor preview, then restores it on cancel', () => {
+    const scene = new THREE.Scene();
+    const bedroom = buildBedroom(scene, '#B5654A');
+    const geo = sceneGeometry(scene);
+    bedroom.apply(DEFAULTS);
+    geo.commit(DEFAULTS);
+    const painting: THREE.Object3D[] = [];
+    scene.traverse((o) => { if (o.userData.option?.path[0] === 'painting') painting.push(o); });
+    expect(painting.length).toBeGreaterThan(0);
+    const camera = new THREE.Vector3(0, 1.5, 5);
+    const draw = () => {
+      geo.restoreVisibility();
+      bedroom.showFrom(camera);
+      geo.showFrom(camera);
+      return painting.some((o) => o.visible);
+    };
+    expect(draw()).toBe(false);
+    geo.preview('bedroom', new Map([['painting', { x: 0, y: -1, z: -0.6, yaw: 0, support: { kind: 'floor' } }]]));
+    expect(draw()).toBe(true);
+    geo.preview('bedroom', null);
+    expect(draw()).toBe(false);
+  });
+
   it('applies a committed pose to a piece that arrives late, and reports an overriding wall edge', async () => {
     const scene = new THREE.Scene();
     const geo = sceneGeometry(scene);
     const bytes = readFileSync('public/models/living/shelving.glb');
     const { scene: shelf } = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(Uint8Array.from(bytes).buffer, '');
-    const s = withPose(DEFAULTS, 'living', 'shelving', { x: 0, y: 0, z: 0.3, yaw: 0, edge: 2 });
+    const s = withPose(DEFAULTS, 'living', 'shelving', { x: 0, y: 0, z: 0.3, yaw: 0, support: { kind: 'wall-and-floor', edge: 2 } });
     geo.commit(s);
     expect(geo.poses('living').size).toBe(0);
     await loadFurniture(scene, async ({ id }) => (id === 'shelving' ? shelf : new THREE.Group()), () => {}, () => geo.refresh()).ready;

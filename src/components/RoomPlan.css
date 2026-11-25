@@ -36,8 +36,6 @@
 .room-plan__row>button:first-child{flex:1;min-width:0}
 .room-plan__sub{display:block;color:var(--muted);font:400 11px var(--mono)}
 .room-plan__note{color:var(--muted);margin:0}
-.room-plan__views{display:flex;flex-wrap:wrap;gap:4px}
-.room-plan__views button{min-height:36px;padding-inline:8px}
 .room-plan__orientation{display:flex;align-items:center;gap:10px}
 .room-plan__locator{width:68px;height:64px;flex:none;background:var(--stage);border-radius:6px}
 .room-plan__locator .room-plan__wall{stroke-width:1}

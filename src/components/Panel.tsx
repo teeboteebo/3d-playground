@@ -29,12 +29,11 @@ export function Panel({ settings, update, menu, steps, editor, tools, placement,
   const props = { settings, update, exit, menu, editor };
   return (
     <aside className="panel">
-      {tools}
       <div className="panel-body">
       {children ?? (room === 'all' ? <AllRoomsPanel settings={settings} update={update} steps={steps} /> : <RoomPanel key={room} room={room} {...props} />)}
       {placement}
       </div>
-      <StepsBar steps={steps} />
+      <StepsBar steps={steps}>{tools}</StepsBar>
     </aside>
   );
 }

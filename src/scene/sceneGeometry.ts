@@ -83,6 +83,7 @@ export interface SceneGeometry {
   commit(settings: Settings): void;
   /** Apply the destination wall's cutaway to a remounted piece. Builders own visibility at the authored wall. */
   showFrom(camera: THREE.Vector3): void;
+  restoreVisibility(): void;
   /** the scene gained or rebuilt pieces (a model arrived): poses them again */
   refresh(): void;
 }
@@ -92,6 +93,11 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
   let shownPreview: { room: RoomId; poses: ReadonlyMap<string, PiecePose> } | null = null;
   let roots: Roots | null = null;
   const moved = new Map<THREE.Object3D, Authored>();
+  const visibility = new Map<THREE.Object3D, boolean>();
+  function restoreVisibility() {
+    for (const [o, shown] of visibility) o.visible = shown;
+    visibility.clear();
+  }
 
   const found = (): Roots => {
     if (roots) return roots;
@@ -127,6 +133,7 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
   }
 
   function release() {
+    restoreVisibility();
     restore();
     roots = null;
   }
@@ -158,13 +165,6 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
     if (!walls.has(room)) walls.set(room, roomWalls(roomById(room)));
     return walls.get(room)!.find((w) => w.edge === edge);
   };
-  const edgeOf = (room: RoomId, id: string): number | undefined => {
-    const mount = mountOf(room, id);
-    if (!('edge' in mount)) return undefined;
-    const p = shownPreview?.room === room ? shownPreview.poses.get(id) : undefined;
-    const edge = (p ?? componentOf(room, id)?.pose)?.edge;
-    return edge === mount.edge ? undefined : edge;
-  };
 
   const refresh = () => {
     release();
@@ -173,6 +173,7 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
 
   return {
     release,
+    restoreVisibility,
     refresh,
     commit(s) {
       settings = s;
@@ -186,11 +187,16 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
     showFrom(camera) {
       for (const [room, leaves] of found()) {
         for (const [id, objects] of leaves) {
-          const edge = edgeOf(room, id);
-          const wall = edge === undefined ? undefined : wallOf(room, edge);
-          if (!wall) continue;
-          const visible = wallFacesCamera(wall, camera) && (componentOf(room, id)?.shown ?? true);
-          for (const o of objects) o.visible = visible;
+          const state = componentOf(room, id);
+          const preview = shownPreview?.room === room ? shownPreview.poses.get(id) : undefined;
+          const support = (preview ?? state?.pose)?.support;
+          if (!support) continue;
+          const wall = 'edge' in support ? wallOf(room, support.edge) : undefined;
+          const visible = (state?.shown ?? true) && (!wall || wallFacesCamera(wall, camera));
+          for (const o of objects) {
+            visibility.set(o, o.visible);
+            o.visible = visible;
+          }
         }
       }
     },
@@ -221,9 +227,9 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
       const box = objects && worldExtent(objects);
       if (!box) continue;
       const state = componentOf(room, id);
-      const committedPose = state?.pose;
-      let mount = mountOf(room, id);
-      if (committedPose?.edge !== undefined && 'edge' in mount) mount = { ...mount, edge: committedPose.edge };
+      const authored = mountOf(room, id);
+      const support = state?.pose?.support;
+      const mount = support && 'edge' in support && 'edge' in authored ? { ...authored, ...support } : support ?? authored;
       out.set(id, { ...box, mount, obstructs: (state?.shown ?? true) && !NON_OBSTRUCTING.has(id) });
     }
     return out;

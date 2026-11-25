@@ -23,8 +23,9 @@ const components = { tv: on, 'tv-bench': on, sofa: on, shelving: { ...on, shown:
 
 const setup = (extra = {}) => {
   const onClose = vi.fn();
-  render(<RoomPlan room={room} tree={tree} poses={poses} components={components} onClose={onClose} {...extra} />);
-  return onClose;
+  const plan = (edge: number | null) => <RoomPlan room={room} tree={tree} poses={poses} components={components} onClose={onClose} wallEdge={edge} {...extra} />;
+  const { rerender } = render(plan(null));
+  return { onClose, face: (edge: number | null) => rerender(plan(edge)) };
 };
 
 describe('RoomPlan', () => {
@@ -55,16 +56,15 @@ describe('RoomPlan', () => {
     expect(screen.getByText('Unknown piece')).toBeInTheDocument();
   });
 
-  it('opens on a given selection and closes with the button or Escape', async () => {
-    const onClose = setup({ initialSelection: 'tv' });
+  it('opens on a given selection and closes with Escape after leaving the group', async () => {
+    const { onClose } = setup({ initialSelection: 'tv' });
     expect(within(screen.getByRole('region', { name: 'Living room plan' })).getByRole('heading', { name: 'Frame TV' })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Back to 3D' }));
     await userEvent.keyboard('{Escape}{Escape}');
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('Escape leaves one group first, claims the event, then closes', async () => {
-    const onClose = setup();
+    const { onClose } = setup();
     const seen = vi.fn();
     window.addEventListener('keydown', seen);
     await userEvent.click(screen.getByRole('button', { name: 'Enter TV set' }));
@@ -117,32 +117,31 @@ describe('RoomPlan', () => {
   });
 
   it('keeps the selected group and its numbers when switching between the plan and wall elevations', async () => {
-    setup({ initialSelection: 'set', poses: new Map([...poses, ['tv', leaf(0, { mount: { kind: 'wall', edge: 0 }, bottom: 0.5, top: 1.2 })]]) });
-    await userEvent.click(screen.getByRole('button', { name: 'Wall 1' }));
+    const { face } = setup({ initialSelection: 'set', poses: new Map([...poses, ['tv', leaf(0, { mount: { kind: 'wall', edge: 0 }, bottom: 0.5, top: 1.2 })]]) });
+    face(0);
     const elevation = screen.getByRole('img', { name: 'Living room facing Wall 1' });
     expect(within(elevation).getByRole('button', { name: '1. Frame TV' })).toHaveAttribute('aria-pressed', 'true');
     expect(within(elevation).getByText('210')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Wall 2' }));
+    face(1);
     expect(screen.queryByRole('button', { name: '1. Frame TV' })).toBeNull();
     expect(screen.getByText('Mounted on Wall 1')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Top down' }));
+    face(null);
     expect(document.querySelectorAll('.room-plan__piece--sel')).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Hide details' })).toBeInTheDocument();
   });
 
-  it('offers only physical walls and draws openings on their own wall', async () => {
-    setup({ room: ROOMS.find((r) => r.id === 'hall'), tree: { root: [], groups: {} } });
-    expect(screen.queryByRole('button', { name: 'Wall 3' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Wall 4' }));
+  it('draws openings on their own wall', () => {
+    const { face } = setup({ room: ROOMS.find((r) => r.id === 'hall'), tree: { root: [], groups: {} } });
+    face(3);
     const hall = screen.getByRole('img', { name: 'Hall facing Wall 4' });
     expect(within(hall).getByText('Doorway')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Wall 1' }));
+    face(0);
     expect(screen.queryByText('Doorway')).toBeNull();
   });
 
   it('shows both arched bedroom windows viewed from inside and locates their wall on the plan', async () => {
-    setup({ room: ROOMS.find((r) => r.id === 'bedroom'), tree: { root: [], groups: {} } });
-    await userEvent.click(screen.getByRole('button', { name: 'Wall 4' }));
+    const { face } = setup({ room: ROOMS.find((r) => r.id === 'bedroom'), tree: { root: [], groups: {} } });
+    face(3);
     const elevation = screen.getByRole('img', { name: 'Bedroom facing Wall 4' });
     expect(within(elevation).getAllByText('Window')).toHaveLength(2);
     const paths = [...elevation.querySelectorAll('path')].map((p) => p.getAttribute('d'));

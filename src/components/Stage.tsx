@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { mainView, viewsFor } from '../data/catalog';
 import { roomById, type RoomSelection } from '../data/rooms';
 import type { ApartmentScene } from '../scene/createScene';
@@ -129,7 +129,7 @@ export function Stage({ settings, update, onOption, nodeOf, selection = null, po
     };
   }, [onReady, onGeometryChange]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     settingsRef.current = settings;
     sceneRef.current?.apply(settings);
   }, [settings]);

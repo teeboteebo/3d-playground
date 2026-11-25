@@ -1,8 +1,9 @@
-import type { ComponentState, PiecePose } from '../data/components';
+import type { ComponentState, PiecePose, PieceSupport } from '../data/components';
 import type { Room, XZ } from '../data/rooms';
 import { leavesOf, type RoomTree } from '../data/tree';
 import { roomWalls, tangent, type Wall } from './apartment';
 import { proposeRigidMove, type MoveProposal, type PlacedLeaf, type Translation } from './rigidPlacement';
+import type { PlacementSurface } from './placementSurface';
 
 export const ZERO = { x: 0, y: 0, z: 0 } as const;
 const IDENTITY: PiecePose = { ...ZERO, yaw: 0 };
@@ -71,6 +72,59 @@ export function translateSelection(s: MoveSelection, delta: Translation): MoveRe
   return { ...result, transforms };
 }
 
+function reposition(leaf: PlacedLeaf, pose: PiecePose, yaw: number, delta: Translation, support?: PieceSupport) {
+  const moved = (x: number, z: number): XZ => {
+    const [rx, rz] = rotate(x, z, yaw);
+    return [rx + delta.x, rz + delta.z];
+  };
+  const [x, z] = moved(pose.x, pose.z);
+  const mount = support && 'edge' in support && 'edge' in leaf.mount ? { ...leaf.mount, ...support } : support ?? leaf.mount;
+  return {
+    leaf: { ...leaf, mount, footprint: leaf.footprint.map(([x, z]) => moved(x, z)), bottom: leaf.bottom + delta.y, top: leaf.top + delta.y },
+    pose: { ...pose, x, z, y: pose.y + delta.y, yaw: pose.yaw + yaw, ...(support && { support }) },
+  };
+}
+
+type Intersect = (point: Translation, normal: Translation) => Translation | null;
+
+export function dragToSurface(s: MoveSelection, motion: Motion, target: PlacementSurface, grab: Translation, intersect: Intersect): MoveResult | null {
+  if (motion.kind === 'blocked' && motion.reason !== 'pinned') return { ok: false, member: motion.member, reason: motion.reason };
+  const floorNormal = { ...ZERO, y: 1 };
+  const wall = target.kind === 'wall' ? target.wall : null;
+  const [ux, uz] = wall ? tangent(wall) : [0, 0];
+  const normal = wall ? { x: -uz, y: 0, z: ux } : floorNormal;
+  if ((!wall && motion.kind === 'floor') || (wall && motion.kind === 'wall' && motion.lift && motion.slide && motion.wall.edge === wall.edge)) {
+    const p = intersect(grab, normal);
+    return p && translateSelection(s, constrainedDelta(motion, { x: p.x - grab.x, y: p.y - grab.y, z: p.z - grab.z }));
+  }
+
+  const ids = leavesOf(s.tree, s.node);
+  let yaw = 0;
+  if (wall && motion.kind === 'wall') {
+    const [ax, az] = tangent(motion.wall);
+    yaw = Math.atan2(az, ax) - Math.atan2(uz, ux);
+  }
+  const [gx, gz] = rotate(grab.x, grab.z, yaw);
+  // Offset the pointer plane by the grab point's distance from the back (or bottom) of the whole group.
+  const gap = wall ? Math.min(...ids.flatMap((id) => s.poses.get(id)!.footprint.map(([x, z]) => {
+    const [rx, rz] = rotate(x, z, yaw);
+    return (rx - wall.a[0]) * normal.x + (rz - wall.a[1]) * normal.z;
+  }))) : Math.min(...ids.map((id) => s.poses.get(id)!.bottom));
+  const p = intersect({ x: gx - normal.x * gap, y: grab.y - normal.y * gap, z: gz - normal.z * gap }, normal);
+  if (!p) return null;
+  const delta = { x: p.x - gx, y: p.y - grab.y, z: p.z - gz };
+  const support: PieceSupport = wall ? { kind: 'wall', edge: wall.edge } : { kind: 'floor' };
+  const candidates = new Map(s.poses);
+  const transforms = new Map<string, PiecePose>();
+  for (const id of ids) {
+    const moved = reposition(s.poses.get(id)!, s.components[id]?.pose ?? IDENTITY, yaw, delta, support);
+    candidates.set(id, moved.leaf);
+    transforms.set(id, moved.pose);
+  }
+  const result = proposeRigidMove(s.room, s.tree, s.node, candidates, ZERO);
+  return result.ok ? { ...result, transforms } : result;
+}
+
 /** Face the new wall as one rigid assembly. Prefer the same relative spot along it, then the nearest spot that fits. */
 export function changeWall(s: MoveSelection, target: Wall): MoveResult {
   const motion = motionFor(s);
@@ -91,25 +145,19 @@ export function changeWall(s: MoveSelection, target: Wall): MoveResult {
   const transforms = new Map<string, PiecePose>();
   const offsets = new Set([0]);
   for (const id of ids) {
-    const p = s.components[id]?.pose ?? IDENTITY;
-    const [px, pz] = rotate(p.x, p.z, yaw);
     const leaf = s.poses.get(id)!;
-    const attached = 'edge' in leaf.mount;
-    transforms.set(id, { x: px + tx, z: pz + tz, y: p.y, yaw: p.yaw + yaw, ...(attached && { edge: target.edge }) });
-    const footprint = leaf.footprint.map(([x, z]): XZ => {
-      const [rx, rz] = rotate(x, z, yaw);
-      return [rx + tx, rz + tz];
-    });
-    const mount = 'edge' in leaf.mount ? { ...leaf.mount, edge: target.edge } : leaf.mount;
-    rotated.set(id, { ...leaf, footprint, mount });
+    const support = 'edge' in leaf.mount ? { kind: leaf.mount.kind, edge: target.edge } : undefined;
+    const moved = reposition(leaf, s.components[id]?.pose ?? IDENTITY, yaw, { x: tx, y: 0, z: tz }, support);
+    transforms.set(id, moved.pose);
+    rotated.set(id, moved.leaf);
     // Legal intervals along the target wall only change when a vertex meets a room edge or an opening's end.
-    for (const [x, z] of footprint) {
+    for (const [x, z] of moved.leaf.footprint) {
       s.room.poly.forEach(([x0, z0], i, poly) => {
         const [x1, z1] = poly[(i + 1) % poly.length];
         const dx = x1 - x0, dz = z1 - z0, slope = dx * bz - dz * bx;
         if (Math.abs(slope) > EPS) offsets.add((dz * (x - x0) - dx * (z - z0)) / slope);
       });
-      if (!attached) continue;
+      if (!support) continue;
       const u = (x - target.a[0]) * bx + (z - target.a[1]) * bz;
       for (const { u0, u1, opening } of target.holes) {
         if (leaf.top <= opening.y0 || leaf.bottom >= opening.y1) continue;

@@ -19,6 +19,7 @@ interface Props {
   onClose: () => void;
   initialSelection?: string;
   mapHost?: HTMLElement;
+  wallEdge?: number | null;
 }
 
 type Status = 'placed' | 'hidden' | 'unplaced' | 'unknown';
@@ -44,7 +45,7 @@ function KeyLine({ cls }: { cls: string }) {
   return <svg className="room-plan__swatch" width="30" height="10" viewBox="0 0 30 10" aria-hidden="true"><line className={cls} x1="2" y1="5" x2="28" y2="5" /></svg>;
 }
 
-export function RoomPlan({ room, tree, poses, components, onClose, initialSelection, mapHost }: Props) {
+export function RoomPlan({ room, tree, poses, components, onClose, initialSelection, mapHost, wallEdge }: Props) {
   const names = useMemo(() => new Map(ROOM_DEFS[room.id].components.map((c) => [c.id as string, c.name])), [room.id]);
   const valid = initialSelection !== undefined && parentOf(tree, initialSelection) !== undefined;
   const [rawEntered, setEntered] = useState<Parent>(() => (valid ? parentOf(tree, initialSelection) ?? null : null));
@@ -54,11 +55,8 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
   const selected = rawSelected !== null && parentOf(tree, rawSelected) !== undefined ? rawSelected : null;
   const hotLeaves = hot !== null && parentOf(tree, hot) !== undefined ? leavesOf(tree, hot) : [];
   const [inspect, setInspect] = useState(valid);
-  const [wallEdge, setWallEdge] = useState<number | null>(null);
   const walls = useMemo(() => roomWalls(room), [room]);
   const wall = walls.find((w) => w.edge === wallEdge);
-  const back = useRef<HTMLButtonElement>(null);
-  useEffect(() => back.current?.focus(), []);
 
   const select = (id: string | null) => { setSelected(id); setInspect(false); };
   const leave = () => {
@@ -238,12 +236,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
     <section className="room-plan" aria-label={`${room.name} plan`}>
       {mapHost ? createPortal(map, mapHost) : map}
       <aside className="room-plan__side">
-        <button ref={back} type="button" onClick={onClose}>Back to 3D</button>
         <h2>{room.name} plan</h2>
-        <div className="room-plan__views" role="group" aria-label="Plan view">
-          <button type="button" aria-pressed={!wall} onClick={() => setWallEdge(null)}>Top down</button>
-          {walls.map((w) => <button type="button" key={w.edge} aria-pressed={wall === w} onClick={() => setWallEdge(w.edge)}>Wall {w.edge + 1}</button>)}
-        </div>
         {wall ? <div className="room-plan__orientation">
           <WallLocator wall={wall} footprints={placedIds.filter((id) => selectedLeaves.includes(id)).map((id) => poses.get(id)!.footprint)} />
           <p className="room-plan__note">Facing Wall {wall.edge + 1} from inside. Boxes show piece width and height. Pieces mounted on other walls are not drawn.</p>

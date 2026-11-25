@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { roomById } from '../data/rooms';
 import { roomWalls } from './apartment';
-import { changeWall, constrainedDelta, motionFor, translateSelection, type MoveSelection } from './placementMove';
+import { changeWall, constrainedDelta, dragToSurface, motionFor, translateSelection, type MoveSelection } from './placementMove';
 import type { PlacedLeaf } from './rigidPlacement';
 
 const room = roomById('bedroom');
@@ -38,8 +38,8 @@ describe('moving a selection', () => {
     expect(mounted.mount).toEqual({ kind: 'wall', edge: 1 });
     expect(Math.max(...mounted.footprint.map(([x]) => x))).toBeCloseTo(2.15);
     expect(mounted.bottom).toBe(1);
-    const { edge, ...a } = result.transforms.get('art')!;
-    expect(edge).toBe(1);
+    const { support, ...a } = result.transforms.get('art')!;
+    expect(support).toEqual({ kind: 'wall', edge: 1 });
     expect(a).toEqual(result.transforms.get('bench'));
     expect(result.leaves.get('bench')!.bottom).toBe(0);
   });
@@ -56,5 +56,29 @@ describe('moving a selection', () => {
     const s = { ...selection, poses: new Map(selection.poses).set('bench', { ...bench, mount: { kind: 'wall-and-floor', edge: 1 } }) };
     expect(motionFor(s)).toMatchObject({ kind: 'blocked', reason: 'pinned' });
     expect(changeWall(s, walls[2])).toMatchObject({ ok: false });
+  });
+
+  it('transfers a mixed group without changing its spacing, including its hidden member', () => {
+    const s = { ...selection, poses: new Map(selection.poses).set('bench', { ...bench, obstructs: false }) };
+    const grab = { x: 0, y: 1.4, z: -1.92 };
+    const mount = dragToSurface(s, motionFor(s), { kind: 'wall', wall: walls[1] }, grab, (p) => ({ x: p.x, y: 1.9, z: -0.75 }));
+    if (!mount?.ok) throw Error('Group should fit left of the doorway');
+    expect([...mount.leaves.values()].map((p) => p.mount)).toEqual([{ kind: 'wall', edge: 1 }, { kind: 'wall', edge: 1 }]);
+    expect(mount.transforms.get('art')).toEqual(mount.transforms.get('bench'));
+    expect(mount.leaves.get('art')!.bottom - mount.leaves.get('bench')!.bottom).toBeCloseTo(1);
+    expect(Math.max(...mount.leaves.get('art')!.footprint.map(([x]) => x))).toBeCloseTo(2.15);
+    const floor = dragToSurface({ ...s, poses: mount.leaves }, { kind: 'wall', wall: walls[1], lift: true, slide: true, canRemount: true },
+      { kind: 'floor' }, { x: 2.1, y: 1.9, z: -0.75 }, (p) => ({ x: 0.8, y: p.y, z: 0 }));
+    if (!floor?.ok) throw Error('Group should fit on the floor');
+    expect(floor.leaves.get('bench')!.bottom).toBeCloseTo(0);
+    expect(floor.leaves.get('art')!.bottom).toBeCloseTo(1);
+    expect(floor.leaves.get('art')!.mount).toEqual({ kind: 'floor' });
+  });
+
+  it('rejects a floor-to-wall drop across a doorway rather than moving it to a different spot', () => {
+    const s = { ...selection, node: 'bench' };
+    const result = dragToSurface(s, motionFor(s), { kind: 'wall', wall: walls[1] }, { x: 0, y: 0.4, z: -1.7 },
+      (p) => ({ x: p.x, y: 1.4, z: 1.15 }));
+    expect(result).toMatchObject({ ok: false, member: 'bench', reason: 'opening' });
   });
 });

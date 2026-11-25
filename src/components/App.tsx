@@ -4,6 +4,7 @@ import { roomById, type RoomId, type RoomSelection } from '../data/rooms';
 import { isGroup, leavesOf, resolvePick } from '../data/tree';
 import { selectedLeaves, useEditor } from '../state/useEditor';
 import { motionFor } from '../scene/placementMove';
+import { roomWalls } from '../scene/apartment';
 import { useSettings } from '../state/useSettings';
 import { Panel } from './Panel';
 import { Stage, type StageView } from './Stage';
@@ -18,9 +19,9 @@ export function App() {
   const [settings, update, steps] = useSettings();
   const [stage, setStage] = useState<StageView | null>(null);
   const geometryChanged = useCallback(() => setStage((s) => s && { ...s }), []);
-  const [planRoom, setPlanRoom] = useState<RoomId | null>(null);
-  if (planRoom && planRoom !== settings.room) setPlanRoom(null);
-  const planOpen = planRoom === settings.room;
+  const [plan, setPlan] = useState<{ room: RoomId; edge: number | null } | null>(null);
+  if (plan && plan.room !== settings.room) setPlan(null);
+  const planOpen = plan?.room === settings.room;
   const room = settings.room !== 'all' ? roomById(settings.room) : null;
   /* the room menu's open page, as topic ids from the room's summary; every change of room (coming back to one
      included) starts again at the summary */
@@ -93,7 +94,7 @@ export function App() {
         e.preventDefault();
         k.steps.redo();
       } else if (e.key === 'Escape' && !mod) {
-        if (k.planOpen) setPlanRoom(null);
+        if (k.planOpen) setPlan(null);
         else if (k.path.length === 1 && k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
         else if (k.path.length > 0) k.go(k.path.slice(0, -1));
         else if (k.room !== 'all') k.update({ room: 'all' });
@@ -114,20 +115,23 @@ export function App() {
         onReady={setStage}
         onGeometryChange={geometryChanged}
         planOpen={planOpen}
-        canDrag={!!motion && motion.kind !== 'blocked'}
+        canDrag={!!motion && (motion.kind !== 'blocked' || motion.reason === 'pinned')}
         pointed={pointed?.room === settings.room ? pointed.path : null}
       />
       <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} editor={editor}
         placement={!planOpen && selection && motion && stage &&
           <PlacementControls key={`${selection.room.id}/${selection.node}`} selection={selection} motion={motion} stage={stage} update={update} />}
-        tools={room && (
-        <div className="placement-tools" role="group" aria-label="Room tools">
-          <button type="button" className="chip" aria-pressed={planOpen} onClick={() => setPlanRoom(planOpen ? null : room.id)}>Room plan</button>
-        </div>
-      )}>
+        tools={room && <label className="plan-picker">Planogram
+          <select value={planOpen ? plan.edge ?? 'top' : '3d'} onChange={({ target: { value } }) =>
+            setPlan(value === '3d' ? null : { room: room.id, edge: value === 'top' ? null : Number(value) })}>
+            <option value="3d">3D view</option>
+            <option value="top">Top down</option>
+            {roomWalls(room).map((w) => <option key={w.edge} value={w.edge}>Wall {w.edge + 1}</option>)}
+          </select>
+        </label>}>
         {planOpen && room && tree ? stage && poses
           ? <RoomPlan room={room} tree={tree} poses={poses} components={settings.rooms[room.id].components} initialSelection={activeNode}
-              onClose={() => setPlanRoom(null)} mapHost={stage.container} />
+              wallEdge={plan.edge} onClose={() => setPlan(null)} mapHost={stage.container} />
           : <p role="status">Room plan needs the 3D preview to measure the pieces.</p> : undefined}
       </Panel>
     </div>

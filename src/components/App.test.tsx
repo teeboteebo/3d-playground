@@ -65,6 +65,20 @@ const hover3d = async (room?: string, path?: string[]) => {
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
+  it('switches directly between 3D and physical wall plans from the undo/redo footer without saving an edit', async () => {
+    await renderIn('hall');
+    const footer = within(screen.getByRole('group', { name: 'Design controls' }));
+    const picker = footer.getByRole('combobox', { name: 'Planogram' });
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['3D view', 'Top down', 'Wall 1', 'Wall 2', 'Wall 4']);
+    await userEvent.selectOptions(picker, '3');
+    expect(screen.getByRole('img', { name: 'Hall facing Wall 4' })).toBeInTheDocument();
+    await userEvent.selectOptions(picker, 'top');
+    expect(screen.getByRole('img', { name: 'Overhead plan of Hall' })).toBeInTheDocument();
+    await userEvent.selectOptions(picker, '3d');
+    expect(screen.queryByRole('region', { name: 'Hall plan' })).toBeNull();
+    expect(footer.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  });
+
   it('creates the scene with the saved settings and disposes it on unmount', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, time: 'eve', bedroom: { rug: 'rista' } }));
     const { unmount } = await renderApp();

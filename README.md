@@ -28,26 +28,26 @@ not bind pieces together.
 
 Select a piece or group in the room or its menu, then drag the outlined piece or any member of the selected group.
 Dashed lines show its distances to the room in centimetres only while you drag. Release to place it, or press
-Escape to cancel. Drag anywhere else to orbit. Use **Room plan** to check distances without moving anything.
+Escape to cancel. Drag anywhere else to orbit. Use **Planogram** beside Undo and Redo to check distances without moving anything.
 
-Floor pieces slide across the floor. Wall pieces slide along their wall and can move up or down unless they also
-rest on the floor. Use **Mounting wall** and **Change wall** to attach a piece to a different wall. Ceiling lights
-stay fixed. Every member of a group must fit, including hidden members. A solid overlap warns but allows the
-drop. Leaving the room or mounting across an opening blocks it.
+Drag onto a wall to mount the selection, or back onto the floor to set it down. The preview names the target
+and shows its clearances before you release. Pieces stay upright. A group moves as one: its lowest point rests
+on the floor or its back touches the wall. Ceiling lights stay fixed. Every member must fit, including hidden
+members. Furniture overlaps warn but allow the drop. Leaving the room or mounting across an opening blocks it.
 
 For a precise move, set **Step (cm)** under **Fine adjustment** in the selection's panel and use the adjustment buttons.
 Each drop, adjustment, or wall change is one undo step. Reloading restores the saved positions.
 
 ## Read the room plan
 
-Open **Room plan** for the top-down view. Choose a numbered **Wall** to face it from inside the room.
+In the **Planogram** dropdown beside Undo and Redo, choose **Top down** or a numbered **Wall** to face it from inside the room.
 The wall view shows its doors, windows and doorways. Numbered boxes show each piece’s projected width and height.
 Freestanding pieces appear where they project onto the wall’s width; mounted pieces appear only on their own wall.
 Open edges have no wall view.
 
 Select a piece or group to see its clearances. In a wall view the dashed lines measure to the sides, floor and ceiling.
 The list gives the distance back to the wall. Switch views to follow the same selection, or enter a group to inspect one
-member. All views are read-only; **Back to 3D** returns without changing the layout.
+member. All plans are read-only; choose **3D view** to return without changing the layout.
 
 ## Develop
 

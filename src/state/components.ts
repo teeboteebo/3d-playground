@@ -1,5 +1,5 @@
 import { BEMZ_FABRICS } from '../data/bemzFabrics';
-import { initialOptions, type ComponentDef, type ComponentState, type OptionDef, type PiecePose, type RoomDef } from '../data/components';
+import { initialOptions, type ComponentDef, type ComponentState, type OptionDef, type PiecePose, type PieceSupport, type RoomDef } from '../data/components';
 import { CEILING, roomById, type Room } from '../data/rooms';
 
 export type ComponentStates<K extends string> = Record<K, ComponentState>;
@@ -30,15 +30,28 @@ function sanitizeOptions(c: ComponentDef, raw: unknown): Record<string, string> 
 
 function savedPose(raw: unknown, c: ComponentDef, room: Room): PiecePose | undefined {
   if (!raw || typeof raw !== 'object' || c.mount?.kind === 'fixed') return;
-  const { x, y, z, yaw, edge } = raw as Record<string, unknown>;
+  const { x, y, z, yaw, edge, support: saved } = raw as Record<string, unknown>;
   if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number' || typeof yaw !== 'number'
-    || ![x, y, z, yaw].every(Number.isFinite) || Math.abs(y) > CEILING || (c.mount?.kind !== 'wall' && y !== 0)) return;
+    || ![x, y, z, yaw].every(Number.isFinite) || Math.abs(y) > CEILING) return;
   const maxPoseOffset = 2 * Math.max(...room.poly.map(([px, pz]) => Math.hypot(px, pz)));
   if (Math.hypot(x, z) > maxPoseOffset) return;
-  if (edge === undefined) return { x, y, z, yaw };
-  if (!c.mount || !('edge' in c.mount) || typeof edge !== 'number' || !Number.isInteger(edge)
-    || edge < 0 || edge >= room.poly.length || room.open?.includes(edge)) return;
-  return { x, y, z, yaw, edge };
+  const validEdge = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v)
+    && v >= 0 && v < room.poly.length && !room.open?.includes(v);
+  let support: PieceSupport | undefined;
+  if (saved !== undefined) {
+    if (!saved || typeof saved !== 'object' || !('kind' in saved)) return;
+    if (saved.kind === 'floor') support = { kind: 'floor' };
+    else if ((saved.kind === 'wall' || saved.kind === 'wall-and-floor') && 'edge' in saved && validEdge(saved.edge))
+      support = { kind: saved.kind, edge: saved.edge };
+    else return;
+  } else {
+    if (c.mount?.kind !== 'wall' && y !== 0) return;
+    if (edge !== undefined) {
+      if (!c.mount || !('edge' in c.mount) || !validEdge(edge)) return;
+      support = { kind: c.mount.kind, edge };
+    }
+  }
+  return { x, y, z, yaw, ...(support && { support }) };
 }
 
 /** each component's saved state, any invalid or missing field taken from its definition's initial state */

@@ -23,6 +23,18 @@ describe('office components state', () => {
     expect('sofa' in c).toBe(false);
     expect((c.desk as { shown: boolean }).shown).toBe(true);
   });
+
+  it('restores explicit surface transfers and migrates a saved mounting wall without moving the piece', () => {
+    const pose = { x: 0.2, y: 1.2, z: 0, yaw: 0 };
+    const mounted = { ...pose, support: { kind: 'wall', edge: 1 } };
+    const floor = { ...pose, y: -0.4, support: { kind: 'floor' } };
+    expect(sanitizeComponents({ desk: { pose: mounted }, cabinets: { pose: floor } }, OFFICE)).toMatchObject({
+      desk: { pose: mounted }, cabinets: { pose: floor },
+    });
+    expect(sanitizeComponents({ cabinets: { pose: { ...pose, y: 0, edge: 3 } } }, OFFICE).cabinets.pose)
+      .toEqual({ ...pose, y: 0, support: { kind: 'wall-and-floor', edge: 3 } });
+    expect(sanitizeComponents({ desk: { pose: { ...pose, support: { kind: 'wall', edge: 99 } } } }, OFFICE).desk.pose).toBeUndefined();
+  });
 });
 
 describe('component options', () => {
