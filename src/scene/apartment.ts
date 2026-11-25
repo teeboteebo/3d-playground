@@ -2,6 +2,7 @@ import { OPENINGS, centroid, type Opening, type Room, type XZ } from '../data/ro
 
 export interface Wall {
   room: Room;
+  edge: number;
   /** start/end, ordered so the wall's face points into the room when walking a → b */
   a: XZ;
   b: XZ;
@@ -35,7 +36,7 @@ export function roomWalls(room: Room, openings: readonly Opening[] = OPENINGS): 
       holes.push({ opening: o, u0: Math.max(0, u0), u1: Math.min(length, u1) });
     }
     holes.sort((p1, p2) => p1.u0 - p2.u0);
-    walls.push({ room, a, b, length, holes });
+    walls.push({ room, edge: i, a, b, length, holes });
   });
   return walls;
 }

@@ -1,6 +1,6 @@
 import { CEILING, type Room, type XZ } from '../data/rooms';
 import type { Mount } from '../data/components';
-import { leavesOf, type RoomTree } from '../data/tree';
+import { leavesOf, parentOf, type RoomTree } from '../data/tree';
 import { footprintsOverlap } from '../lib/footprint';
 import { roomWalls, type Wall } from './apartment';
 
@@ -55,6 +55,7 @@ export function proposeRigidMove(
   delta: Translation,
 ): MoveProposal {
   if (!Object.values(delta).every(Number.isFinite)) throw new Error('Invalid translation request');
+  if (parentOf(tree, selection) === undefined) return { ok: false, member: selection, reason: 'unavailable' };
   const walls = roomWalls(room);
   const next = new Map<string, PlacedLeaf>();
   for (const id of leavesOf(tree, selection)) {
@@ -70,9 +71,7 @@ export function proposeRigidMove(
       footprint: source.footprint.map(([x, z]) => [x + delta.x, z + delta.z]),
     };
     if ('edge' in mount) {
-      const a = room.poly[mount.edge];
-      const b = room.poly[(mount.edge + 1) % room.poly.length];
-      const wall = walls.find((w) => (w.a === a && w.b === b) || (w.a === b && w.b === a));
+      const wall = walls.find((w) => w.edge === mount.edge);
       if (!wall) throw new Error(`Invalid mount on ${room.id} edge ${mount.edge}`);
       const [dx, dz] = unitAlong(wall);
       if (Math.abs(delta.z * dx - delta.x * dz) > EPS) return { ok: false, member: id, reason: 'wall' };

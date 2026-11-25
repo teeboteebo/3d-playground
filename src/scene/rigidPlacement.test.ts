@@ -83,6 +83,7 @@ describe('rigid group movement', () => {
     };
     const poses = new Map<string, PlacedLeaf>([['floor', floor], ['lamp', floor], ['ceiling-light', { ...floor, mount: { kind: 'fixed' }, obstructs: false }]]);
     const delta = { x: 0.25, y: 0, z: 0 };
+    expect(proposeRigidMove(roomById('living'), { root: [], groups: {} }, 'lamp', poses, delta)).toMatchObject({ ok: false, reason: 'unavailable' });
     expect(proposeRigidMove(roomById('living'), tree, 'set', poses, delta)).toMatchObject({ ok: false, reason: 'fixed' });
     poses.delete('lamp');
     expect(proposeRigidMove(roomById('living'), tree, 'set', poses, delta)).toMatchObject({ ok: false, reason: 'unavailable', member: 'lamp' });
