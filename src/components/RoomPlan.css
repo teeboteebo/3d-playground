@@ -1,0 +1,26 @@
+.room-plan{position:absolute;inset:0;z-index:6;display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,300px);background:var(--stage);color:var(--fg);font:400 12.5px var(--body);min-height:0}
+.room-plan__map{position:relative;min-width:0;min-height:0;padding:12px}
+.room-plan__svg{width:100%;height:100%;display:block}
+.room-plan__room{fill:var(--panel);stroke:var(--fg);stroke-width:2;vector-effect:non-scaling-stroke}
+.room-plan__open{stroke:var(--accent);stroke-width:5;vector-effect:non-scaling-stroke;opacity:.55}
+.room-plan__piece{fill:var(--chip);stroke:var(--muted);stroke-width:1.5;vector-effect:non-scaling-stroke;cursor:pointer;outline:none}
+.room-plan__piece--scope{fill:var(--chip-on)}
+.room-plan__piece--sel{fill:var(--accent);fill-opacity:.35;stroke:var(--accent);stroke-width:2.5}
+.room-plan__piece:focus-visible{stroke:var(--fg);stroke-width:3}
+.room-plan__guide{stroke:var(--accent);stroke-width:1.5;stroke-dasharray:5 4;vector-effect:non-scaling-stroke}
+.room-plan__text{font-family:var(--mono);fill:var(--fg);paint-order:stroke;stroke:var(--panel);stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.room-plan__side{display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;padding:12px;background:var(--panel);border-left:1px solid var(--line)}
+.room-plan__side h2{font:700 15px var(--display);margin:0}
+.room-plan__side h3{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:4px 0 0}
+.room-plan__side ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.room-plan button{font:500 12px var(--body);color:var(--fg);background:var(--chip);border:1px solid transparent;border-radius:6px;padding:6px 10px;min-height:32px;cursor:pointer;text-align:left}
+.room-plan button[aria-pressed="true"]{border-color:var(--accent);background:var(--chip-on)}
+.room-plan button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.room-plan__row{display:flex;gap:4px}
+.room-plan__row>button:first-child{flex:1;min-width:0}
+.room-plan__sub{display:block;color:var(--muted);font:400 11px var(--mono)}
+.room-plan__note{color:var(--muted);margin:0}
+@media (max-width:760px){
+  .room-plan{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) minmax(0,45%)}
+  .room-plan__side{border-left:0;border-top:1px solid var(--line)}
+}
