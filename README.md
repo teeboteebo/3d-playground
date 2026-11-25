@@ -30,7 +30,8 @@ Select a piece or group in the room or its menu, then drag the outlined piece or
 Dashed lines show its distances to the room in centimetres only while you drag. Release to place it, or press
 Escape to cancel. Drag anywhere else to orbit. Use **Planogram** beside Undo and Redo to check distances without moving anything.
 
-Drag onto a wall to mount the selection, or back onto the floor to set it down. The preview names the target
+At the floor-wall seam, a floor piece snaps flush to the wall and a wall piece can touch the floor without
+detaching. Drag farther onto the other surface to change support. The preview names the target
 and shows its clearances before you release. Pieces stay upright. A group moves as one: its lowest point rests
 on the floor or its back touches the wall. Ceiling lights stay fixed. Every member must fit, including hidden
 members. Furniture overlaps warn but allow the drop. Leaving the room or mounting across an opening blocks it.

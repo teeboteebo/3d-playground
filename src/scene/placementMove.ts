@@ -8,6 +8,7 @@ import type { PlacementSurface } from './placementSurface';
 export const ZERO = { x: 0, y: 0, z: 0 } as const;
 const IDENTITY: PiecePose = { ...ZERO, yaw: 0 };
 const EPS = 1e-8;
+const CONTACT_SNAP_M = 0.05;
 const rotate = (x: number, z: number, yaw: number): XZ =>
   [Math.cos(yaw) * x + Math.sin(yaw) * z, -Math.sin(yaw) * x + Math.cos(yaw) * z];
 
@@ -87,33 +88,85 @@ function reposition(leaf: PlacedLeaf, pose: PiecePose, yaw: number, delta: Trans
 
 type Intersect = (point: Translation, normal: Translation) => Translation | null;
 
+function wallGap(wall: Wall, footprint: readonly XZ[], delta: Translation = ZERO) {
+  const [ux, uz] = tangent(wall);
+  return Math.min(...footprint.map(([x, z]) => (z - wall.a[1]) * ux - (x - wall.a[0]) * uz)) + ux * delta.z - uz * delta.x;
+}
+
+function fitFloorDrag(room: Room, footprint: readonly XZ[], delta: Translation): Translation {
+  const bounds = roomWalls(room).map((wall) => {
+    const [ux, uz] = tangent(wall);
+    return { nx: -uz, nz: ux, gap: wallGap(wall, footprint, delta) };
+  });
+  if (bounds.every(({ gap }) => gap > CONTACT_SNAP_M)) return delta;
+
+  // In translation space the nearest legal contact is on a wall line or at the intersection of two.
+  let best = Infinity;
+  let fitted = delta;
+  const consider = (x: number, z: number) => {
+    const d = x * x + z * z;
+    if (d >= best || bounds.some(({ nx, nz, gap }) => gap + nx * x + nz * z < -EPS)) return;
+    best = d;
+    fitted = { ...delta, x: delta.x + x, z: delta.z + z };
+  };
+  bounds.forEach(({ nx, nz, gap }, i) => {
+    if (gap <= CONTACT_SNAP_M) consider(-gap * nx, -gap * nz);
+    for (const b of bounds.slice(i + 1)) {
+      if (gap > CONTACT_SNAP_M && b.gap > CONTACT_SNAP_M) continue;
+      const det = nx * b.nz - nz * b.nx;
+      if (Math.abs(det) > EPS) consider((nz * b.gap - gap * b.nz) / det, (gap * b.nx - nx * b.gap) / det);
+    }
+  });
+  return fitted;
+}
+
 export function dragToSurface(s: MoveSelection, motion: Motion, target: PlacementSurface, grab: Translation, intersect: Intersect): MoveResult | null {
   if (motion.kind === 'blocked' && motion.reason !== 'pinned') return { ok: false, member: motion.member, reason: motion.reason };
-  const floorNormal = { ...ZERO, y: 1 };
-  const wall = target.kind === 'wall' ? target.wall : null;
-  const [ux, uz] = wall ? tangent(wall) : [0, 0];
-  const normal = wall ? { x: -uz, y: 0, z: ux } : floorNormal;
-  if ((!wall && motion.kind === 'floor') || (wall && motion.kind === 'wall' && motion.lift && motion.slide && motion.wall.edge === wall.edge)) {
-    const p = intersect(grab, normal);
-    return p && translateSelection(s, constrainedDelta(motion, { x: p.x - grab.x, y: p.y - grab.y, z: p.z - grab.z }));
+  const ids = leavesOf(s.tree, s.node);
+  const leaves = ids.map((id) => s.poses.get(id)!);
+  const footprint = leaves.flatMap((leaf) => leaf.footprint);
+  const bottom = Math.min(...leaves.map((leaf) => leaf.bottom));
+  const floorY = motion.kind === 'floor' ? 0 : -bottom;
+  const onFloor = (delta: Translation) => {
+    const fitted = fitFloorDrag(s.room, footprint, { ...delta, y: floorY });
+    return motion.kind === 'floor' ? translateSelection(s, fitted) : remount(s, ids, 0, fitted, { kind: 'floor' });
+  };
+  const floorPoint = intersect({ ...grab, y: grab.y + floorY }, { ...ZERO, y: 1 });
+  const floorDelta = floorPoint && { x: floorPoint.x - grab.x, y: floorY, z: floorPoint.z - grab.z };
+  let wall: Wall;
+  if (target.kind === 'wall') wall = target.wall;
+  else {
+    if (!floorDelta) return null;
+    if (motion.kind !== 'wall' || !motion.canRemount) return onFloor(floorDelta);
+    wall = motion.wall;
+    if (wallGap(wall, footprint, floorDelta) > CONTACT_SNAP_M) return onFloor(floorDelta);
   }
 
-  const ids = leavesOf(s.tree, s.node);
+  const [ux, uz] = tangent(wall);
+  const normal = { x: -uz, y: 0, z: ux };
+  const alongCurrentWall = motion.kind === 'wall' && motion.slide && motion.wall.edge === wall.edge;
+  const sameWall = alongCurrentWall && motion.lift;
   let yaw = 0;
-  if (wall && motion.kind === 'wall') {
+  if (motion.kind === 'wall' && motion.wall.edge !== wall.edge) {
     const [ax, az] = tangent(motion.wall);
     yaw = Math.atan2(az, ax) - Math.atan2(uz, ux);
   }
   const [gx, gz] = rotate(grab.x, grab.z, yaw);
-  // Offset the pointer plane by the grab point's distance from the back (or bottom) of the whole group.
-  const gap = wall ? Math.min(...ids.flatMap((id) => s.poses.get(id)!.footprint.map(([x, z]) => {
-    const [rx, rz] = rotate(x, z, yaw);
-    return (rx - wall.a[0]) * normal.x + (rz - wall.a[1]) * normal.z;
-  }))) : Math.min(...ids.map((id) => s.poses.get(id)!.bottom));
-  const p = intersect({ x: gx - normal.x * gap, y: grab.y - normal.y * gap, z: gz - normal.z * gap }, normal);
-  if (!p) return null;
+  const gap = sameWall ? 0 : wallGap(wall, yaw ? footprint.map(([x, z]) => rotate(x, z, yaw)) : footprint);
+  const p = intersect({ x: gx - normal.x * gap, y: grab.y, z: gz - normal.z * gap }, normal);
+  if (!p) return target.kind === 'floor' && floorDelta ? onFloor(floorDelta) : null;
   const delta = { x: p.x - gx, y: p.y - grab.y, z: p.z - gz };
-  const support: PieceSupport = wall ? { kind: 'wall', edge: wall.edge } : { kind: 'floor' };
+  const height = bottom + delta.y;
+  if (target.kind === 'wall' && (motion.kind === 'floor' || alongCurrentWall) && height < -CONTACT_SNAP_M && floorDelta) return onFloor(floorDelta);
+  if (height <= CONTACT_SNAP_M) {
+    if (motion.kind === 'floor') return onFloor(delta);
+    if (alongCurrentWall && !motion.lift) return translateSelection(s, constrainedDelta(motion, delta));
+    delta.y = -bottom;
+  }
+  return sameWall ? translateSelection(s, constrainedDelta(motion, delta)) : remount(s, ids, yaw, delta, { kind: 'wall', edge: wall.edge });
+}
+
+function remount(s: MoveSelection, ids: readonly string[], yaw: number, delta: Translation, support: PieceSupport): MoveResult {
   const candidates = new Map(s.poses);
   const transforms = new Map<string, PiecePose>();
   for (const id of ids) {

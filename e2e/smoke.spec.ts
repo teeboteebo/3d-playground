@@ -168,6 +168,32 @@ test.describe('physical room groups', () => {
       expect((await current()).painting.pose.y).toBeCloseTo(0.05);
     });
 
+    for (const support of ['floor', 'wall'] as const) test(`places the ${support}-supported bench flush in the floor-wall seam`, async ({ page }) => {
+      await openWith(page, { version: 6, room: 'bedroom' });
+      await settled(page);
+      await page.locator('button.topic').filter({ has: page.getByText('Bench', { exact: true }) }).click();
+      await page.mouse.move(470,600);
+      await page.mouse.down();
+      if (support === 'wall') {
+        await page.mouse.move(350,300,{ steps: 8 });
+        await page.mouse.up();
+        await page.mouse.down();
+      }
+      await page.mouse.move(350, support === 'floor' ? 470 : 480, { steps: 8 });
+      await expect(page.locator('.move-status')).toContainText(`on ${support === 'floor' ? 'floor' : 'Wall 1'}`);
+      await page.mouse.up();
+      await expect(page.getByRole('button', { name: support === 'floor' ? '+Z' : 'Raise', exact: true })).toBeVisible();
+      const views = page.getByRole('combobox', { name: 'Planogram' });
+      const bounds = () => page.locator('.room-plan__map polygon[aria-label$=". Bench"]').evaluate((p: SVGPolygonElement) => {
+        const { y, height } = p.getBBox();
+        return { min: y, max: y + height };
+      });
+      await views.selectOption('top');
+      expect((await bounds()).min).toBeCloseTo(-1.975, 5);
+      await views.selectOption({ label: 'Wall 1' });
+      expect((await bounds()).max).toBeCloseTo(3.3, 5);
+    });
+
     test('drags a bench from floor to wall and back, restores its support on undo and reload', async ({ page }) => {
       await openWith(page, { version: 6, room: 'bedroom' });
       await settled(page);

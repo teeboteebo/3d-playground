@@ -81,4 +81,35 @@ describe('moving a selection', () => {
       (p) => ({ x: p.x, y: 1.4, z: 1.15 }));
     expect(result).toMatchObject({ ok: false, member: 'bench', reason: 'opening' });
   });
+
+  it('stops a whole floor group at the angled office corner reached by its hidden member', () => {
+    const left: PlacedLeaf = { ...bench, footprint: [[10,0],[10.3,0],[10.3,0.3],[10,0.3]] };
+    const right: PlacedLeaf = { ...left, obstructs: false, footprint: left.footprint.map(([x, z]) => [x + 0.5, z]) };
+    const s = { ...selection, room: roomById('office'), poses: new Map([['art', left], ['bench', right]]) };
+    const move = dragToSurface(s, motionFor(s), { kind: 'floor' }, { x: 10.1, y: 0.4, z: 0.1 },
+      () => ({ x: 11.7, y: 0.4, z: 1.4 }));
+    if (!move?.ok) throw Error('The floor group should fit in the corner');
+    const [x, z] = move.leaves.get('bench')!.footprint[2];
+    expect(x).toBeCloseTo(11.89);
+    expect(z).toBeCloseTo(1.355);
+    expect(move.transforms.get('art')).toEqual(move.transforms.get('bench'));
+  });
+
+  it('does not snap to a fictitious wall at the open end of the hall', () => {
+    const leaf: PlacedLeaf = { ...bench, footprint: [[2.7,1],[3,1],[3,1.4],[2.7,1.4]] };
+    const s = { ...selection, node: 'bench', room: roomById('hall'), poses: new Map([['bench', leaf]]) };
+    const move = dragToSurface(s, motionFor(s), { kind: 'floor' }, { x: 2.8, y: 0.4, z: 1.2 },
+      () => ({ x: 2.8, y: 0.4, z: 2.85 }));
+    expect(move).toMatchObject({ ok: false, reason: 'outside' });
+  });
+
+  it('slides a mixed group along the seam without detaching either member', () => {
+    const move = dragToSurface(selection, motionFor(selection), { kind: 'wall', wall: walls[0] },
+      { x: 0, y: 1.4, z: -1.92 }, (p) => ({ ...p, x: 0.3, y: 1.42 }));
+    if (!move?.ok) throw Error('The mixed group should slide along the wall');
+    expect(move.leaves.get('art')!.mount).toEqual(art.mount);
+    expect(move.leaves.get('bench')!.mount).toEqual(bench.mount);
+    expect(move.transforms.get('art')).toEqual({ x: 0.3, y: 0, z: 0, yaw: 0 });
+    expect(move.transforms.get('bench')).toEqual(move.transforms.get('art'));
+  });
 });

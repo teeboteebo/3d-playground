@@ -82,14 +82,12 @@ export function PlacementControls({ selection, motion, stage, update }: { select
       const xs = corners.map((p) => p.x - start.x + clientX), ys = corners.map((p) => p.y - start.y + clientY);
       const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
       let onGrabbedPiece = home !== null && !same(home, backdrop);
-      let targetLabel = '';
       const moveAt = (x: number, y: number) => {
         let surface = scene.surfaceAt(room, x, y);
         if (onGrabbedPiece && same(surface, backdrop) && x >= left && x <= right && y >= top && y <= bottom)
           surface = home;
         else onGrabbedPiece = false;
         if (!surface) return { ok: false, member: node, reason: 'outside' } as const;
-        targetLabel = surface.kind === 'floor' ? 'floor' : `Wall ${surface.wall.edge + 1}`;
         return dragToSurface(selection, motion, surface, origin, (point, normal) => scene.intersect(x, y, point, normal));
       };
       let isDragging = false;
@@ -108,7 +106,10 @@ export function PlacementControls({ selection, motion, stage, update }: { select
             return;
           }
           scene.preview(room.id, result.transforms);
-          setPreview([...result.leaves.values()]);
+          const leaves = [...result.leaves.values()];
+          setPreview(leaves);
+          const wallMount = leaves.map((leaf) => leaf.mount).find((mount) => 'edge' in mount);
+          const targetLabel = wallMount ? `Wall ${wallMount.edge + 1}` : 'floor';
           say(`Release to place ${nameOf(selection, node)} on ${targetLabel}.${warning(selection, result)}`);
         },
         drop(at) {
@@ -153,7 +154,7 @@ export function PlacementControls({ selection, motion, stage, update }: { select
         })}
         {motion.kind === 'wall' && motion.lift && <>{nudge('Lower', { ...ZERO, y: -1 })}{nudge('Raise', { ...ZERO, y: 1 })}</>}
       </div></>}
-      <p>Drag the selection onto the floor or a wall to change its support.</p>
+      <p>Drag to the floor-wall seam to place the selection flush. Drag past the seam to change its support.</p>
       {motion.kind === 'wall' && motion.canRemount && <>
         <label className="sl">Mounting wall
           <select value={target || String(motion.wall.edge)} onChange={(e) => setTarget(e.target.value)}>
