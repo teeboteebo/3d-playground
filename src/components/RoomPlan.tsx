@@ -36,12 +36,14 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
   useEffect(() => back.current?.focus(), []);
 
   const escape = useRef(() => {});
-  escape.current = () => {
-    if (entered === null) return onClose();
-    setEntered(parentOf(tree, entered) ?? null);
-    setSelected(entered);
-    setInspect(false);
-  };
+  useEffect(() => {
+    escape.current = () => {
+      if (entered === null) return onClose();
+      setEntered(parentOf(tree, entered) ?? null);
+      setSelected(entered);
+      setInspect(false);
+    };
+  });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;

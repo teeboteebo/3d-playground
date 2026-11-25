@@ -59,7 +59,7 @@ describe('RoomPlan', () => {
     const onClose = setup({ initialSelection: 'tv' });
     expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Frame TV' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Back to 3D' }));
-    await userEvent.keyboard('{Escape}');
+    await userEvent.keyboard('{Escape}{Escape}');
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
