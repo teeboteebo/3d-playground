@@ -12,7 +12,7 @@ Live: https://teeboteebo.github.io/3d-playground/
 
 Open **Group pieces** in a room. Check two or more pieces and choose **Group selected**. You can also Shift-click
 pieces in the 3D view. Name the group with **Rename**. Click any member in the room to select its group.
-An outline marks the group's visible pieces.
+Selecting a piece in 3D or opening its options in the menu outlines it. Selecting a group outlines all its visible members.
 Use **Enter** to work inside the group and **Options** to edit a single piece. **Leave group** or Escape goes back
 one level.
 
@@ -22,7 +22,33 @@ Each piece keeps its product, finish, and visibility. Undo and redo apply to gro
 
 The bedroom starts with two bedside tables in one group and two wall lamps in another. Each left and right piece
 has its own identity. The office headings **Workspace** and **Reading corner** still organize the catalog; they do
-not bind pieces together. Dragging the 3D view still orbits the camera.
+not bind pieces together.
+
+## Move a piece or group
+
+Select a piece or group in the room or its menu, then drag the outlined piece or any member of the selected group.
+Dashed lines show its distances to the room in centimetres only while you drag. Release to place it, or press
+Escape to cancel. Drag anywhere else to orbit. Use **Planogram** beside Undo and Redo to check distances without moving anything.
+
+At the floor-wall seam, a floor piece snaps flush to the wall and a wall piece can touch the floor without
+detaching. Drag farther onto the other surface to change support. The preview names the target
+and shows its clearances before you release. Pieces stay upright. A group moves as one: its lowest point rests
+on the floor or its back touches the wall. Ceiling lights stay fixed. Every member must fit, including hidden
+members. Furniture overlaps warn but allow the drop. Leaving the room or mounting across an opening blocks it.
+
+For a precise move, set **Step (cm)** under **Fine adjustment** in the selection's panel and use the adjustment buttons.
+Each drop, adjustment, or wall change is one undo step. Reloading restores the saved positions.
+
+## Read the room plan
+
+In the **Planogram** dropdown beside Undo and Redo, choose **Top down** or a numbered **Wall** to face it from inside the room.
+The wall view shows its doors, windows and doorways. Numbered boxes show each piece’s projected width and height.
+Freestanding pieces appear where they project onto the wall’s width; mounted pieces appear only on their own wall.
+Open edges have no wall view.
+
+Select a piece or group to see its clearances. In a wall view the dashed lines measure to the sides, floor and ceiling.
+The list gives the distance back to the wall. Switch views to follow the same selection, or enter a group to inspect one
+member. All plans are read-only; choose **3D view** to return without changing the layout.
 
 ## Develop
 

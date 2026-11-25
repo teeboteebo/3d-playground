@@ -59,11 +59,15 @@ export function pick(
   targets: THREE.Object3D[],
   rooms: readonly { id: RoomId; poly: readonly XZ[] }[],
 ): Pick {
-  camera.updateMatrixWorld();
-  ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
-  const hit = ray.intersectObjects(targets, true).find((h) => shown(h.object) && drawn(h.object));
+  const hit = firstHit(ndc, camera, targets);
   if (!hit) return { room: null, option: null };
   return { room: roomAt(hit.point.x, hit.point.z, rooms), option: optionOf(hit.object) };
+}
+
+export function firstHit(ndc: { x: number; y: number }, camera: THREE.Camera, targets: THREE.Object3D[]): THREE.Intersection | undefined {
+  camera.updateMatrixWorld();
+  ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);
+  return ray.intersectObjects(targets, true).find((h) => shown(h.object) && drawn(h.object));
 }
 
 /** draws something you can see: not a mesh like the ceilings, which only block light (they write no colour) */

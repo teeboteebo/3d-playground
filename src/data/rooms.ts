@@ -50,6 +50,8 @@ export interface Opening {
   arch?: boolean;
 }
 
+export const OPENING_NAMES = { door: 'Door', window: 'Window', passage: 'Doorway' } satisfies Record<Opening['kind'], string>;
+
 export const ROOMS: Room[] = [
   {
     id: 'bedroom',

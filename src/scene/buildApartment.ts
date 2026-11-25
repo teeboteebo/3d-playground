@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { CEILING, OPENINGS, ROOMS, SKIRTING, extent, outset, type Opening, type Room, type RoomId, type XZ } from '../data/rooms';
-import { roomWalls, type Wall } from './apartment';
+import { roomWalls, wallFacesCamera, type Wall } from './apartment';
 import { windowSpot } from './daylight';
 import { mergeMeshes } from './merge';
 import { tagOption } from './options';
@@ -197,10 +197,7 @@ export function buildApartment(mats: ApartmentMaterials): Apartment {
     },
     showFrom(camera) {
       for (const { wall, parts, attached } of wallParts) {
-        /* the camera is outside the room when it is behind the wall's face (its +w side faces in) */
-        const ux = (wall.b[0] - wall.a[0]) / wall.length;
-        const uz = (wall.b[1] - wall.a[1]) / wall.length;
-        const inFront = -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
+        const inFront = wallFacesCamera(wall, camera);
         for (const p of [...parts, ...attached]) p.visible = inFront;
       }
     },

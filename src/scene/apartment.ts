@@ -11,6 +11,13 @@ export interface Wall {
   holes: { opening: Opening; u0: number; u1: number }[];
 }
 
+export const tangent = (wall: Wall): XZ => [(wall.b[0] - wall.a[0]) / wall.length, (wall.b[1] - wall.a[1]) / wall.length];
+
+export function wallFacesCamera(wall: Wall, camera: { x: number; z: number }): boolean {
+  const [ux, uz] = tangent(wall);
+  return -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
+}
+
 /** Walls of a room, each oriented to face inwards, with the openings that cut through it. */
 export function roomWalls(room: Room, openings: readonly Opening[] = OPENINGS): Wall[] {
   const c = centroid(room.poly);

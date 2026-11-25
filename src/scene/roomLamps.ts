@@ -52,12 +52,11 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
 
   function place(
     name: string,
-    lampState: Pick<ComponentState, 'shown' | 'variant'>,
+    id: string,
     list: typeof PENDANTS,
     drop: number | undefined,
   ) {
-    const id = lampState.variant;
-    const shape = lampState.shown ? findById(list, id).shape : null;
+    const shape = findById(list, id).shape;
     if (!shape) {
       remove(name);
       return;
@@ -91,8 +90,9 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         const lamp: ComponentState = (s.rooms[room].components as Record<string, ComponentState>)[id];
         const pendant = kind === 'pendant';
         const name = pendant ? `${room}-pendant` : `${room}-floor-lamp`;
-        const p = place(name, lamp, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
+        const p = place(name, lamp.variant, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
         if (!p) continue;
+        p.lamp.group.visible = lamp.shown;
         tagOption([p.lamp.group], room, [id]);
         if (pendant) {
           const [x, z] = centroid(roomById(room).poly);
@@ -100,11 +100,12 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         } else {
           const { x, z, rotY } = FLOOR_LAMP_SPOT[room as LampRoom<'floor'>];
           p.lamp.group.position.set(x, 0, z);
-          p.lamp.group.rotation.y = rotY;
+          p.lamp.group.rotation.set(0, rotY, 0);
         }
-        p.light.intensity = evening ? p.intensity : 0;
-        p.light.visible = evening;
-        p.lamp.setGlow(evening);
+        const lit = evening && lamp.shown;
+        p.light.intensity = lit ? p.intensity : 0;
+        p.light.visible = lit;
+        p.lamp.setGlow(lit);
       }
     },
     dispose() {

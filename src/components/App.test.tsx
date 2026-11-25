@@ -10,7 +10,7 @@ import { BEDROOM_MOULD_WALLS } from '../scene/mouldWalls';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
-const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), select: vi.fn(), groupOf: vi.fn(), dispose: vi.fn() };
+const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), select: vi.fn(), groupOf: vi.fn(), roomPoses: () => new Map(), dispose: vi.fn() };
 const createApartmentScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({
@@ -65,6 +65,20 @@ const hover3d = async (room?: string, path?: string[]) => {
 const viewNames = () => within(screen.getByRole('group', { name: 'Camera views' })).getAllByRole('button').map((b) => b.textContent);
 
 describe('App', () => {
+  it('switches directly between 3D and physical wall plans from the undo/redo footer without saving an edit', async () => {
+    await renderIn('hall');
+    const footer = within(screen.getByRole('group', { name: 'Design controls' }));
+    const picker = footer.getByRole('combobox', { name: 'Planogram' });
+    expect(within(picker).getAllByRole('option').map((o) => o.textContent)).toEqual(['3D view', 'Top down', 'Wall 1', 'Wall 2', 'Wall 4']);
+    await userEvent.selectOptions(picker, '3');
+    expect(screen.getByRole('img', { name: 'Hall facing Wall 4' })).toBeInTheDocument();
+    await userEvent.selectOptions(picker, 'top');
+    expect(screen.getByRole('img', { name: 'Overhead plan of Hall' })).toBeInTheDocument();
+    await userEvent.selectOptions(picker, '3d');
+    expect(screen.queryByRole('region', { name: 'Hall plan' })).toBeNull();
+    expect(footer.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  });
+
   it('creates the scene with the saved settings and disposes it on unmount', async () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, time: 'eve', bedroom: { rug: 'rista' } }));
     const { unmount } = await renderApp();
@@ -1287,6 +1301,28 @@ describe('group editor', () => {
     goTo('Group pieces');
     return user;
   };
+
+  it('outlines a piece selected in the scene or menu, but not a room setting with the same id', async () => {
+    await renderIn('living');
+    await click3d('living', ['sofa']);
+    expect(scene.select).toHaveBeenLastCalledWith(['sofa']);
+    up('Living room');
+    expect(scene.select).toHaveBeenLastCalledWith(null);
+    goTo('Sofa');
+    expect(scene.select).toHaveBeenLastCalledWith(['sofa']);
+    await click3d('living', ['moulding', 'sofa']);
+    expect(scene.select).toHaveBeenLastCalledWith(null);
+  });
+
+  it('outlines just the open piece in Options and restores the checked pieces on Back', async () => {
+    const user = await setup();
+    await user.click(tick('Desk'));
+    await user.click(tick('Drawer unit'));
+    await user.click(btn('Options for Desk'));
+    expect(scene.select).toHaveBeenLastCalledWith(['desk']);
+    up('Group pieces');
+    expect(scene.select).toHaveBeenLastCalledWith(['desk', 'drawers']);
+  });
 
   it('groups, renames, enters, leaves and ungroups, each edit one undo step', async () => {
     const user = await setup();

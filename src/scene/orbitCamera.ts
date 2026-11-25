@@ -8,8 +8,16 @@ export interface OrbitCamera {
   setView(pose: Partial<CameraPose>): void;
   /** step the easing and place the camera: whether it moved this step, and whether it has come to rest */
   update(): { moved: boolean; arrived: boolean };
+  setPieceDrag(start: StartPieceDrag | null): void;
   dispose(): void;
 }
+
+type PointerPosition = Pick<PointerEvent, 'clientX' | 'clientY'>;
+export type StartPieceDrag = (at: PointerPosition) => {
+  move(at: PointerPosition): void;
+  drop(at: PointerPosition): void;
+  cancel(): void;
+} | null;
 
 /** how far one press of an arrow key turns the camera (rad), and one press of + or - zooms */
 const KEY_TURN = 0.12;
@@ -51,6 +59,15 @@ export function orbitCamera(
   let pressAt = { x: 0, y: 0 };
   let pressTravel = 0;
   let pressPointers = 0;
+  let startPieceDrag: StartPieceDrag | null = null;
+  let piece: ReturnType<StartPieceDrag> = null;
+  let cancelled = false;
+  const cancelPiece = () => {
+    if (!piece) return;
+    piece.cancel();
+    piece = null;
+    cancelled = true;
+  };
   const travel = (e: PointerEvent) => {
     pressTravel = Math.max(pressTravel, Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y));
   };
@@ -60,10 +77,17 @@ export function orbitCamera(
       pressAt = { x: e.clientX, y: e.clientY };
       pressTravel = 0;
       pressPointers = 0;
+      cancelled = false;
+      if (e.button === 0 && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey)
+        piece = startPieceDrag?.(e) ?? null;
     }
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     pressPointers = Math.max(pressPointers, pts.size);
-    if (pts.size === 2) lastPinch = pinchDistance();
+    if (pts.size === 2) {
+      cancelPiece();
+      cancelled = false;
+      lastPinch = pinchDistance();
+    }
   };
   const onMove = (e: PointerEvent) => {
     const p = pts.get(e.pointerId);
@@ -73,6 +97,11 @@ export function orbitCamera(
     const dy = e.clientY - p.y;
     p.x = e.clientX;
     p.y = e.clientY;
+    if (cancelled) return;
+    if (piece) {
+      if (!isClick(pressTravel, pressPointers)) piece.move(e);
+      return;
+    }
     if (pts.size === 1) {
       goal.theta -= dx * 0.006;
       goal.phi = clamp(goal.phi - dy * 0.005, PHI.min, PHI.max);
@@ -84,14 +113,32 @@ export function orbitCamera(
     if (dx !== 0 || dy !== 0) onUserMove?.();
   };
   const onUp = (e: PointerEvent) => {
-    const last = pts.size === 1 && pts.has(e.pointerId);
+    if (!pts.has(e.pointerId)) return;
+    const last = pts.size === 1;
     pts.delete(e.pointerId);
     if (last) travel(e);
-    if (last && e.type === 'pointerup' && isClick(pressTravel, pressPointers)) {
+    const click = isClick(pressTravel, pressPointers);
+    if (piece) {
+      const held = piece;
+      piece = null;
+      if (e.type === 'pointerup' && !click) held.drop(e);
+      else held.cancel();
+    }
+    if (last && !cancelled && e.type === 'pointerup' && click) {
       const r = canvas.getBoundingClientRect();
       onClick({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 }, e.shiftKey);
     }
     lastPinch = 0;
+  };
+  const onEscape = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && piece) {
+      e.preventDefault();
+      cancelPiece();
+    }
+  };
+  const onBlur = () => {
+    cancelPiece();
+    pts.clear();
   };
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -116,11 +163,18 @@ export function orbitCamera(
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp);
   canvas.addEventListener('pointercancel', onUp);
+  canvas.addEventListener('lostpointercapture', onUp);
+  window.addEventListener('keydown', onEscape, true);
+  window.addEventListener('blur', onBlur);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   canvas.addEventListener('keydown', onKey);
 
   const keys = Object.keys(cur) as (keyof CameraPose)[];
   return {
+    setPieceDrag(start) {
+      cancelPiece();
+      startPieceDrag = start;
+    },
     setView(pose) {
       Object.assign(goal, pose);
     },
@@ -140,10 +194,14 @@ export function orbitCamera(
       return { moved, arrived: arriving };
     },
     dispose() {
+      cancelPiece();
       canvas.removeEventListener('pointerdown', onDown);
       canvas.removeEventListener('pointermove', onMove);
       canvas.removeEventListener('pointerup', onUp);
       canvas.removeEventListener('pointercancel', onUp);
+      canvas.removeEventListener('lostpointercapture', onUp);
+      window.removeEventListener('keydown', onEscape, true);
+      window.removeEventListener('blur', onBlur);
       canvas.removeEventListener('wheel', onWheel);
       canvas.removeEventListener('keydown', onKey);
     },

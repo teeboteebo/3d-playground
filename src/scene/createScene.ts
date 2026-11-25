@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FLOOR, OAK, PAINTS, VIEWS, findById, type CameraPose } from '../data/catalog';
-import { ROOMS, type RoomId, type RoomSelection } from '../data/rooms';
+import { ROOMS, type Room, type RoomId, type RoomSelection } from '../data/rooms';
+import { roomWalls } from './apartment';
+import { roomSurface, type PlacementSurface } from './placementSurface';
 import type { Settings } from '../state/settings';
 import { buildBedroom } from './bedroom';
 import { buildApartment } from './buildApartment';
@@ -13,10 +15,13 @@ import { loadFurniture } from './furniture';
 import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { buildOffice } from './office';
-import { orbitCamera } from './orbitCamera';
+import { orbitCamera, type OrbitCamera } from './orbitCamera';
 import { highlighter, type HighlightTarget } from './highlight';
-import { pick, type Pick } from './pickRoom';
+import { firstHit, pick, type Pick } from './pickRoom';
 import { optionOf, type SceneOption } from './options';
+import type { PiecePose } from '../data/components';
+import type { PlacedLeaf, Translation } from './rigidPlacement';
+import { sceneGeometry } from './sceneGeometry';
 import { renderPipeline } from './pipeline';
 import { quebecRug } from './quebecRug';
 import { sideboard } from './sideboard';
@@ -26,6 +31,7 @@ import { sofaFabric } from './sofaFabric';
 import { floorTexture, woodTexture } from './textures';
 
 export interface ApartmentScene {
+  setPieceDrag: OrbitCamera['setPieceDrag'];
   apply(settings: Settings): void;
   /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
@@ -35,6 +41,17 @@ export interface ApartmentScene {
   select(ids: readonly string[] | null): void;
   /** widens what the mouse over a piece highlights to the group it stands for: the ids of that group, or null for the piece alone */
   groupOf(resolve: ((option: SceneOption) => readonly string[] | null) | null): void;
+  /** the room's pieces as committed now, with footprints from their real geometry; ask on demand, not every frame */
+  roomPoses(room: RoomId): ReadonlyMap<string, PlacedLeaf>;
+  /** shows absolute transforms for some of the room's pieces; null restores the committed ones (no saves, no rebuild) */
+  preview(room: RoomId, poses: ReadonlyMap<string, PiecePose> | null): void;
+  /** a scene point in px relative to the canvas */
+  project(p: Translation): { x: number; y: number };
+  /** where the pointer's ray meets the plane through `point` with `normal`; null when parallel or behind the camera */
+  intersect(clientX: number, clientY: number, point: Translation, normal: Translation): Translation | null;
+  surfaceAt(room: Room, clientX: number, clientY: number): PlacementSurface | null;
+  /** the visible piece option under the pointer and the exact world point hit; null for none */
+  hit(clientX: number, clientY: number): { option: SceneOption; point: Translation } | null;
   dispose(): void;
 }
 
@@ -71,6 +88,8 @@ export function createApartmentScene(
   onHover?: (hover: Hover | null) => void,
   /** called whenever the user moves the camera themselves (drag, pinch, wheel or keys) */
   onCameraMove?: () => void,
+  /** called when piece geometry changes: after `apply`, and when a late model arrives */
+  onGeometryChange?: () => void,
 ): ApartmentScene {
   applyLegacyLook();
   let renderer: THREE.WebGLRenderer;
@@ -110,6 +129,8 @@ export function createApartmentScene(
     dirty = true;
   };
   const highlight = highlighter(scene, invalidate);
+  const geometry = sceneGeometry(scene);
+  let live = false;
 
   /* the models are meshopt-compressed (see README) */
   const gltf = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
@@ -124,8 +145,10 @@ export function createApartmentScene(
     invalidate,
     (id, obj) => {
       if (id === 'sofa') fabric.attach(obj);
+      geometry.refresh();
       highlight.refresh();
       refreshOutline();
+      if (live) onGeometryChange?.();
     },
   );
   let furnitureReady = false;
@@ -152,6 +175,7 @@ export function createApartmentScene(
 
   function apply(s: Settings) {
     invalidate();
+    geometry.release();
     selected = s.room;
     const evening = s.time === 'eve';
     bedroom.apply(s);
@@ -166,10 +190,12 @@ export function createApartmentScene(
     for (const l of [...bedroom.windowLights, ...apartment.windowLights]) setWindowSpot(l, evening);
     roomLamps.apply(s);
     roomLights.apply(s);
+    geometry.commit(s);
     /* a room change makes what is under the mouse mean something else; settings may rebuild or recolour parts */
     if (lastHover && (lastHover.room === selected) !== !!lastHover.option) setHover(null);
     highlight.refresh();
     refreshOutline();
+    if (live) onGeometryChange?.();
   }
 
   const ndcOf = (e: { clientX: number; clientY: number }) => {
@@ -180,6 +206,14 @@ export function createApartmentScene(
     setHover(null);
     onPick?.(pick(ndc, camera, scene.children, ROOMS), { shift });
   }, onCameraMove);
+  const wallsByRoom = new Map(ROOMS.map((r) => [r.id, roomWalls(r)]));
+  const pointer = new THREE.Raycaster();
+  const pointerRay = (clientX: number, clientY: number) => {
+    const { x, y } = ndcOf({ clientX, clientY });
+    camera.updateMatrixWorld();
+    pointer.setFromCamera(new THREE.Vector2(x, y), camera);
+    return pointer.ray;
+  };
 
   /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
      rooms a click would select */
@@ -251,8 +285,10 @@ export function createApartmentScene(
   fit();
 
   function draw() {
+    geometry.restoreVisibility();
     bedroom.showFrom(camera.position);
     apartment.showFrom(camera.position);
+    geometry.showFrom(camera.position);
     pipeline.render();
     dirty = false;
   }
@@ -269,10 +305,12 @@ export function createApartmentScene(
   }
 
   apply(initial);
+  live = true;
   frame();
 
   return {
     apply,
+    setPieceDrag: orbit.setPieceDrag,
     setView(pose) {
       orbit.setView(pose);
       canvas.dataset.settled = 'false';
@@ -288,6 +326,36 @@ export function createApartmentScene(
     groupOf(resolve) {
       groupOf = resolve;
       if (lastHover) setHover(lastHover);
+    },
+    roomPoses: (room) => geometry.poses(room),
+    preview(room, poses) {
+      geometry.preview(room, poses);
+      invalidate();
+    },
+    project(p) {
+      const r = canvas.getBoundingClientRect();
+      camera.updateMatrixWorld();
+      const v = new THREE.Vector3(p.x, p.y, p.z).project(camera);
+      return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height };
+    },
+    intersect(clientX, clientY, point, normal) {
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+        new THREE.Vector3(normal.x, normal.y, normal.z).normalize(),
+        new THREE.Vector3(point.x, point.y, point.z),
+      );
+      const at = pointerRay(clientX, clientY).intersectPlane(plane, new THREE.Vector3());
+      return at && { x: at.x, y: at.y, z: at.z };
+    },
+    surfaceAt(room, x, y) {
+      const rect = canvas.getBoundingClientRect();
+      if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return null;
+      const ray = pointerRay(x, y);
+      return roomSurface(room, wallsByRoom.get(room.id)!, ray.origin, ray.direction);
+    },
+    hit(clientX, clientY) {
+      const h = firstHit(ndcOf({ clientX, clientY }), camera, scene.children);
+      const option = h && optionOf(h.object);
+      return h && option ? { option, point: { x: h.point.x, y: h.point.y, z: h.point.z } } : null;
     },
     dispose() {
       cancelAnimationFrame(raf);

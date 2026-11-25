@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ROOM_DEFS } from '../data/roomDefs';
-import type { RoomSelection } from '../data/rooms';
+import { roomById, type RoomId, type RoomSelection } from '../data/rooms';
 import { isGroup, leavesOf, resolvePick } from '../data/tree';
 import { selectedLeaves, useEditor } from '../state/useEditor';
+import { motionFor } from '../scene/placementMove';
+import { roomWalls } from '../scene/apartment';
 import { useSettings } from '../state/useSettings';
 import { Panel } from './Panel';
-import { Stage } from './Stage';
+import { Stage, type StageView } from './Stage';
+import { PlacementControls } from './PlacementControls';
+import { RoomPlan } from './RoomPlan';
 
 /** a field where the keys belong to the text being typed, undo included */
 const typing = (t: EventTarget | null) =>
@@ -13,6 +17,12 @@ const typing = (t: EventTarget | null) =>
 
 export function App() {
   const [settings, update, steps] = useSettings();
+  const [stage, setStage] = useState<StageView | null>(null);
+  const geometryChanged = useCallback(() => setStage((s) => s && { ...s }), []);
+  const [plan, setPlan] = useState<{ room: RoomId; edge: number | null } | null>(null);
+  if (plan && plan.room !== settings.room) setPlan(null);
+  const planOpen = plan?.room === settings.room;
+  const room = settings.room !== 'all' ? roomById(settings.room) : null;
   /* the room menu's open page, as topic ids from the room's summary; every change of room (coming back to one
      included) starts again at the summary */
   const [menu, setMenu] = useState<{ room: RoomSelection; path: readonly string[] }>({ room: settings.room, path: [] });
@@ -54,12 +64,21 @@ export function App() {
     const node = resolvePick(tree, p[0], editor.parent) ?? resolvePick(tree, p[0], null);
     return node && isGroup(tree, node) ? { label: tree.groups[node].name, ids: leavesOf(tree, node) } : null;
   };
-  const selection = tree && path.length === 1 && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
+  const openPiece = pieceOf(path[0] === 'groups' ? path.slice(1) : path);
+  const checked = path.length === 1 && path[0] === 'groups' ? editor.selected : [];
+  const activeNode = openPiece?.id ?? (checked.length === 1 ? checked[0] : undefined);
+  const outlines = openPiece ? [openPiece.id] : tree && checked.length ? selectedLeaves(tree, checked) : null;
+  const measure = planOpen || !!activeNode;
+  const poses = useMemo(() => measure && room && stage ? stage.scene.roomPoses(room.id) : null, [measure, room, stage]);
+  const selection = useMemo(() => room && tree && activeNode && poses
+    ? { room, tree, node: activeNode, poses, components: settings.rooms[room.id].components } : null,
+  [room, tree, activeNode, poses, settings.rooms]);
+  const motion = useMemo(() => selection && motionFor(selection), [selection]);
 
   /* keys for the whole app: undo and redo, and Escape to go up a page (or out of the room) */
-  const keys = useRef({ steps, path, room: settings.room, go, update, editor });
+  const keys = useRef({ steps, path, room: settings.room, go, update, editor, planOpen });
   useEffect(() => {
-    keys.current = { steps, path, room: settings.room, go, update, editor };
+    keys.current = { steps, path, room: settings.room, go, update, editor, planOpen };
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,7 +94,8 @@ export function App() {
         e.preventDefault();
         k.steps.redo();
       } else if (e.key === 'Escape' && !mod) {
-        if (k.path.length === 1 && k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
+        if (k.planOpen) setPlan(null);
+        else if (k.path.length === 1 && k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
         else if (k.path.length > 0) k.go(k.path.slice(0, -1));
         else if (k.room !== 'all') k.update({ room: 'all' });
       }
@@ -91,10 +111,29 @@ export function App() {
         update={update}
         onOption={onOption}
         nodeOf={nodeOf}
-        selection={selection}
+        selection={outlines}
+        onReady={setStage}
+        onGeometryChange={geometryChanged}
+        planOpen={planOpen}
+        canDrag={!!motion && (motion.kind !== 'blocked' || motion.reason === 'pinned')}
         pointed={pointed?.room === settings.room ? pointed.path : null}
       />
-      <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} editor={editor} />
+      <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} editor={editor}
+        placement={!planOpen && selection && motion && stage &&
+          <PlacementControls key={`${selection.room.id}/${selection.node}`} selection={selection} motion={motion} stage={stage} update={update} />}
+        tools={room && <label className="plan-picker">Planogram
+          <select value={planOpen ? plan.edge ?? 'top' : '3d'} onChange={({ target: { value } }) =>
+            setPlan(value === '3d' ? null : { room: room.id, edge: value === 'top' ? null : Number(value) })}>
+            <option value="3d">3D view</option>
+            <option value="top">Top down</option>
+            {roomWalls(room).map((w) => <option key={w.edge} value={w.edge}>Wall {w.edge + 1}</option>)}
+          </select>
+        </label>}>
+        {planOpen && room && tree ? stage && poses
+          ? <RoomPlan room={room} tree={tree} poses={poses} components={settings.rooms[room.id].components} initialSelection={activeNode}
+              wallEdge={plan.edge} onClose={() => setPlan(null)} mapHost={stage.container} />
+          : <p role="status">Room plan needs the 3D preview to measure the pieces.</p> : undefined}
+      </Panel>
     </div>
   );
 }
