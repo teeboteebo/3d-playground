@@ -13,7 +13,7 @@ import { loadFurniture } from './furniture';
 import { applyLegacyLook } from './legacyLook';
 import { lin } from './materials';
 import { buildOffice } from './office';
-import { orbitCamera } from './orbitCamera';
+import { orbitCamera, type OrbitCamera } from './orbitCamera';
 import { highlighter, type HighlightTarget } from './highlight';
 import { firstHit, pick, type Pick } from './pickRoom';
 import { optionOf, type SceneOption } from './options';
@@ -29,6 +29,7 @@ import { sofaFabric } from './sofaFabric';
 import { floorTexture, woodTexture } from './textures';
 
 export interface ApartmentScene {
+  setPieceDrag: OrbitCamera['setPieceDrag'];
   apply(settings: Settings): void;
   /** ease the camera to a pose; fields left out (e.g. the rotation) stay as they are */
   setView(pose: Partial<CameraPose>): void;
@@ -297,6 +298,7 @@ export function createApartmentScene(
 
   return {
     apply,
+    setPieceDrag: orbit.setPieceDrag,
     setView(pose) {
       orbit.setView(pose);
       canvas.dataset.settled = 'false';

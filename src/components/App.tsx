@@ -3,10 +3,11 @@ import { ROOM_DEFS } from '../data/roomDefs';
 import { roomById, type RoomId, type RoomSelection } from '../data/rooms';
 import { isGroup, leavesOf, resolvePick } from '../data/tree';
 import { selectedLeaves, useEditor } from '../state/useEditor';
+import { motionFor } from '../scene/placementMove';
 import { useSettings } from '../state/useSettings';
 import { Panel } from './Panel';
 import { Stage, type StageView } from './Stage';
-import { MovePanel } from './MovePanel';
+import { PlacementControls } from './PlacementControls';
 import { RoomPlan } from './RoomPlan';
 
 /** a field where the keys belong to the text being typed, undo included */
@@ -17,14 +18,10 @@ export function App() {
   const [settings, update, steps] = useSettings();
   const [stage, setStage] = useState<StageView | null>(null);
   const geometryChanged = useCallback(() => setStage((s) => s && { ...s }), []);
-  const [workspace, setWorkspace] = useState<{ room: RoomId; tool: 'move' | 'plan'; node?: string } | null>(null);
-  if (workspace && workspace.room !== settings.room) setWorkspace(null);
-  const tool = workspace?.room === settings.room ? workspace.tool : null;
+  const [planRoom, setPlanRoom] = useState<RoomId | null>(null);
+  if (planRoom && planRoom !== settings.room) setPlanRoom(null);
+  const planOpen = planRoom === settings.room;
   const room = settings.room !== 'all' ? roomById(settings.room) : null;
-  const poses = useMemo(() => {
-    if (tool && room && stage) return stage.scene.roomPoses(room.id);
-    return null;
-  }, [tool, room, stage]);
   /* the room menu's open page, as topic ids from the room's summary; every change of room (coming back to one
      included) starts again at the summary */
   const [menu, setMenu] = useState<{ room: RoomSelection; path: readonly string[] }>({ room: settings.room, path: [] });
@@ -67,21 +64,20 @@ export function App() {
     return node && isGroup(tree, node) ? { label: tree.groups[node].name, ids: leavesOf(tree, node) } : null;
   };
   const openPiece = pieceOf(path[0] === 'groups' ? path.slice(1) : path);
-  const selection = openPiece ? [openPiece.id]
-    : tree && path.length === 1 && path[0] === 'groups' && editor.selected.length > 0 ? selectedLeaves(tree, editor.selected) : null;
-  const openTool = (next: 'move' | 'plan') => {
-    if (!room) return;
-    if (next === tool) return setWorkspace(null);
-    const node = workspace?.node ?? openPiece?.id ?? (editor.selected.length === 1 ? editor.selected[0] : undefined);
-    setWorkspace({ room: room.id, tool: next, node });
-  };
-  const activeNode = workspace?.node;
-  const outlines = tool === 'move' && tree ? activeNode ? leavesOf(tree, activeNode) : null : selection;
+  const checked = path.length === 1 && path[0] === 'groups' ? editor.selected : [];
+  const activeNode = openPiece?.id ?? (checked.length === 1 ? checked[0] : undefined);
+  const outlines = openPiece ? [openPiece.id] : tree && checked.length ? selectedLeaves(tree, checked) : null;
+  const measure = planOpen || !!activeNode;
+  const poses = useMemo(() => measure && room && stage ? stage.scene.roomPoses(room.id) : null, [measure, room, stage]);
+  const selection = useMemo(() => room && tree && activeNode && poses
+    ? { room, tree, node: activeNode, poses, components: settings.rooms[room.id].components } : null,
+  [room, tree, activeNode, poses, settings.rooms]);
+  const motion = useMemo(() => selection && motionFor(selection), [selection]);
 
   /* keys for the whole app: undo and redo, and Escape to go up a page (or out of the room) */
-  const keys = useRef({ steps, path, room: settings.room, go, update, editor, tool });
+  const keys = useRef({ steps, path, room: settings.room, go, update, editor, planOpen });
   useEffect(() => {
-    keys.current = { steps, path, room: settings.room, go, update, editor, tool };
+    keys.current = { steps, path, room: settings.room, go, update, editor, planOpen };
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -97,7 +93,7 @@ export function App() {
         e.preventDefault();
         k.steps.redo();
       } else if (e.key === 'Escape' && !mod) {
-        if (k.tool) setWorkspace(null);
+        if (k.planOpen) setPlanRoom(null);
         else if (k.path.length === 1 && k.path[0] === 'groups' && k.editor.parent !== null) k.editor.leave();
         else if (k.path.length > 0) k.go(k.path.slice(0, -1));
         else if (k.room !== 'all') k.update({ room: 'all' });
@@ -106,21 +102,6 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
-
-  let toolPanel;
-  if (tool && room && tree) {
-    const select = (node?: string) => setWorkspace({ room: room.id, tool, node });
-    const close = () => setWorkspace(null);
-    const components = settings.rooms[room.id].components;
-    if (!stage || !poses) toolPanel = <p role="status">This tool needs the 3D preview to measure the pieces.</p>;
-    else if (tool === 'plan') {
-      toolPanel = <RoomPlan room={room} tree={tree} poses={poses} components={components} initialSelection={activeNode}
-        onClose={close} onSelect={select} mapHost={stage.container} />;
-    } else {
-      toolPanel = <MovePanel key={room.id} room={room} tree={tree} poses={poses} stage={stage} components={components}
-        node={activeNode} parent={editor.parent} select={select} close={close} update={update} />;
-    }
-  }
 
   return (
     <div className="app">
@@ -132,16 +113,22 @@ export function App() {
         selection={outlines}
         onReady={setStage}
         onGeometryChange={geometryChanged}
-        tool={tool}
+        planOpen={planOpen}
+        canDrag={!!motion && motion.kind !== 'blocked'}
         pointed={pointed?.room === settings.room ? pointed.path : null}
       />
-      <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} editor={editor} tools={room && (
+      <Panel settings={settings} update={update} menu={{ path, go, point }} steps={steps} editor={editor}
+        placement={!planOpen && selection && motion && stage &&
+          <PlacementControls key={`${selection.room.id}/${selection.node}`} selection={selection} motion={motion} stage={stage} update={update} />}
+        tools={room && (
         <div className="placement-tools" role="group" aria-label="Room tools">
-          {tree && tree.root.length > 0 && <button type="button" className="chip" aria-pressed={tool === 'move'} onClick={() => openTool('move')}>Move pieces</button>}
-          <button type="button" className="chip" aria-pressed={tool === 'plan'} onClick={() => openTool('plan')}>Room plan</button>
+          <button type="button" className="chip" aria-pressed={planOpen} onClick={() => setPlanRoom(planOpen ? null : room.id)}>Room plan</button>
         </div>
       )}>
-        {toolPanel}
+        {planOpen && room && tree ? stage && poses
+          ? <RoomPlan room={room} tree={tree} poses={poses} components={settings.rooms[room.id].components} initialSelection={activeNode}
+              onClose={() => setPlanRoom(null)} mapHost={stage.container} />
+          : <p role="status">Room plan needs the 3D preview to measure the pieces.</p> : undefined}
       </Panel>
     </div>
   );

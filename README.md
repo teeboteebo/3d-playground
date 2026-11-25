@@ -26,16 +26,16 @@ not bind pieces together.
 
 ## Move a piece or group
 
-Select a room and choose **Move pieces**. Drag a furnishing in the 3D view. The dashed lines measure from its edges
-to the room in centimetres. Release to place it, or press Escape before releasing to keep its old position.
-Outside **Move pieces**, dragging still orbits the camera.
+Select a piece or group in the room or its menu, then drag the outlined piece or any member of the selected group.
+Dashed lines show its distances to the room in centimetres only while you drag. Release to place it, or press
+Escape to cancel. Drag anywhere else to orbit. Use **Room plan** to check distances without moving anything.
 
 Floor pieces slide across the floor. Wall pieces slide along their wall and can move up or down unless they also
 rest on the floor. Use **Mounting wall** and **Change wall** to attach a piece to a different wall. Ceiling lights
 stay fixed. Every member of a group must fit, including hidden members. A solid overlap warns but allows the
 drop. Leaving the room or mounting across an opening blocks it.
 
-For a precise move, select a piece or group from the list, set **Step (cm)**, and use the adjustment buttons.
+For a precise move, set **Step (cm)** under **Fine adjustment** in the selection's panel and use the adjustment buttons.
 Each drop, adjustment, or wall change is one undo step. Reloading restores the saved positions.
 
 ## Read the room plan

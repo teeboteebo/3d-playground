@@ -73,24 +73,33 @@ test.describe('physical room groups', () => {
       const table = () => page.locator('.room-plan__map polygon[aria-label$="Left bedside table"]');
       const before = await table().getAttribute('points');
       await page.getByRole('button', { name: 'Back to 3D' }).click();
-      await tool('Move pieces').click();
+      await expect(tool('Move pieces')).toHaveCount(0);
+      await page.mouse.click(276,442);
+      await expect(page.getByRole('checkbox', { name: 'Bedside tables' })).toBeChecked();
+      const guides = page.locator('.move-guides');
       const drag = async () => {
         await page.mouse.move(276,442);
         await page.mouse.down();
+        await page.mouse.move(278,442);
+        await expect(guides).toHaveCount(0);
         await page.mouse.move(300,425,{ steps: 5 });
         await expect(page.locator('.move-status')).toContainText('Release to place Bedside tables');
-        await expect(page.locator('.move-guides')).toContainText('Along wall');
-        await expect(page.locator('.move-guides')).toContainText('Down to floor');
+        await expect(guides).toContainText('Along wall');
+        await expect(guides).toContainText('Down to floor');
+        await expect(page.getByRole('button', { name: 'Foot of bed' })).toHaveAttribute('aria-pressed', 'true');
       };
       await drag();
       expect(await pair()).toEqual([null,null]);
       await page.keyboard.press('Escape');
+      await expect(guides).toHaveCount(0);
+      await expect(page.getByRole('heading', { name: 'Room clearances' })).toHaveCount(0);
       await page.mouse.up();
       await expect(page.locator('.move-status')).toHaveText('Move cancelled.');
       expect(await pair()).toEqual([null,null]);
       await drag();
       await page.mouse.up();
       await expect(page.locator('.move-status')).toContainText('Moved Bedside tables.');
+      await expect(guides).toHaveCount(0);
       const [left,right] = await pair();
       expect(left).not.toBeNull();
       expect(right).toEqual(left);
@@ -116,7 +125,10 @@ test.describe('physical room groups', () => {
     test('keeps a floor drag level, rejects an invalid drop, and changes walls only on request', async ({ page }) => {
       await openWith(page, { version: 6, room: 'bedroom' });
       await settled(page);
-      await page.getByRole('button', { name: 'Move pieces', exact: true }).click();
+      const topic = (name: string) => page.locator('button.topic').filter({ has: page.getByText(name, { exact: true }) });
+      await topic('Bench').click();
+      await expect(page.getByRole('heading', { name: 'Bench', exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Room clearances' })).toHaveCount(0);
       const current = () => page.evaluate(() => JSON.parse(localStorage.getItem('apartment-playground')!).rooms.bedroom.components);
       await page.mouse.move(470,600);
       await page.mouse.down();
@@ -134,15 +146,40 @@ test.describe('physical room groups', () => {
       await page.mouse.up();
       await expect(page.locator('.move-status')).toContainText('Not moved.');
       expect((await current()).bench.pose).toEqual(saved);
-      await page.getByLabel('Piece or group').selectOption('ceiling-light');
+      await expect(page.locator('.move-guides')).toHaveCount(0);
+      await page.getByRole('button', { name: 'Back to Bedroom' }).click();
+      await topic('Ceiling light').click();
       await expect(page.locator('.move-panel')).toContainText('Ceiling light is fixed to the ceiling.');
-      await page.getByLabel('Piece or group').selectOption('painting');
+      await page.getByRole('button', { name: 'Back to Bedroom' }).click();
+      await topic('Painting').click();
       await page.getByLabel('Mounting wall').selectOption('1');
       expect((await current()).painting.pose).toBeUndefined();
       await page.getByRole('button', { name: 'Change wall', exact: true }).click();
       expect((await current()).painting.pose).toMatchObject({ edge: 1 });
       await page.getByRole('button', { name: 'Raise', exact: true }).press('Enter');
       expect((await current()).painting.pose.y).toBeCloseTo(0.05);
+    });
+
+    test('hands a touch drag to pinch zoom without placing the piece', async ({ page }) => {
+      await openWith(page, { version: 6, room: 'bedroom' });
+      await settled(page);
+      await page.touchscreen.tap(470, 600);
+      await expect(page.getByRole('heading', { name: 'Bench', exact: true })).toBeVisible();
+      const cdp = await page.context().newCDPSession(page);
+      const finger = (id: number, x: number, y: number) => ({ id, x, y });
+      const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', ...touchPoints: ReturnType<typeof finger>[]) =>
+        cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+      await touch('touchStart', finger(1, 470, 600));
+      await touch('touchMove', finger(1, 492, 610));
+      await expect(page.locator('.move-guides')).toBeVisible();
+      await touch('touchStart', finger(1, 492, 610), finger(2, 535, 610));
+      await expect(page.locator('.move-guides')).toHaveCount(0);
+      await touch('touchMove', finger(1, 482, 610), finger(2, 565, 610));
+      await touch('touchEnd');
+      await expect(page.getByRole('button', { name: 'Reset view' })).toBeVisible();
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('apartment-playground')!).rooms.bedroom.components.bench.pose)).toBeUndefined();
+      await page.getByRole('button', { name: 'Room plan', exact: true }).tap();
+      await expect(page.getByText(/−X to wall: .* cm/)).toBeVisible();
     });
   });
 
@@ -233,7 +270,7 @@ test.describe('physical room groups', () => {
     await expect(page.getByRole('heading', { name: 'Frame TV' })).toBeVisible();
     await page.getByRole('button', { name: 'Back to Group pieces' }).click();
     await expect(page.getByRole('list', { name: 'Pieces and groups in TV set' })).toBeVisible();
-    await canvas.dragTo(canvas, { sourcePosition: screen.position, targetPosition: { x: 560, y: 340 } });
+    await canvas.dragTo(canvas, { sourcePosition: { x: 120, y: 150 }, targetPosition: { x: 194, y: 171 } });
     await expect(page.getByRole('button', { name: 'Reset view' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Group pieces' })).toBeVisible();
   });

@@ -15,7 +15,6 @@ interface Props {
   poses: ReadonlyMap<string, PlacedLeaf>;
   components: Readonly<Record<string, ComponentState>>;
   onClose: () => void;
-  onSelect?: (id?: string) => void;
   initialSelection?: string;
   mapHost?: HTMLElement;
 }
@@ -44,7 +43,7 @@ function KeyLine({ cls }: { cls: string }) {
   return <svg className="room-plan__swatch" width="30" height="10" viewBox="0 0 30 10" aria-hidden="true"><line className={cls} x1="2" y1="5" x2="28" y2="5" /></svg>;
 }
 
-export function RoomPlan({ room, tree, poses, components, onClose, onSelect, initialSelection, mapHost }: Props) {
+export function RoomPlan({ room, tree, poses, components, onClose, initialSelection, mapHost }: Props) {
   const names = useMemo(() => new Map(ROOM_DEFS[room.id].components.map((c) => [c.id as string, c.name])), [room.id]);
   const valid = initialSelection !== undefined && parentOf(tree, initialSelection) !== undefined;
   const [rawEntered, setEntered] = useState<Parent>(() => (valid ? parentOf(tree, initialSelection) ?? null : null));
@@ -57,7 +56,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, onSelect, ini
   const back = useRef<HTMLButtonElement>(null);
   useEffect(() => back.current?.focus(), []);
 
-  const select = (id: string | null) => { setSelected(id); setInspect(false); onSelect?.(id ?? undefined); };
+  const select = (id: string | null) => { setSelected(id); setInspect(false); };
   const leave = () => {
     if (entered === null) onClose();
     else {

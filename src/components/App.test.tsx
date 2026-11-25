@@ -10,7 +10,7 @@ import { BEDROOM_MOULD_WALLS } from '../scene/mouldWalls';
 import { DEFAULTS, STORAGE_KEY, type Settings } from '../state/settings';
 import { App } from './App';
 
-const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), select: vi.fn(), groupOf: vi.fn(), dispose: vi.fn() };
+const scene = { apply: vi.fn(), setView: vi.fn(), pointAt: vi.fn(), select: vi.fn(), groupOf: vi.fn(), roomPoses: () => new Map(), dispose: vi.fn() };
 const createApartmentScene = vi.fn<(...args: unknown[]) => typeof scene>(() => scene);
 
 vi.mock('../scene/createScene', () => ({

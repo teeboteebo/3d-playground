@@ -15,6 +15,7 @@ interface Props {
   steps: Steps;
   editor: Editor;
   tools: ReactNode;
+  placement: ReactNode;
   children?: ReactNode;
 }
 
@@ -22,7 +23,7 @@ interface Props {
  * The side panel: the apartment's controls and room list when no room is selected, otherwise the selected room's menu —
  * a summary of its options, each opening a page of its own — under a way back to all rooms.
  */
-export function Panel({ settings, update, menu, steps, editor, tools, children }: Props) {
+export function Panel({ settings, update, menu, steps, editor, tools, placement, children }: Props) {
   const room = settings.room;
   const exit = { text: 'All rooms', label: 'Back to all rooms', onExit: () => update({ room: 'all' }) };
   const props = { settings, update, exit, menu, editor };
@@ -31,6 +32,7 @@ export function Panel({ settings, update, menu, steps, editor, tools, children }
       {tools}
       <div className="panel-body">
       {children ?? (room === 'all' ? <AllRoomsPanel settings={settings} update={update} steps={steps} /> : <RoomPanel key={room} room={room} {...props} />)}
+      {placement}
       </div>
       <StepsBar steps={steps} />
     </aside>
