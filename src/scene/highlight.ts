@@ -6,8 +6,12 @@ import { optionOf, sameOption, type SceneOption } from './options';
 /**
  * what to highlight: one menu option, or a whole room (its walls and floor), for the click that selects it. An option
  * with `within` set also takes in every option under it (the menu's "Wall moulding" row takes in each wall's moulding).
+ * `leaves` takes in the room's pieces with those ids, as one selected group or several selected nodes stand for them.
  */
-export type HighlightTarget = { kind: 'option'; option: SceneOption; within?: boolean } | { kind: 'room'; room: RoomId };
+export type HighlightTarget =
+  | { kind: 'option'; option: SceneOption; within?: boolean }
+  | { kind: 'room'; room: RoomId }
+  | { kind: 'leaves'; room: RoomId; ids: readonly string[] };
 
 const sameTarget = (a: HighlightTarget | null, b: HighlightTarget | null): boolean =>
   a === b ||
@@ -15,7 +19,9 @@ const sameTarget = (a: HighlightTarget | null, b: HighlightTarget | null): boole
     !!b &&
     (a.kind === 'room'
       ? b.kind === 'room' && a.room === b.room
-      : b.kind === 'option' && sameOption(a.option, b.option) && !a.within === !b.within));
+      : a.kind === 'leaves'
+        ? b.kind === 'leaves' && a.room === b.room && a.ids.join('/') === b.ids.join('/')
+        : b.kind === 'option' && sameOption(a.option, b.option) && !a.within === !b.within));
 
 /** whether `option` is `under`, or (for `within`) any option whose path starts with its path */
 function matches(option: SceneOption | null, under: SceneOption, within: boolean): boolean {
@@ -26,6 +32,7 @@ function matches(option: SceneOption | null, under: SceneOption, within: boolean
 /** whether `o` is part of the target: a mesh of the option, or a room's walls and floor */
 function partOf(o: THREE.Object3D, t: HighlightTarget): boolean {
   const option = optionOf(o);
+  if (t.kind === 'leaves') return option?.room === t.room && option.path.length === 1 && t.ids.includes(option.path[0]);
   if (t.kind === 'option') return matches(option, t.option, !!t.within);
   return o.name === `${t.room}-floor` || (option?.room === t.room && option.path[0] === 'walls');
 }

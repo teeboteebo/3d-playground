@@ -5,6 +5,7 @@ import { roomById, roomSize } from '../data/rooms';
 import { rugThumbnail, roundRugThumbnail } from '../scene/canvas';
 import { BEDROOM_MOULD_WALLS, LIVING_MOULD_WALLS } from '../scene/mouldWalls';
 import type { Settings } from '../state/settings';
+import type { Editor } from '../state/useEditor';
 import type { Update } from '../state/useSettings';
 import { Menu, type MenuNav, type Topic } from './Menu';
 import type { MouldRoom } from './MouldingSection';
@@ -19,6 +20,7 @@ interface Props {
   update: Update;
   exit: RoomExit;
   menu: MenuNav;
+  editor: Editor;
 }
 
 /** what a room's first page says about it: a line under the title, and the About text */
@@ -73,13 +75,13 @@ export function RoomPanel({ room, ...rest }: Props) {
 }
 
 /** a room with wall moulding, whose shopping list the moulding page shows */
-function MouldedRoomPanel({ room, settings, update, menu, exit }: Props & { room: MouldRoom }) {
+function MouldedRoomPanel({ room, settings, update, menu, exit, editor }: Props & { room: MouldRoom }) {
   const shopping = useShoppingList(room, settings);
   const walls = room === 'bedroom' ? BEDROOM_MOULD_WALLS : LIVING_MOULD_WALLS;
-  return <RoomMenu room={room} settings={settings} update={update} menu={menu} exit={exit} moulding={mouldingTopic(room, walls, settings, update, shopping, menu)} />;
+  return <RoomMenu room={room} settings={settings} update={update} menu={menu} exit={exit} editor={editor} moulding={mouldingTopic(room, walls, settings, update, shopping, menu)} />;
 }
 
-function RoomMenu({ room, settings, update, exit, menu, moulding }: Props & { moulding?: Topic }) {
+function RoomMenu({ room, settings, update, exit, menu, editor, moulding }: Props & { moulding?: Topic }) {
   const info = roomById(room);
   const size = roomSize(info);
   const page = PAGES[room];
@@ -90,6 +92,7 @@ function RoomMenu({ room, settings, update, exit, menu, moulding }: Props & { mo
     settings,
     update,
     menu,
+    editor,
     moulding,
     about: page.about(size),
     thumbs: (THUMBS as Partial<Record<RoomId, Record<string, (v: Variant) => string>>>)[room],

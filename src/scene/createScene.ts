@@ -31,6 +31,10 @@ export interface ApartmentScene {
   setView(pose: Partial<CameraPose>): void;
   /** highlights the option a menu row points at, and every option under it (null for none); the mouse over the 3D view wins */
   pointAt(option: SceneOption | null): void;
+  /** highlights these pieces of the selected room, as the selection, under what the mouse or a menu row points at (null for none) */
+  select(ids: readonly string[] | null): void;
+  /** widens what the mouse over a piece highlights to the group it stands for: the ids of that group, or null for the piece alone */
+  groupOf(resolve: ((option: SceneOption) => readonly string[] | null) | null): void;
   dispose(): void;
 }
 
@@ -62,7 +66,7 @@ export function createApartmentScene(
   container: HTMLElement,
   initial: Settings,
   /** called with what a click (not a drag) lands on: its room (null outside the apartment) and menu option */
-  onPick?: (pick: Pick) => void,
+  onPick?: (pick: Pick, modifiers: { shift: boolean }) => void,
   /** called as the mouse moves onto, along and off a menu option of the selected room (null when off) */
   onHover?: (hover: Hover | null) => void,
   /** called whenever the user moves the camera themselves (drag, pinch, wheel or keys) */
@@ -150,6 +154,7 @@ export function createApartmentScene(
     roomLights.apply(s);
     /* a room change makes what is under the mouse mean something else; settings may rebuild or recolour parts */
     if (lastHover && (lastHover.room === selected) !== !!lastHover.option) setHover(null);
+    highlight.set(shown(lastHover));
     highlight.refresh();
   }
 
@@ -157,9 +162,9 @@ export function createApartmentScene(
     const r = canvas.getBoundingClientRect();
     return { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 };
   };
-  const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc) => {
+  const orbit = orbitCamera(canvas, camera, VIEWS[0].pose, (ndc, shift) => {
     setHover(null);
-    onPick?.(pick(ndc, camera, scene.children, ROOMS));
+    onPick?.(pick(ndc, camera, scene.children, ROOMS), { shift });
   }, onCameraMove);
 
   /* hovering with a mouse (not touch, not while dragging) points at the selected room's options, and at the other
@@ -167,10 +172,19 @@ export function createApartmentScene(
   let lastHover: Hover | null = null;
   /* what a menu row points at, shown while the mouse points at nothing in 3D */
   let pointed: HighlightTarget | null = null;
-  const hoverTarget = (h: Hover | null): HighlightTarget | null =>
-    !h ? null : h.option ? { kind: 'option', option: h.option } : { kind: 'room', room: h.room };
+  let selection: readonly string[] | null = null;
+  let groupOf: ((option: SceneOption) => readonly string[] | null) | null = null;
+  const hoverTarget = (h: Hover | null): HighlightTarget | null => {
+    if (!h) return null;
+    if (!h.option) return { kind: 'room', room: h.room };
+    const ids = groupOf?.(h.option);
+    return ids ? { kind: 'leaves', room: h.option.room, ids } : { kind: 'option', option: h.option };
+  };
+  const selectionTarget = (): HighlightTarget | null =>
+    selection && selected !== 'all' ? { kind: 'leaves', room: selected, ids: selection } : null;
+  const shown = (h: Hover | null) => hoverTarget(h) ?? pointed ?? selectionTarget();
   function setHover(h: Hover | null) {
-    highlight.set(hoverTarget(h) ?? pointed);
+    highlight.set(shown(h));
     canvas.classList.toggle('pointing', !!h);
     if (h || lastHover) onHover?.(h);
     lastHover = h;
@@ -254,7 +268,14 @@ export function createApartmentScene(
     },
     pointAt(option) {
       pointed = option ? { kind: 'option', option, within: true } : null;
-      highlight.set(hoverTarget(lastHover) ?? pointed);
+      highlight.set(shown(lastHover));
+    },
+    select(ids) {
+      selection = ids;
+      highlight.set(shown(lastHover));
+    },
+    groupOf(resolve) {
+      groupOf = resolve;
     },
     dispose() {
       cancelAnimationFrame(raf);
