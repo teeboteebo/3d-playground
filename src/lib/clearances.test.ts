@@ -87,8 +87,8 @@ describe('leafClearances', () => {
     const b = box(1.2, 0, 1.7, 0.4, { mount: wall });
     const other = box(2.5, 0, 3, 0.4);
     const cs = leafClearances(square, [a, b, other], new Set([0, 1]));
-    expect(cs.filter((c) => c.leaf === 0).map((c) => c.label)).toContain('Along wall −');
-    const ofB = cs.filter((c) => c.leaf === 1 && c.label.startsWith('Along wall'));
+    expect(cs.filter((c) => c.leafIndex === 0).map((c) => c.label)).toContain('Along wall −');
+    const ofB = cs.filter((c) => c.leafIndex === 1 && c.label.startsWith('Along wall'));
     expect(ofB.map((c) => c.label)).toEqual(['Along wall +']);
     const single = leafClearances(square, [a, other], new Set([0]));
     expect(single.filter((c) => c.label.startsWith('Along wall')).map((c) => c.cm).sort()).toEqual([100, 250]);
@@ -98,7 +98,7 @@ describe('leafClearances', () => {
     const mid = box(1.5, 1, 2.5, 2);
     const ring = [box(0.5, 1, 1.5, 2), box(2.5, 1, 3.5, 2), box(1.5, 0, 2.5, 1), box(1.5, 2, 2.5, 3)];
     const cs = leafClearances(square, [mid, ...ring], new Set([0, 1, 2, 3, 4]));
-    expect(cs.filter((c) => c.leaf === 0).length).toBe(1);
+    expect(cs.filter((c) => c.leafIndex === 0).length).toBe(1);
   });
 });
 

@@ -60,6 +60,92 @@ test.describe('physical room groups', () => {
     await expect(page.getByRole('listitem').filter({ has: check('Right bedside table') })).toContainText('Shown');
   });
 
+  test.describe('room placement', () => {
+    test('previews a wall group without saving, drops it once, then reads the saved location in the plan', async ({ page }) => {
+      await openWith(page, { version: 6, room: 'bedroom' });
+      await settled(page);
+      const tool = (name: string) => page.getByRole('group', { name: 'Room tools' }).getByRole('button', { name });
+      const pair = () => page.evaluate(() => {
+        const c = JSON.parse(localStorage.getItem('apartment-playground')!).rooms.bedroom.components;
+        return ['left','right'].map((side) => c[`bedside-table-${side}`].pose ?? null) as ({ x: number; y: number; z: number } | null)[];
+      });
+      await tool('Room plan').click();
+      const table = () => page.locator('.room-plan__map polygon[aria-label$="Left bedside table"]');
+      const before = await table().getAttribute('points');
+      await page.getByRole('button', { name: 'Back to 3D' }).click();
+      await tool('Move pieces').click();
+      const drag = async () => {
+        await page.mouse.move(276,442);
+        await page.mouse.down();
+        await page.mouse.move(300,425,{ steps: 5 });
+        await expect(page.locator('.move-status')).toContainText('Release to place Bedside tables');
+        await expect(page.locator('.move-guides')).toContainText('Along wall');
+        await expect(page.locator('.move-guides')).toContainText('Down to floor');
+      };
+      await drag();
+      expect(await pair()).toEqual([null,null]);
+      await page.keyboard.press('Escape');
+      await page.mouse.up();
+      await expect(page.locator('.move-status')).toHaveText('Move cancelled.');
+      expect(await pair()).toEqual([null,null]);
+      await drag();
+      await page.mouse.up();
+      await expect(page.locator('.move-status')).toContainText('Moved Bedside tables.');
+      const [left,right] = await pair();
+      expect(left).not.toBeNull();
+      expect(right).toEqual(left);
+      expect(left!.y).toBeGreaterThan(0);
+      expect(left!.z).toBe(0);
+      await tool('Room plan').click();
+      await expect(table()).not.toHaveAttribute('points', before!);
+      const after = await table().getAttribute('points');
+      const minX = (str: string) => Math.min(...str.split(' ').map((p) => Number(p.split(',')[0])));
+      expect(minX(after!) - minX(before!)).toBeCloseTo(left!.x, 5);
+      await page.getByRole('button', { name: 'Undo', exact: true }).click();
+      await expect(table()).toHaveAttribute('points', before!);
+      expect(await pair()).toEqual([null,null]);
+      await page.getByRole('button', { name: 'Redo', exact: true }).click();
+      await page.reload();
+      await settled(page);
+      await tool('Room plan').click();
+      await expect(table()).toHaveAttribute('points', after!);
+      await table().click({ force: true });
+      expect(await pair()).toEqual([left,right]);
+    });
+
+    test('keeps a floor drag level, rejects an invalid drop, and changes walls only on request', async ({ page }) => {
+      await openWith(page, { version: 6, room: 'bedroom' });
+      await settled(page);
+      await page.getByRole('button', { name: 'Move pieces', exact: true }).click();
+      const current = () => page.evaluate(() => JSON.parse(localStorage.getItem('apartment-playground')!).rooms.bedroom.components);
+      await page.mouse.move(470,600);
+      await page.mouse.down();
+      await page.mouse.move(492,610,{ steps: 3 });
+      await expect(page.locator('.move-status')).toContainText('Release to place Bench');
+      await expect(page.locator('.move-guides')).toContainText('X to wall');
+      await expect(page.locator('.move-guides')).toContainText('Z to wall');
+      await page.mouse.up();
+      const saved = (await current()).bench.pose;
+      expect(saved.x).not.toBe(0);
+      expect(saved.y).toBe(0);
+      await page.mouse.move(492,610);
+      await page.mouse.down();
+      await page.mouse.move(910,500,{ steps: 4 });
+      await page.mouse.up();
+      await expect(page.locator('.move-status')).toContainText('Not moved.');
+      expect((await current()).bench.pose).toEqual(saved);
+      await page.getByLabel('Piece or group').selectOption('ceiling-light');
+      await expect(page.locator('.move-panel')).toContainText('Ceiling light is fixed to the ceiling.');
+      await page.getByLabel('Piece or group').selectOption('painting');
+      await page.getByLabel('Mounting wall').selectOption('1');
+      expect((await current()).painting.pose).toBeUndefined();
+      await page.getByRole('button', { name: 'Change wall', exact: true }).click();
+      expect((await current()).painting.pose).toMatchObject({ edge: 1 });
+      await page.getByRole('button', { name: 'Raise', exact: true }).press('Enter');
+      expect((await current()).painting.pose.y).toBeCloseTo(0.05);
+    });
+  });
+
   test('creates nested groups and ungroups one level using the narrow-screen list', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openWith(page, { room: 'office' });

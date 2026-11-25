@@ -35,7 +35,7 @@ describe('RoomPlan', () => {
 
   it('selecting a group selects every member and lists their sizes and gaps', async () => {
     setup();
-    await userEvent.click(screen.getByRole('button', { name: /TV set/ }));
+    await userEvent.click(screen.getByRole('button', { name: /TV set.*2 pieces/ }));
     expect(document.querySelectorAll('.room-plan__piece--sel')).toHaveLength(2);
     await userEvent.click(screen.getByRole('button', { name: 'Inspect members' }));
     expect(screen.getAllByText('50 × 40 × 75 cm')).toHaveLength(2);
@@ -44,7 +44,7 @@ describe('RoomPlan', () => {
 
   it('enters a group and says what is hidden', async () => {
     setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Enter' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Enter TV set' }));
     expect(screen.getByRole('button', { name: 'Up to room' })).toBeInTheDocument();
     expect(document.querySelectorAll('.room-plan__piece--scope')).toHaveLength(2);
   });
@@ -57,7 +57,7 @@ describe('RoomPlan', () => {
 
   it('opens on a given selection and closes with the button or Escape', async () => {
     const onClose = setup({ initialSelection: 'tv' });
-    expect(within(screen.getByRole('dialog')).getByRole('heading', { name: 'Frame TV' })).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Living room plan' })).getByRole('heading', { name: 'Frame TV' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Back to 3D' }));
     await userEvent.keyboard('{Escape}{Escape}');
     expect(onClose).toHaveBeenCalledTimes(2);
@@ -67,7 +67,7 @@ describe('RoomPlan', () => {
     const onClose = setup();
     const seen = vi.fn();
     window.addEventListener('keydown', seen);
-    await userEvent.click(screen.getByRole('button', { name: 'Enter' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Enter TV set' }));
     await userEvent.keyboard('{Escape}');
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: 'Up to room' })).toBeNull();
@@ -91,7 +91,7 @@ describe('RoomPlan', () => {
 
   it('picking a piece outside the open group leaves the group, like the 3D editor', async () => {
     setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Enter' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Enter TV set' }));
     await userEvent.click(screen.getByRole('button', { name: /^3\. / }));
     expect(screen.queryByRole('button', { name: 'Up to room' })).toBeNull();
     expect(screen.getByRole('heading', { name: /^Sofa/ })).toBeInTheDocument();

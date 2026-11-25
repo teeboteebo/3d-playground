@@ -19,9 +19,17 @@ interface Props {
   selection?: readonly string[] | null;
   /** the selected room's menu page a row points at, highlighted in 3D (null for none) */
   pointed?: readonly string[] | null;
+  onReady: (view: StageView | null) => void;
+  onGeometryChange: () => void;
+  tool: 'move' | 'plan' | null;
 }
 
-export function Stage({ settings, update, onOption, nodeOf, selection = null, pointed = null }: Props) {
+export interface StageView {
+  scene: ApartmentScene;
+  container: HTMLDivElement;
+}
+
+export function Stage({ settings, update, onOption, nodeOf, selection = null, pointed = null, onReady, onGeometryChange, tool }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<ApartmentScene | null>(null);
@@ -99,8 +107,10 @@ export function Stage({ settings, update, onOption, nodeOf, selection = null, po
           () => {
             if (viewRef.current !== null) showViewRef.current(null);
           },
+          onGeometryChange,
         );
         sceneRef.current = scene;
+        onReady({ scene, container: wrapRef.current! });
         scene.groupOf((o) => nodeOfRef.current?.(o.path)?.ids ?? null);
         scene.select(selectionRef.current);
         /* the selection's view, which the effect below could not set while the scene was loading */
@@ -112,10 +122,11 @@ export function Stage({ settings, update, onOption, nodeOf, selection = null, po
       });
     return () => {
       cancelled = true;
+      onReady(null);
       scene?.dispose();
       sceneRef.current = null;
     };
-  }, []);
+  }, [onReady, onGeometryChange]);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -171,18 +182,19 @@ export function Stage({ settings, update, onOption, nodeOf, selection = null, po
   };
 
   return (
-    <div className="stage-wrap" ref={wrapRef}>
+    <div className="stage-wrap" ref={wrapRef} data-tool={tool ?? undefined}>
       <canvas
         ref={canvasRef}
         className="stage-canvas"
-        tabIndex={0}
+        tabIndex={tool ? -1 : 0}
+        aria-hidden={tool ? true : undefined}
         aria-label="3D apartment preview. Click a room to select it, then click something in it to change it. Drag to orbit, scroll or pinch to zoom. With this focused, arrow keys turn the camera, plus and minus zoom, Home returns to the room's view, number keys pick a camera view and Escape goes back."
         onKeyDown={onCanvasKey}
         onFocus={(e) => setFocused(e.currentTarget.matches(':focus-visible'))}
         onBlur={() => setFocused(false)}
       />
       <div className="hint">
-        {focused
+        {tool === 'move' ? 'Drag a piece to move it · Esc cancels' : focused
           ? `Arrow keys turn · + − zoom · Home resets · 1–${views.length} views · Esc goes back`
           : `${settings.room === 'all' ? 'Click a room to select it' : 'Click something to change it'} · drag to orbit · scroll or pinch to zoom`}
       </div>

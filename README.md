@@ -22,7 +22,27 @@ Each piece keeps its product, finish, and visibility. Undo and redo apply to gro
 
 The bedroom starts with two bedside tables in one group and two wall lamps in another. Each left and right piece
 has its own identity. The office headings **Workspace** and **Reading corner** still organize the catalog; they do
-not bind pieces together. Dragging the 3D view still orbits the camera.
+not bind pieces together.
+
+## Move a piece or group
+
+Select a room and choose **Move pieces**. Drag a furnishing in the 3D view. The dashed lines measure from its edges
+to the room in centimetres. Release to place it, or press Escape before releasing to keep its old position.
+Outside **Move pieces**, dragging still orbits the camera.
+
+Floor pieces slide across the floor. Wall pieces slide along their wall and can move up or down unless they also
+rest on the floor. Use **Mounting wall** and **Change wall** to attach a piece to a different wall. Ceiling lights
+stay fixed. Every member of a group must fit, including hidden members. A solid overlap warns but allows the
+drop. Leaving the room or mounting across an opening blocks it.
+
+For a precise move, select a piece or group from the list, set **Step (cm)**, and use the adjustment buttons.
+Each drop, adjustment, or wall change is one undo step. Reloading restores the saved positions.
+
+## Read the room plan
+
+Choose **Room plan** for a read-only overhead view. Select a footprint or its name to see its clearances.
+Select a group to highlight its members. Enter the group to inspect a single piece. **Back to 3D** returns to
+the room without changing its layout.
 
 ## Develop
 

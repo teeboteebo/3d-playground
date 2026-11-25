@@ -64,7 +64,6 @@ export function pick(
   return { room: roomAt(hit.point.x, hit.point.z, rooms), option: optionOf(hit.object) };
 }
 
-/** the first visible, drawn thing under a point in normalised device coordinates, with its true world point */
 export function firstHit(ndc: { x: number; y: number }, camera: THREE.Camera, targets: THREE.Object3D[]): THREE.Intersection | undefined {
   camera.updateMatrixWorld();
   ray.setFromCamera(new THREE.Vector2(ndc.x, ndc.y), camera);

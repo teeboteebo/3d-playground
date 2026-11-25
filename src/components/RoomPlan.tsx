@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ComponentState } from '../data/components';
 import { ROOM_DEFS } from '../data/roomDefs';
-import type { Room, XZ } from '../data/rooms';
+import { centroid, extent, type Room, type XZ } from '../data/rooms';
 import { ancestorsOf, childrenOf, isGroup, leavesOf, parentOf, resolvePick, type Parent, type RoomTree } from '../data/tree';
 import { footprintCm, leafClearances } from '../lib/clearances';
-import type { Opening } from '../data/rooms';
 import { roomWalls } from '../scene/apartment';
 import type { PlacedLeaf } from '../scene/rigidPlacement';
 import './RoomPlan.css';
@@ -15,12 +15,14 @@ interface Props {
   poses: ReadonlyMap<string, PlacedLeaf>;
   components: Readonly<Record<string, ComponentState>>;
   onClose: () => void;
+  onSelect?: (id?: string) => void;
   initialSelection?: string;
+  mapHost?: HTMLElement;
 }
 
 type Status = 'placed' | 'hidden' | 'unplaced' | 'unknown';
 
-const fmt = (n: number) => `${Math.round(n * 10) / 10}`.replace('.0', '');
+const fmt = (n: number) => String(Math.round(n * 10) / 10);
 const OPENING_NAME = { door: 'Door', window: 'Window', passage: 'Doorway' } as const;
 
 function insideConvex(fp: readonly XZ[], [x, z]: XZ): boolean {
@@ -42,14 +44,12 @@ function KeyLine({ cls }: { cls: string }) {
   return <svg className="room-plan__swatch" width="30" height="10" viewBox="0 0 30 10" aria-hidden="true"><line className={cls} x1="2" y1="5" x2="28" y2="5" /></svg>;
 }
 
-/** Overhead, read-only plan of one room: where each piece stands, with the gaps that a drag in 3D is measured against. */
-export function RoomPlan({ room, tree, poses, components, onClose, initialSelection }: Props) {
+export function RoomPlan({ room, tree, poses, components, onClose, onSelect, initialSelection, mapHost }: Props) {
   const names = useMemo(() => new Map(ROOM_DEFS[room.id].components.map((c) => [c.id as string, c.name])), [room.id]);
   const valid = initialSelection !== undefined && parentOf(tree, initialSelection) !== undefined;
   const [rawEntered, setEntered] = useState<Parent>(() => (valid ? parentOf(tree, initialSelection) ?? null : null));
   const [rawSelected, setSelected] = useState<string | null>(valid ? initialSelection : null);
   const [hot, setHot] = useState<string | null>(null);
-  // an undo or regroup can remove what the plan had open; fall back rather than point at a node that is gone
   const entered: Parent = rawEntered !== null && isGroup(tree, rawEntered) ? rawEntered : null;
   const selected = rawSelected !== null && parentOf(tree, rawSelected) !== undefined ? rawSelected : null;
   const hotLeaves = hot !== null && parentOf(tree, hot) !== undefined ? leavesOf(tree, hot) : [];
@@ -57,15 +57,16 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
   const back = useRef<HTMLButtonElement>(null);
   useEffect(() => back.current?.focus(), []);
 
-  const escape = useRef(() => {});
-  useEffect(() => {
-    escape.current = () => {
-      if (entered === null) return onClose();
+  const select = (id: string | null) => { setSelected(id); setInspect(false); onSelect?.(id ?? undefined); };
+  const leave = () => {
+    if (entered === null) onClose();
+    else {
       setEntered(parentOf(tree, entered) ?? null);
-      setSelected(entered);
-      setInspect(false);
-    };
-  });
+      select(entered);
+    }
+  };
+  const escape = useRef(leave);
+  useEffect(() => { escape.current = leave; });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
@@ -98,7 +99,6 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
     const n = numbersOf(id);
     return n.length === 0 ? '' : n.length === 1 ? `${n[0]}` : `${n[0]}–${n[n.length - 1]}`;
   };
-  // rugs lie beneath, then pieces from low to high, so the highest shape is the one a click lands on
   const drawOrder = useMemo(
     () => [...placedIds].sort((a, b) => {
       const pa = poses.get(a)!;
@@ -107,28 +107,37 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
     }),
     [placedIds, poses],
   );
-  const badgeAt = (id: string): XZ => {
-    const fp = poses.get(id)!.footprint;
-    const c: XZ = [fp.reduce((s, p) => s + p[0], 0) / fp.length, fp.reduce((s, p) => s + p[1], 0) / fp.length];
-    const covered = (q: XZ) => placedIds.some((o) => o !== id && poses.get(o)!.obstructs && insideConvex(poses.get(o)!.footprint, q));
-    if (!covered(c)) return c;
-    const pulled = fp.map(([x, z]): XZ => [x + (c[0] - x) * 0.2, z + (c[1] - z) * 0.2]);
-    return pulled.find((q) => !covered(q)) ?? c;
-  };
 
-  const selectedLeaves = selected ? leavesOf(tree, selected) : [];
+  const selectedLeaves = useMemo(() => selected ? leavesOf(tree, selected) : [], [selected, tree]);
   const gaps = useMemo(() => {
     const own = new Set(selectedLeaves.map((id) => placedIds.indexOf(id)).filter((i) => i >= 0));
     return leafClearances(room, placed, own);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [room, placed, placedIds, selected, tree]);
+  }, [room, placed, placedIds, selectedLeaves]);
 
-  const xs = room.poly.map((p) => p[0]);
-  const zs = room.poly.map((p) => p[1]);
-  const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs));
+  const { minX, maxX, minZ, maxZ } = extent(room.poly);
+  const span = Math.max(maxX - minX, maxZ - minZ);
   const pad = span * 0.12;
-  const box = [Math.min(...xs) - pad, Math.min(...zs) - pad, Math.max(...xs) - Math.min(...xs) + 2 * pad, Math.max(...zs) - Math.min(...zs) + 2 * pad];
+  const box = [minX - pad, minZ - pad, maxX - minX + 2 * pad, maxZ - minZ + 2 * pad];
   const font = span / 34;
+  const horizontalGaps = gaps.filter((g) => g.from.x !== g.to.x || g.from.z !== g.to.z);
+  const badges: { id: string; at: XZ; anchor: XZ }[] = [];
+  for (const id of [...drawOrder].reverse()) {
+    const fp = poses.get(id)!.footprint;
+    const center = centroid(fp);
+    const free = ([x, z]: XZ) => badges.every(({ at }) => Math.hypot(x - at[0], z - at[1]) >= font * 1.6)
+      && horizontalGaps.every((g) => Math.abs(x - (g.from.x + g.to.x) / 2) > font * (fmt(g.cm).length * 0.32 + 0.8)
+        || Math.abs(z - (g.from.z + g.to.z) / 2 + font * 0.3) > font * 1.3);
+    const candidates = [center, ...fp.map(([x, z]): XZ => [0.8 * x + 0.2 * center[0], 0.8 * z + 0.2 * center[1]])];
+    let at = candidates.find((q) => free(q) && badges.every((b) => !insideConvex(poses.get(b.id)!.footprint, q))) ?? candidates.find(free);
+    for (let radius = 1; !at; radius++) {
+      for (let i = 0; i < 8; i++) {
+        const angle = i * Math.PI / 4;
+        const q: XZ = [center[0] + Math.cos(angle) * radius * font * 1.7, center[1] + Math.sin(angle) * radius * font * 1.7];
+        if (free(q)) { at = q; break; }
+      }
+    }
+    badges.push({ id, at, anchor: insideConvex(fp, at) ? at : center });
+  }
   const walls = useMemo(() => roomWalls(room), [room]);
   const openings = useMemo(() => walls.flatMap((w) => w.holes.map(({ opening, u0, u1 }) => {
     const dx = (w.b[0] - w.a[0]) / w.length;
@@ -138,8 +147,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
   const kinds = [...new Set(openings.map((o) => o.kind))];
   const hasOpenEdge = (room.open ?? []).length > 0;
   const edges = useMemo(() => {
-    const cx = xs.reduce((s, x) => s + x, 0) / xs.length;
-    const cz = zs.reduce((s, z) => s + z, 0) / zs.length;
+    const [cx, cz] = centroid(room.poly);
     return room.poly.map(([ax, az], i) => {
       const [bx, bz] = room.poly[(i + 1) % room.poly.length];
       const mx = (ax + bx) / 2;
@@ -147,16 +155,15 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
       const len = Math.hypot(mx - cx, mz - cz) || 1;
       return { i, ax, az, bx, bz, mx, mz, nx: (mx - cx) / len, nz: (mz - cz) / len, open: room.open?.includes(i) ?? false };
     });
-  }, [room, xs, zs]);
+  }, [room]);
 
   const pick = (leaf: string) => {
-    // like the 3D editor: a piece outside the open group leaves it and selects from the room
     let node = resolvePick(tree, leaf, entered);
     if (node === null) {
       setEntered(null);
       node = resolvePick(tree, leaf, null);
     }
-    if (node) { setSelected(node); setInspect(false); }
+    if (node) select(node);
   };
   const inScope = (leaf: string) => resolvePick(tree, leaf, entered) !== null;
   const describe = (id: string) => {
@@ -172,14 +179,8 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
     unknown: 'Unknown piece',
   };
   const crumbs = entered ? [...ancestorsOf(tree, entered), entered] : [];
-  const select = (id: string) => { setSelected(id); setInspect(false); };
 
-  return (
-    <section
-      className="room-plan"
-      role="dialog"
-      aria-label={`${room.name} plan`}
-    >
+  const map = (
       <div className="room-plan__map">
         <svg className="room-plan__svg" viewBox={box.join(' ')} role="img" aria-label={`Overhead plan of ${room.name}`}>
           <polygon className="room-plan__room" points={points(room.poly)} />
@@ -221,17 +222,8 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
               </polygon>
             );
           })}
-          {drawOrder.map((id) => {
-            const [x, z] = badgeAt(id);
-            return (
-              <g key={id} className="room-plan__badge" pointerEvents="none">
-                <circle cx={x} cy={z} r={font * 0.7} />
-                <text fontSize={font * 0.85} textAnchor="middle" dominantBaseline="central" x={x} y={z}>{numbers.get(id)}</text>
-              </g>
-            );
-          })}
-          {gaps.filter((g) => g.from.x !== g.to.x || g.from.z !== g.to.z).map((g, i) => (
-            <g key={i}>
+          {horizontalGaps.map((g, i) => (
+            <g key={i} pointerEvents="none">
               <line className="room-plan__guide" x1={g.from.x} y1={g.from.z} x2={g.to.x} y2={g.to.z} />
               <text
                 className="room-plan__text"
@@ -245,6 +237,14 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
               </text>
             </g>
           ))}
+          {badges.map(({ id, at: [x, z], anchor }) => (
+            <g key={id} className="room-plan__badge" aria-hidden="true" onClick={() => pick(id)}>
+              {(x !== anchor[0] || z !== anchor[1]) && <line x1={x} y1={z} x2={anchor[0]} y2={anchor[1]} />}
+              <circle cx={x} cy={z} r={font * 0.7} />
+              <text fontSize={font * 0.85} textAnchor="middle" dominantBaseline="central" x={x} y={z}>{numbers.get(id)}</text>
+              <title>{nameOf(id)}</title>
+            </g>
+          ))}
           <g aria-hidden="true">
             <line className="room-plan__scale" x1={box[0] + pad * 0.5} y1={box[1] + box[3] - pad * 0.45} x2={box[0] + pad * 0.5 + 1} y2={box[1] + box[3] - pad * 0.45} />
             <text className="room-plan__text" style={{ strokeWidth: font * 0.25 }} fontSize={font * 0.8} x={box[0] + pad * 0.5 + 1.1} y={box[1] + box[3] - pad * 0.45 + font * 0.28}>1 m</text>
@@ -252,6 +252,10 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
         </svg>
         <p className="room-plan__axes">Top view · +X → right · +Z ↓ down · gaps in cm</p>
       </div>
+  );
+  return (
+    <section className="room-plan" aria-label={`${room.name} plan`}>
+      {mapHost ? createPortal(map, mapHost) : map}
       <aside className="room-plan__side">
         <button ref={back} type="button" onClick={onClose}>Back to 3D</button>
         <h2>{room.name} plan</h2>
@@ -259,7 +263,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
         <h3>{entered ? nameOf(entered) : 'In the room'}</h3>
         {entered && (
           <div className="room-plan__row">
-            <button type="button" onClick={() => { setEntered(parentOf(tree, entered) ?? null); setSelected(entered); setInspect(false); }}>
+            <button type="button" onClick={leave}>
               Up to {crumbs.length > 1 ? nameOf(crumbs[crumbs.length - 2]) : 'room'}
             </button>
           </div>
@@ -284,7 +288,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
                     {group ? `${pieces.length} piece${pieces.length === 1 ? '' : 's'}` : describe(id) ?? statusText[statusOf(id)]}
                   </span>
                 </button>
-                {group && <button type="button" onClick={() => { setEntered(id); setSelected(null); setInspect(false); }}>Enter</button>}
+                {group && <button type="button" aria-label={`Enter ${nameOf(id)}`} onClick={() => { setEntered(id); select(null); }}>Enter</button>}
               </li>
             );
           })}
@@ -301,7 +305,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
               <ul>
                 {selectedLeaves.map((id) => {
                   const index = placedIds.indexOf(id);
-                  const mine = gaps.filter((g) => index >= 0 && placed[index] && g.leaf === index);
+                  const mine = gaps.filter((g) => g.leafIndex === index);
                   return (
                     <li key={id}>
                       <strong><span className="room-plan__num">{numbers.get(id)}</span> {nameOf(id)}</strong>
@@ -319,7 +323,7 @@ export function RoomPlan({ room, tree, poses, components, onClose, initialSelect
           <>
             <h3>Map key</h3>
             <ul className="room-plan__key">
-              {kinds.map((k) => <li key={k}><KeyLine cls={`room-plan__open room-plan__open--${k}`} />{OPENING_NAME[k as Opening['kind']]}</li>)}
+              {kinds.map((k) => <li key={k}><KeyLine cls={`room-plan__open room-plan__open--${k}`} />{OPENING_NAME[k]}</li>)}
               {hasOpenEdge && <li><KeyLine cls="room-plan__wall room-plan__wall--open" />Open edge, no wall</li>}
               <li><KeyLine cls="room-plan__wall" />Wall — numbered like the wall mounts</li>
             </ul>

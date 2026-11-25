@@ -316,7 +316,6 @@ export function createApartmentScene(
     roomPoses: (room) => geometry.poses(room),
     preview(room, poses) {
       geometry.preview(room, poses);
-      /* moving pieces keeps the same meshes, so the highlight and outline sets stay valid */
       invalidate();
     },
     project(p) {

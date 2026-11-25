@@ -52,12 +52,10 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
 
   function place(
     name: string,
-    lampState: Pick<ComponentState, 'shown' | 'variant'>,
+    id: string,
     list: typeof PENDANTS,
     drop: number | undefined,
   ) {
-    const id = lampState.variant;
-    /* a hidden lamp stays in the scene, undrawn and unlit, so it keeps its footprint and pose */
     const shape = findById(list, id).shape;
     if (!shape) {
       remove(name);
@@ -92,7 +90,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         const lamp: ComponentState = (s.rooms[room].components as Record<string, ComponentState>)[id];
         const pendant = kind === 'pendant';
         const name = pendant ? `${room}-pendant` : `${room}-floor-lamp`;
-        const p = place(name, lamp, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
+        const p = place(name, lamp.variant, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
         if (!p) continue;
         p.lamp.group.visible = lamp.shown;
         tagOption([p.lamp.group], room, [id]);

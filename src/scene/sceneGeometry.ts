@@ -4,13 +4,11 @@ import { ROOM_DEFS } from '../data/roomDefs';
 import { roomById, type RoomId, type XZ } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import type { SceneOption } from './options';
-import { roomWalls, type Wall } from './apartment';
+import { roomWalls, wallFacesCamera, type Wall } from './apartment';
 import type { PlacedLeaf } from './rigidPlacement';
 
-/** Rugs lie on the floor and do not obstruct other pieces. */
-const RUGS = new Set(['rug', 'round-rug']);
+const NON_OBSTRUCTING = new Set(['rug', 'round-rug']);
 
-/** The scene transform a pose stands for: a turn about the world's y axis through the origin, then the translation. */
 export function poseMatrix({ x, y, z, yaw }: PiecePose, out = new THREE.Matrix4()): THREE.Matrix4 {
   return out.makeRotationY(yaw).premultiply(new THREE.Matrix4().makeTranslation(x, y, z));
 }
@@ -18,7 +16,6 @@ export function poseMatrix({ x, y, z, yaw }: PiecePose, out = new THREE.Matrix4(
 const isIdentity = (p: PiecePose) => p.x === 0 && p.y === 0 && p.z === 0 && p.yaw === 0;
 const valid = (p: PiecePose) => [p.x, p.y, p.z, p.yaw].every(Number.isFinite);
 
-/** The convex hull of points in the xz plane (Andrew's monotone chain). */
 function hull(points: XZ[]): XZ[] {
   if (points.length < 3) return points;
   points.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
@@ -35,8 +32,7 @@ function hull(points: XZ[]): XZ[] {
   return [...chain(points), ...chain(points.slice().reverse())];
 }
 
-/** What the leaf's pieces cover in world space: the hull of every drawn vertex, and its lowest and highest point. */
-function measure(roots: readonly THREE.Object3D[]): { footprint: XZ[]; bottom: number; top: number } | null {
+function worldExtent(roots: readonly THREE.Object3D[]): { footprint: XZ[]; bottom: number; top: number } | null {
   const points: XZ[] = [];
   let bottom = Infinity;
   let top = -Infinity;
@@ -77,7 +73,7 @@ interface Authored {
 type Roots = Map<RoomId, Map<string, THREE.Object3D[]>>;
 
 export interface SceneGeometry {
-  /** the room's leaves as they stand now, preview excluded; a leaf with nothing in the scene (a hidden catalog lamp) is absent */
+  /** Committed leaves only. A model that has not loaded has no footprint yet. */
   poses(room: RoomId): ReadonlyMap<string, PlacedLeaf>;
   /** shows absolute transforms for some leaves of the room, or restores the committed ones (null) */
   preview(room: RoomId, poses: ReadonlyMap<string, PiecePose> | null): void;
@@ -85,17 +81,12 @@ export interface SceneGeometry {
   release(): void;
   /** the settings' committed poses, once the builders have run; keeps the preview showing */
   commit(settings: Settings): void;
-  /** hides each wall-mounted piece with the wall it stands on (its current wall, moved or not) and the room's own show/hide switch; call after the builders' own `showFrom` */
+  /** Apply the destination wall's cutaway to a remounted piece. Builders own visibility at the authored wall. */
   showFrom(camera: THREE.Vector3): void;
   /** the scene gained or rebuilt pieces (a model arrived): poses them again */
   refresh(): void;
 }
 
-/**
- * The physical placement of the scene's components. The builders leave every piece at its authored spot; a pose then
- * moves the piece's tagged roots as a rigid transform of the world (see `poseMatrix`), so lights and children move
- * along and nothing else in the scene changes.
- */
 export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
   let settings: Settings | null = null;
   let shownPreview: { room: RoomId; poses: ReadonlyMap<string, PiecePose> } | null = null;
@@ -171,7 +162,8 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
     const mount = mountOf(room, id);
     if (!('edge' in mount)) return undefined;
     const p = shownPreview?.room === room ? shownPreview.poses.get(id) : undefined;
-    return (p ?? componentOf(room, id)?.pose)?.edge ?? mount.edge;
+    const edge = (p ?? componentOf(room, id)?.pose)?.edge;
+    return edge === mount.edge ? undefined : edge;
   };
 
   const refresh = () => {
@@ -197,11 +189,7 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
           const edge = edgeOf(room, id);
           const wall = edge === undefined ? undefined : wallOf(room, edge);
           if (!wall) continue;
-          /* the camera is outside the room when it is behind the wall's face, as `buildApartment` tells */
-          const ux = (wall.b[0] - wall.a[0]) / wall.length;
-          const uz = (wall.b[1] - wall.a[1]) / wall.length;
-          const inFront = -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
-          const visible = inFront && (componentOf(room, id)?.shown ?? true);
+          const visible = wallFacesCamera(wall, camera) && (componentOf(room, id)?.shown ?? true);
           for (const o of objects) o.visible = visible;
         }
       }
@@ -226,20 +214,18 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
   };
 
   function committed(room: RoomId) {
-    {
-      const out = new Map<string, PlacedLeaf>();
-      const leaves = found().get(room);
-      for (const { id } of ROOM_DEFS[room].components) {
-        const objects = leaves?.get(id);
-        const box = objects && measure(objects);
-        if (!box) continue;
-        const state = componentOf(room, id);
-        const committedPose = state?.pose;
-        let mount = mountOf(room, id);
-        if (committedPose?.edge !== undefined && 'edge' in mount) mount = { ...mount, edge: committedPose.edge };
-        out.set(id, { ...box, mount, obstructs: (state?.shown ?? true) && !RUGS.has(id) });
-      }
-      return out;
+    const out = new Map<string, PlacedLeaf>();
+    const leaves = found().get(room);
+    for (const { id } of ROOM_DEFS[room].components) {
+      const objects = leaves?.get(id);
+      const box = objects && worldExtent(objects);
+      if (!box) continue;
+      const state = componentOf(room, id);
+      const committedPose = state?.pose;
+      let mount = mountOf(room, id);
+      if (committedPose?.edge !== undefined && 'edge' in mount) mount = { ...mount, edge: committedPose.edge };
+      out.set(id, { ...box, mount, obstructs: (state?.shown ?? true) && !NON_OBSTRUCTING.has(id) });
     }
+    return out;
   }
 }

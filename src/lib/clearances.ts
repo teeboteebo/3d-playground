@@ -1,4 +1,4 @@
-import { CEILING, type Room, type XZ } from '../data/rooms';
+import { CEILING, centroid, type Room, type XZ } from '../data/rooms';
 import type { PlacedLeaf, Translation } from '../scene/rigidPlacement';
 
 /** One dashed distance guide in scene metres; `cm` is its length rounded to a tenth of a centimetre. */
@@ -9,14 +9,12 @@ export interface Clearance {
   cm: number;
 }
 
-/** A clearance that remembers which of the measured leaves it belongs to. */
 export interface LeafClearance extends Clearance {
-  leaf: number;
+  leafIndex: number;
 }
 
 const EPS = 1e-6;
-/** Gaps below half a millimetre are contact, not a distance worth drawing. */
-const MIN_M = 0.0005;
+const CONTACT_M = 0.0005;
 const AXES: readonly { dir: XZ; label: string }[] = [
   { dir: [-1, 0], label: '−X to wall' },
   { dir: [1, 0], label: '+X to wall' },
@@ -34,12 +32,15 @@ function support(fp: readonly XZ[], dir: XZ): XZ {
   return [top.reduce((s, p) => s + p[0], 0) / top.length, top.reduce((s, p) => s + p[1], 0) / top.length];
 }
 
-/** Distance along the ray from `p` to the room outline; a ray leaving the room at `p` is contact (0). */
-function toBoundary(poly: readonly XZ[], p: XZ, d: XZ): number | undefined {
-  const area = poly.reduce((s, [x, z], i) => {
+function winding(poly: readonly XZ[]): number {
+  return Math.sign(poly.reduce((s, [x, z], i) => {
     const [nx, nz] = poly[(i + 1) % poly.length];
     return s + x * nz - nx * z;
-  }, 0);
+  }, 0));
+}
+
+function rayToBoundary(poly: readonly XZ[], p: XZ, d: XZ): number | undefined {
+  const sign = winding(poly);
   let best: number | undefined;
   poly.forEach(([ax, az], i) => {
     const [bx, bz] = poly[(i + 1) % poly.length];
@@ -50,17 +51,14 @@ function toBoundary(poly: readonly XZ[], p: XZ, d: XZ): number | undefined {
     const t = ((ax - p[0]) * ez - (az - p[1]) * ex) / denom;
     const s = ((ax - p[0]) * d[1] - (az - p[1]) * d[0]) / denom;
     if (s < -EPS || s > 1 + EPS || t < -EPS) return;
-    // outward normal of this edge, whichever way the outline winds
-    const out = (area > 0 ? [ez, -ex] : [-ez, ex]) as XZ;
-    if (t < EPS && d[0] * out[0] + d[1] * out[1] <= 0) return;
+    if (t < EPS && sign * denom <= 0) return;
     best = best === undefined ? Math.max(t, 0) : Math.min(best, Math.max(t, 0));
   });
   return best;
 }
 
-/** Length of the segment p → p + d·t that lies inside the convex footprint. */
-function insideLength(fp: readonly XZ[], p: XZ, d: XZ, t: number): number {
-  const area = fp.reduce((s, [x, z], i) => s + x * fp[(i + 1) % fp.length][1] - fp[(i + 1) % fp.length][0] * z, 0);
+function lengthInsideConvex(fp: readonly XZ[], p: XZ, d: XZ, t: number): number {
+  const sign = winding(fp);
   let lo = 0;
   let hi = t;
   for (let i = 0; i < fp.length; i++) {
@@ -68,14 +66,13 @@ function insideLength(fp: readonly XZ[], p: XZ, d: XZ, t: number): number {
     const [bx, bz] = fp[(i + 1) % fp.length];
     const ex = bx - ax;
     const ez = bz - az;
-    // signed distance to the edge, positive inside
-    const side = (area > 0 ? 1 : -1) * (ex * (p[1] - az) - ez * (p[0] - ax));
-    const rate = (area > 0 ? 1 : -1) * (ex * d[1] - ez * d[0]);
+    const insideDistance = sign * (ex * (p[1] - az) - ez * (p[0] - ax));
+    const rate = sign * (ex * d[1] - ez * d[0]);
     if (Math.abs(rate) < 1e-12) {
-      if (side < -EPS) return 0;
+      if (insideDistance < -EPS) return 0;
       continue;
     }
-    const at = -side / rate;
+    const at = -insideDistance / rate;
     if (rate > 0) lo = Math.max(lo, at);
     else hi = Math.min(hi, at);
   }
@@ -117,31 +114,26 @@ export function leafClearances(room: Room, leaves: readonly PlacedLeaf[], subjec
     const covered: LeafClearance[] = [];
     for (const { dir, label } of looks) {
       const p = support(leaf.footprint, dir);
-      const t = toBoundary(room.poly, p, dir);
-      if (t === undefined || t < MIN_M) continue;
-      const found = { ...guide(label, p, dir, t, y), leaf: index };
+      const t = rayToBoundary(room.poly, p, dir);
+      if (t === undefined || t < CONTACT_M) continue;
+      const found = { ...guide(label, p, dir, t, y), leafIndex: index };
       const blocked = leaves.some((o, j) => j !== index && subjects.has(j) && o.obstructs && vertical(leaf, o)
-        && insideLength(o.footprint, p, dir, t) > EPS);
+        && lengthInsideConvex(o.footprint, p, dir, t) > EPS);
       (blocked ? covered : open).push(found);
     }
-    // never leave a piece without a horizontal reference to the room
     if (open.length === 0 && covered.length > 0) open.push(covered.reduce((a, b) => (b.cm < a.cm ? b : a)));
     out.push(...open);
     if (mount.kind === 'wall') {
-      const c: XZ = [
-        leaf.footprint.reduce((s, p) => s + p[0], 0) / leaf.footprint.length,
-        leaf.footprint.reduce((s, p) => s + p[1], 0) / leaf.footprint.length,
-      ];
+      const c = centroid(leaf.footprint);
       const down = leaf.bottom;
       const up = CEILING - leaf.top;
-      if (down >= MIN_M) out.push({ label: 'Down to floor', from: { x: c[0], y: leaf.bottom, z: c[1] }, to: { x: c[0], y: 0, z: c[1] }, cm: cm(down), leaf: index });
-      if (up >= MIN_M) out.push({ label: 'Up to ceiling', from: { x: c[0], y: leaf.top, z: c[1] }, to: { x: c[0], y: CEILING, z: c[1] }, cm: cm(up), leaf: index });
+      if (down >= CONTACT_M) out.push({ label: 'Down to floor', from: { x: c[0], y: leaf.bottom, z: c[1] }, to: { x: c[0], y: 0, z: c[1] }, cm: cm(down), leafIndex: index });
+      if (up >= CONTACT_M) out.push({ label: 'Up to ceiling', from: { x: c[0], y: leaf.top, z: c[1] }, to: { x: c[0], y: CEILING, z: c[1] }, cm: cm(up), leafIndex: index });
     }
   });
   return out;
 }
 
-/** Every leaf's gaps to the room boundary; see `leafClearances`. */
 export function clearances(room: Room, leaves: readonly PlacedLeaf[]): readonly Clearance[] {
   return leafClearances(room, leaves, new Set(leaves.keys())).map((c) => ({ label: c.label, from: c.from, to: c.to, cm: c.cm }));
 }

@@ -33,9 +33,8 @@ function savedPose(raw: unknown, c: ComponentDef, room: Room): PiecePose | undef
   const { x, y, z, yaw, edge } = raw as Record<string, unknown>;
   if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number' || typeof yaw !== 'number'
     || ![x, y, z, yaw].every(Number.isFinite) || Math.abs(y) > CEILING || (c.mount?.kind !== 'wall' && y !== 0)) return;
-  // Both the authored and transformed point must fit within the room's radius about the world origin.
-  const radius = Math.max(...room.poly.map(([px, pz]) => Math.hypot(px, pz)));
-  if (Math.hypot(x, z) > 2 * radius) return;
+  const maxPoseOffset = 2 * Math.max(...room.poly.map(([px, pz]) => Math.hypot(px, pz)));
+  if (Math.hypot(x, z) > maxPoseOffset) return;
   if (edge === undefined) return { x, y, z, yaw };
   if (!c.mount || !('edge' in c.mount) || typeof edge !== 'number' || !Number.isInteger(edge)
     || edge < 0 || edge >= room.poly.length || room.open?.includes(edge)) return;
