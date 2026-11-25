@@ -94,12 +94,14 @@ describe('history', () => {
     expect(h.present.rooms.bedroom.components.painting.options).toEqual(DEFAULTS.rooms.bedroom.components.painting.options);
   });
 
-  it('undoes hiding every piece at once as one step', () => {
+  it('undoes rapid Hide all and Show all clicks separately', () => {
     const ids = Object.keys(DEFAULTS.rooms.bedroom.components);
-    const hide = Object.fromEntries(ids.map((id) => [id, { shown: false }]));
-    const h = change(startHistory(DEFAULTS), { rooms: { bedroom: { components: hide } } }, 0);
-    expect(h.past).toHaveLength(1);
-    expect(Object.values(h.present.rooms.bedroom.components).some((c) => c.shown)).toBe(false);
-    expect(undo(h).present.rooms).toEqual(DEFAULTS.rooms);
+    const all = (shown: boolean) => ({ rooms: { bedroom: { components: Object.fromEntries(ids.map((id) => [id, { shown }])) } } });
+    const hidden = change(startHistory(DEFAULTS), all(false), 0);
+    const shown = change(hidden, all(true), 10);
+    expect(Object.values(shown.present.rooms.bedroom.components).every((c) => c.shown)).toBe(true);
+    const back = undo(shown);
+    expect(Object.values(back.present.rooms.bedroom.components).some((c) => c.shown)).toBe(false);
+    expect(undo(back).present.rooms).toEqual(DEFAULTS.rooms);
   });
 });

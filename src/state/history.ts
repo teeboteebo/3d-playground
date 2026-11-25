@@ -1,3 +1,4 @@
+import type { ComponentState } from '../data/components';
 import { applyPatch, type Settings, type SettingsPatch } from './settings';
 
 /**
@@ -49,12 +50,15 @@ export function change(h: History, patch: SettingsPatch, at: number): History {
   const next = applyPatch(h.present, patch);
   if (design(next) === design(h.present)) return { ...h, present: next };
   const key = patchKey(patch);
+  const changesVisibility = Object.values(patch.rooms ?? {}).some((room) =>
+    Object.values<Partial<ComponentState> | undefined>(room.components ?? {}).some((piece) => piece?.shown !== undefined),
+  );
   const merge = h.last !== null && h.last.key === key && at - h.last.at < MERGE_MS && h.past.length > 0;
   return {
     past: merge ? h.past : [...h.past, h.present].slice(-LIMIT),
     present: next,
     future: [],
-    last: { key, at },
+    last: changesVisibility ? null : { key, at },
   };
 }
 
