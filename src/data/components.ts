@@ -2,7 +2,7 @@ import type { StockState } from './catalog';
 import type { RoomId } from './rooms';
 
 /** A wall edge is the side from room.poly[edge] to the following vertex. */
-export type Mount = { kind: 'floor' | 'fixed' } | { kind: 'wall' | 'wall-and-floor'; edge: number };
+export type Mount = { kind: 'floor' | 'fixed' } | { kind: 'wall' | 'wall-and-floor'; edge: number; embedDepth?: number };
 
 /** one product a component can be: an item from a catalog, or the single product of a fixed piece */
 export interface Variant<S = unknown> {

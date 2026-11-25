@@ -35,8 +35,11 @@ export function Stage({ settings, update, onOption, nodeOf, selection = null, po
   useEffect(() => {
     updateRef.current = update;
     onOptionRef.current = onOption;
+  }, [update, onOption]);
+  useEffect(() => {
     nodeOfRef.current = nodeOf;
-  }, [update, onOption, nodeOf]);
+    sceneRef.current?.groupOf((o) => nodeOf?.(o.path)?.ids ?? null);
+  }, [nodeOf]);
   /* the label that follows the mouse over an option; moved directly, so hovering never re-renders */
   const labelRef = useRef<HTMLDivElement>(null);
   const [webgl, setWebgl] = useState(true);

@@ -137,6 +137,12 @@ test.describe('physical room groups', () => {
     await canvas.click(screen);
     await expect(page.getByRole('checkbox', { name: 'TV set' })).toBeChecked();
     await page.getByRole('button', { name: 'Enter TV set' }).click();
+    await canvas.hover(screen);
+    const tooltip = page.locator('.pick-label');
+    await expect(tooltip).toHaveText('Frame TV');
+    await page.keyboard.press('Escape');
+    await expect(tooltip).toHaveText('TV set');
+    await page.getByRole('button', { name: 'Enter TV set' }).click();
     await canvas.click(screen);
     await expect(page.getByRole('heading', { name: 'Frame TV' })).toBeVisible();
     await page.getByRole('button', { name: 'Back to Group pieces' }).click();

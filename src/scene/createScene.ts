@@ -287,6 +287,7 @@ export function createApartmentScene(
     },
     groupOf(resolve) {
       groupOf = resolve;
+      if (lastHover) setHover(lastHover);
     },
     dispose() {
       cancelAnimationFrame(raf);

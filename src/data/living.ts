@@ -53,7 +53,8 @@ export const LIVING = {
     },
     {
       id: 'shelving',
-      mount: { kind: 'wall-and-floor', edge: 4 },
+      // The rear of the String model extends 3.6 mm into its mounting wall.
+      mount: { kind: 'wall-and-floor', edge: 4, embedDepth: 0.004 },
       name: 'String shelving',
       category: 'furniture',
       note: 'The String shelving is the model from the SketchUp file, in its place, with its two left columns cut to about half height.',

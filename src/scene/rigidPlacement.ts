@@ -82,7 +82,8 @@ export function proposeRigidMove(
       const [bx, bz] = room.poly[(i + 1) % room.poly.length];
       const dx = bx - ax;
       const dz = bz - az;
-      const tolerance = EPS * Math.hypot(dx, dz);
+      const embed = 'edge' in mount && mount.edge === i ? mount.embedDepth ?? 0 : 0;
+      const tolerance = (EPS + embed) * Math.hypot(dx, dz);
       return candidate.footprint.some(([x, z]) => dx * (z - az) - dz * (x - ax) < -tolerance);
     });
     if (outside || candidate.bottom < -EPS || candidate.top > CEILING + EPS) return { ok: false, member: id, reason: 'outside' };

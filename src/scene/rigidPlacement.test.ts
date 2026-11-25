@@ -2,12 +2,13 @@
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { ComponentDef, Mount } from '../data/components';
 import { LIVING } from '../data/living';
 import { roomById } from '../data/rooms';
 import { defaultTree, groupSiblings, type RoomTree } from '../data/tree';
-import { placePiece } from './furniture';
+import { loadFurniture, placePiece } from './furniture';
 import { proposeRigidMove, type PlacedLeaf } from './rigidPlacement';
 import { sideboard } from './sideboard';
 
@@ -17,6 +18,23 @@ const rect = (x: number, z: number, w: number, d: number, mount: Mount = { kind:
 });
 
 describe('rigid group movement', () => {
+  it('slides the trimmed String shelving along its mounting wall without detaching it', async () => {
+    const bytes = readFileSync('public/models/living/shelving.glb');
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+    const { scene: shelf } = await loader.parseAsync(Uint8Array.from(bytes).buffer, '');
+    const furniture = loadFurniture(new THREE.Group(), async ({ id }) => id === 'shelving' ? shelf : new THREE.Group());
+    await furniture.ready;
+    const { min, max } = new THREE.Box3().setFromObject(shelf, true);
+    const { mount } = LIVING.components.find((c) => c.id === 'shelving')!;
+    const pose = { ...rect(min.x, min.z, max.x - min.x, max.z - min.z, mount), bottom: min.y, top: max.y };
+    const move = (x: number, z: number, source: PlacedLeaf = pose) =>
+      proposeRigidMove(roomById('living'), defaultTree(LIVING), 'shelving', new Map([['shelving', source]]), { x, y: 0, z });
+    expect(move(0, 0.1)).toMatchObject({ ok: true });
+    expect(move(0, 0.1, { ...pose, mount: { kind: 'floor' } })).toMatchObject({ ok: false, reason: 'outside' });
+    expect(move(0.1, 0)).toMatchObject({ ok: false, reason: 'wall' });
+    expect(move(0, 5)).toMatchObject({ ok: false });
+  });
+
   it('keeps the real TV above its sideboard and rejects a move off either mount as a whole', async () => {
     // The sideboard needs a drawing context for its wood grain; use its actual built meshes for bounds.
     const ctx: unknown = new Proxy({}, { get: () => () => ({ addColorStop() {} }) });
