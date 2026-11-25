@@ -1,6 +1,9 @@
 import type { StockState } from './catalog';
 import type { RoomId } from './rooms';
 
+/** A wall edge is the side from room.poly[edge] to the following vertex. */
+export type Mount = { kind: 'floor' | 'fixed' } | { kind: 'wall' | 'wall-and-floor'; edge: number };
+
 /** one product a component can be: an item from a catalog, or the single product of a fixed piece */
 export interface Variant<S = unknown> {
   id: string;
@@ -49,6 +52,8 @@ export interface ComponentDef {
   category: Category;
   /** the id of one of the room's groups; absent for a piece that stands on its own */
   group?: string;
+  /** A freestanding piece rests on the floor unless the room specifies another attachment. */
+  mount?: Mount;
   note?: string;
   variants: readonly Variant[];
   /** set only on a piece whose variants are the catalog's pendants or floor lamps; any other light is built by its room */

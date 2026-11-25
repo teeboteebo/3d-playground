@@ -14,6 +14,7 @@ export const BEDROOM = {
   components: [
     {
       id: 'ceiling-light',
+      mount: { kind: 'fixed' },
       name: 'Ceiling light',
       category: 'lighting',
       note: 'IKEA GULLSUDARE 70 cm, rice paper, at the centre of the room, hung with about 2 m clearance below.',
@@ -22,6 +23,7 @@ export const BEDROOM = {
     },
     {
       id: 'bedside-lamps',
+      mount: { kind: 'wall', edge: 0 },
       name: 'Bedside lamps',
       category: 'lighting',
       note: 'A pair of Mio Adina wall lamps (26 × 18 cm, brushed brass with a textile shade), each centred above a bedside table.',
@@ -47,6 +49,7 @@ export const BEDROOM = {
     },
     {
       id: 'bedside-tables',
+      mount: { kind: 'wall', edge: 0 },
       name: 'Bedside tables',
       category: 'furniture',
       note: 'A pair of wall-hung AC Design Furniture Cholet tables, one each side of the bed. They are drawn 40 × 23 × 30 cm, 48 cm off the floor; the product is listed at 50 × 35 × 25 cm.',
@@ -63,6 +66,7 @@ export const BEDROOM = {
     },
     {
       id: 'mirror',
+      mount: { kind: 'wall', edge: 2 },
       name: 'Mirror',
       category: 'furniture',
       note: 'A full-length oak-framed mirror on the front wall, left of the dresser. It shows a stylised reflection.',
@@ -71,6 +75,7 @@ export const BEDROOM = {
     },
     {
       id: 'painting',
+      mount: { kind: 'wall', edge: 2 },
       name: 'Painting',
       category: 'furniture',
       note: 'The framed painting hangs above the dresser. Its picture follows the accent colour.',
@@ -83,6 +88,7 @@ export const BEDROOM = {
     },
     {
       id: 'wardrobes',
+      mount: { kind: 'wall-and-floor', edge: 1 },
       name: 'Wardrobes',
       category: 'furniture',
       note: 'Built-in Pax wardrobes along the east wall.',
