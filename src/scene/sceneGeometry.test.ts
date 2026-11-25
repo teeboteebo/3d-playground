@@ -124,6 +124,20 @@ describe('scene geometry', () => {
     expect(snapshot(scene)).toEqual(base);
   });
 
+  it('keeps the office reading chair facing the same way when another piece moves', () => {
+    const { scene, apply } = world();
+    const chair = scene.getObjectByName('office-reading-chair')!;
+    const facing = () => new THREE.Vector3(1, 0, 0).applyQuaternion(chair.getWorldQuaternion(new THREE.Quaternion()));
+    const before = facing();
+    const settings = withPose(DEFAULTS, 'office', 'reading-chair', { x: -0.1, y: 0, z: 0, yaw: 0 });
+    apply(settings);
+    expect(facing().distanceTo(before)).toBeLessThan(1e-10);
+    for (const x of [0.1, 0.2, 0.3]) {
+      apply(withPose(settings, 'bedroom', 'bench', { x, y: 0, z: 0, yaw: 0 }));
+      expect(facing().distanceTo(before)).toBeLessThan(1e-10);
+    }
+  });
+
   it('detaches a painting from the original wall cutaway during a floor preview, then restores it on cancel', () => {
     const scene = new THREE.Scene();
     const bedroom = buildBedroom(scene, '#B5654A');

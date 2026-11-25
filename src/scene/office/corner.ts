@@ -209,7 +209,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
       if (chair && chairShape) {
         const { x, z, facing } = placeReadingChair(chairShape.w, chairShape.d);
         chair.position.set(x, 0, z);
-        chair.rotation.y = turn(facing);
+        chair.rotation.set(0, turn(facing), 0);
       }
       const dresserId = c.dresser.variant;
       const dresserShape = findById(DRESSERS, dresserId).shape;
@@ -222,7 +222,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
         const nz = -(b[0] - a[0]) / len;
         const off = gap + dresserShape.d / 2;
         dresser.position.set((a[0] + b[0]) / 2 + nx * off, 0, (a[1] + b[1]) / 2 + nz * off);
-        dresser.rotation.y = turn(Math.atan2(nz, nx));
+        dresser.rotation.set(0, turn(Math.atan2(nz, nx)), 0);
       }
       const rugId = c['round-rug'].variant;
       const rugShape = findById(ROUND_RUGS, rugId).shape;

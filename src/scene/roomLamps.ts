@@ -100,7 +100,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         } else {
           const { x, z, rotY } = FLOOR_LAMP_SPOT[room as LampRoom<'floor'>];
           p.lamp.group.position.set(x, 0, z);
-          p.lamp.group.rotation.y = rotY;
+          p.lamp.group.rotation.set(0, rotY, 0);
         }
         const lit = evening && lamp.shown;
         p.light.intensity = lit ? p.intensity : 0;
