@@ -65,9 +65,7 @@ describe('addRoomLamps', () => {
     );
     expect(names(g)).toEqual([
       'living-floor-lamp',
-      'living-floor-lamp-light',
       'living-pendant',
-      'living-pendant-light',
     ]);
     lamps.apply(DEFAULTS);
     expect(g.children).toHaveLength(0);
@@ -123,6 +121,11 @@ describe('addRoomLamps', () => {
     for (const room of ['living', 'office']) {
       expect(optionOf(g.getObjectByName(`${room}-pendant`)!)).toEqual({ room, path: ['ceiling-light'] });
       expect(optionOf(g.getObjectByName(`${room}-floor-lamp`)!)).toEqual({ room, path: ['floor-lamp'] });
+      const lamp = g.getObjectByName(`${room}-floor-lamp`)!;
+      const source = light(g, `${room}-floor-lamp-light`);
+      const before = source.getWorldPosition(new THREE.Vector3());
+      lamp.position.z += 0.2;
+      expect(source.getWorldPosition(new THREE.Vector3()).z).toBeCloseTo(before.z + 0.2);
     }
   });
   it('lights the living room from its components', () => {

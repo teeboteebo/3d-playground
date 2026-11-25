@@ -44,7 +44,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
   function remove(key: string) {
     const p = placed.get(key);
     if (!p) return;
-    parent.remove(p.lamp.group, p.light);
+    parent.remove(p.lamp.group);
     p.lamp.dispose();
     p.light.dispose();
     placed.delete(key);
@@ -70,6 +70,8 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
       const light = new THREE.PointLight(0xffc890, 0, 7, 1.3);
       light.name = `${name}-light`;
       light.castShadow = false;
+      light.position.copy(lamp.bulb);
+      lamp.group.add(light);
       p = {
         id,
         lamp,
@@ -77,7 +79,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         intensity: drop === undefined ? FLOOR_INTENSITY : PENDANT_INTENSITY,
       };
       placed.set(name, p);
-      parent.add(lamp.group, light);
+      parent.add(lamp.group);
     }
     return p;
   }
@@ -100,8 +102,6 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
           p.lamp.group.position.set(x, 0, z);
           p.lamp.group.rotation.y = rotY;
         }
-        p.lamp.group.updateMatrixWorld(true);
-        p.light.position.copy(p.lamp.bulb).applyMatrix4(p.lamp.group.matrix);
         p.light.intensity = evening ? p.intensity : 0;
         p.light.visible = evening;
         p.lamp.setGlow(evening);
