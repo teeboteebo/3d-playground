@@ -198,7 +198,7 @@ export function buildCorner(parent: THREE.Object3D): Corner {
 
   return {
     apply(s) {
-      const c = s.office.components;
+      const c = s.rooms.office.components;
       const chairId = c['reading-chair'].variant;
       const chairShape = c['reading-chair'].shown ? findById(READING_CHAIRS, chairId).shape : null;
       const chair = place('office-reading-chair', 'reading-chair', chairId, chairShape, buildArmchair);

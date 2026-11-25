@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { MouldShop } from '../../state/mouldShop';
-import type { BedroomSettings } from '../../state/settings';
+import type { BedroomMoulding } from '../../state/settings';
 import type { BedroomSection } from '../../state/mould';
 import { mergeMeshes } from '../merge';
 import { drawRail, drawSection } from '../mouldStrips';
@@ -14,7 +14,7 @@ import { tagOption } from '../options';
 export interface MouldWallParts {
   readonly parts: readonly THREE.Object3D[];
   /** rebuilds the wall when its layout changed */
-  layout(s: BedroomSettings, shop: MouldShop): void;
+  layout(s: BedroomMoulding, shop: MouldShop): void;
 }
 
 /** a wall's strips stand out of the wall at `wallZ`, towards `face` (+1 = +z), as deep as the moulding product is */

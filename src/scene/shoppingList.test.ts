@@ -19,10 +19,10 @@ const settings = (mouldShop: MouldShop, extra: SettingsPatch = {}): Settings => 
 /** how many pieces the walls that are on make, counted straight from the layouts */
 function piecesOf(room: 'bedroom' | 'living', s: Settings) {
   const walls = room === 'bedroom' ? BEDROOM_MOULD_WALLS : LIVING_MOULD_WALLS;
-  const b = s[room] as unknown as Record<string, unknown> & { mouldWalls: never };
+  const b = s.rooms[room].moulding as unknown as Record<string, unknown> & { mouldWalls: never };
   return walls
     .filter((d) => b[d.toggle] === 'on')
-    .flatMap((d) => wallPieces(d as never, wallLayouts(d as never, mouldRoom(s[room], s.mouldShop), (s[room] as unknown as { mouldWalls: never }).mouldWalls, room === 'bedroom' ? BEDX : undefined)));
+    .flatMap((d) => wallPieces(d as never, wallLayouts(d as never, mouldRoom(s.rooms[room].moulding, s.mouldShop), b.mouldWalls, room === 'bedroom' ? BEDX : undefined)));
 }
 
 describe('shoppingRequest', () => {
@@ -57,13 +57,13 @@ describe('shoppingRequest', () => {
   });
 
   it('has no jobs when every wall is switched off', () => {
-    const s = settings(shop(), { bedroom: { mouldBedWall: 'off', mouldDresserWall: 'off' } });
+    const s = settings(shop(), { rooms: { bedroom: { moulding: { mouldBedWall: 'off', mouldDresserWall: 'off' } } } });
     expect(shoppingRequest('bedroom', s).jobs).toEqual([]);
   });
 
   it('only counts the walls that are on', () => {
     const both = shoppingRequest('living', settings(shop())).jobs[0].pieces.length;
-    const sofaOnly = shoppingRequest('living', settings(shop(), { living: { mouldTvWall: 'off' } })).jobs[0].pieces;
+    const sofaOnly = shoppingRequest('living', settings(shop(), { rooms: { living: { moulding: { mouldTvWall: 'off' } } } })).jobs[0].pieces;
     expect(sofaOnly.length).toBeLessThan(both);
     expect(sofaOnly.every((p) => p.label.startsWith('Sofa wall'))).toBe(true);
   });
@@ -100,7 +100,7 @@ describe('shoppingRequest', () => {
 
 describe('shoppingResult', () => {
   /* the bed wall alone, so that the optimiser can prove its plans quickly: the whole bedroom takes about 10 s */
-  const bedWall = (s: Settings): Settings => applyPatch(s, { bedroom: { mouldDresserWall: 'off' } });
+  const bedWall = (s: Settings): Settings => applyPatch(s, { rooms: { bedroom: { moulding: { mouldDresserWall: 'off' } } } });
   const run = (full: Settings) => {
     const s = bedWall(full);
     const req = shoppingRequest('bedroom', s);

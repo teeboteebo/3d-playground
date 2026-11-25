@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULTS, applyPatch, type BedroomSettings, type SettingsPatch } from '../../state/settings';
+import { DEFAULTS, applyPatch, type BedroomMoulding } from '../../state/settings';
 import { layoutSection } from '../mouldLayout';
 import { BEDROOM_MOULD_WALLS, WINDOW_WALL_CLEARANCE } from '../mouldWalls';
 import { strips } from '../testStrips';
@@ -20,7 +20,7 @@ beforeAll(() => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation((() => ctx) as never);
 });
 
-const bedroom = (b: SettingsPatch['bedroom'] = {}): BedroomSettings => applyPatch(DEFAULTS, { bedroom: b }).bedroom;
+const bedroom = (b: Partial<BedroomMoulding> = {}): BedroomMoulding => applyPatch(DEFAULTS, { rooms: { bedroom: { moulding: b } } }).rooms.bedroom.moulding;
 
 function setup() {
   const parent = new THREE.Group();
@@ -33,7 +33,7 @@ describe('bedroom moulding', () => {
   it('lays the bed wall out as the shared layout, with the frames at the default rows', () => {
     const { mould, boxes } = setup();
     mould.bed.layout(bedroom(), DEFAULTS.mouldShop);
-    const expected = layoutSection(BEDROOM_MOULD_WALLS[0].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.bedroom.mouldWalls.bed, BEDX);
+    const expected = layoutSection(BEDROOM_MOULD_WALLS[0].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.rooms.bedroom.moulding.mouldWalls.bed, BEDX);
     const all = boxes('bed');
     /* rail + 3 columns x 2 frames x 4 strips */
     expect(all).toHaveLength(1 + 3 * 8);
@@ -110,7 +110,7 @@ describe('bedroom moulding', () => {
     mould.dresser.layout(bedroom(), DEFAULTS.mouldShop);
     const bed = [...mould.bed.parts];
     const dresser = [...mould.dresser.parts];
-    const withBed = bedroom({ mouldWalls: { ...DEFAULTS.bedroom.mouldWalls, bed: { ...DEFAULTS.bedroom.mouldWalls.bed, spacing: 12 } } });
+    const withBed = bedroom({ mouldWalls: { ...DEFAULTS.rooms.bedroom.moulding.mouldWalls, bed: { ...DEFAULTS.rooms.bedroom.moulding.mouldWalls.bed, spacing: 12 } } });
     mould.bed.layout(withBed, DEFAULTS.mouldShop);
     mould.dresser.layout(withBed, DEFAULTS.mouldShop);
     expect(mould.bed.parts[0]).not.toBe(bed[0]);
@@ -172,7 +172,7 @@ describe('dresser wall toggle', () => {
     const room = buildBedroom(parent, '#2F5D62');
     const front = new THREE.Vector3(0, 1.5, 0);
     const state = (on: boolean) => {
-      room.apply(applyPatch(DEFAULTS, { bedroom: { mouldDresserWall: on ? 'on' : 'off' } }));
+      room.apply(applyPatch(DEFAULTS, { rooms: { bedroom: { moulding: { mouldDresserWall: on ? 'on' : 'off' } } } }));
       room.showFrom(front);
       const vis = new Map<THREE.Object3D, boolean>();
       parent.traverse((o) => o instanceof THREE.Mesh && vis.set(o, o.visible));

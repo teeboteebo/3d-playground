@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
-import { SECTIONS, type MenuSection } from './menuStructure';
 import { PanelHead, type Crumb } from './PanelHead';
 
 /** One page of the side panel: its own controls, and deeper pages listed as rows under them. */
@@ -10,6 +9,10 @@ export interface Topic {
   summary: string;
   /** a colour shown on the row */
   swatch?: string;
+  /** the row leaves room for a swatch it is not showing now, so a list's titles stay in line */
+  swatchSpace?: boolean;
+  /** the row points at nothing in 3D while the mouse or keyboard focus is on it, such as a page that lists several things */
+  noPoint?: boolean;
   /** shown under the page heading */
   sub?: ReactNode;
   /** the page's own controls */
@@ -24,19 +27,9 @@ export interface Topic {
   footer?: ReactNode;
   /** puts this page's choices back to how the room started; left out while they are as they started */
   reset?: () => void;
-  /** the section of a room's first page this row sits in (null: after every section); see menuStructure */
-  section?: MenuSection | null;
 }
 
-/** the rows of a page under their headings: the room sections in their order, then rows with none */
-function sectioned(page: Topic): { title?: string; topics: Topic[] }[] {
-  const topics = page.topics ?? [];
-  if (!topics.some((t) => t.section !== undefined)) return [{ title: page.topicsTitle, topics }];
-  return [
-    ...SECTIONS.map((s) => ({ title: s.title, topics: topics.filter((t) => t.section === s.id) })),
-    { title: undefined, topics: topics.filter((t) => !t.section) },
-  ].filter((g) => g.topics.length > 0);
-}
+const hasSwatch = (t: Topic) => !!(t.swatch || t.swatchSpace);
 
 /** a heading over rows on a page; one level of sub-groups inside it */
 export interface TopicGroup {
@@ -79,8 +72,8 @@ export function Menu({ root, exit, nav }: Props) {
     trail.push(next);
   }
   const page = trail.at(-1)!;
-  /* a page's sectioned rows line up across their sections: any swatch leaves room for one on every row */
-  const swatches = !!page.topics?.some((t) => t.swatch);
+  /* any swatch among a page's rows leaves room for one on every row */
+  const swatches = !!page.topics?.some(hasSwatch);
   const parent = trail.at(-2);
   /** where the menu is, as a key that changes with every move */
   const at = trail.map((t) => t.id).join('/');
@@ -144,12 +137,12 @@ export function Menu({ root, exit, nav }: Props) {
         {page.groups?.map((g) => (
           <GroupSection key={g.title} group={g} level={2} open={open} point={point} />
         ))}
-        {sectioned(page).map((group, gi) => (
-          <section key={group.title ?? `rest-${gi}`}>
-            {group.title && <h2>{group.title}</h2>}
-            <RowList title={group.title ?? `${page.title} options`} topics={group.topics} open={open} point={point} swatches={swatches} />
+        {page.topics && page.topics.length > 0 && (
+          <section>
+            {page.topicsTitle && <h2>{page.topicsTitle}</h2>}
+            <RowList title={page.topicsTitle ?? `${page.title} options`} topics={page.topics} open={open} point={point} swatches={swatches} />
           </section>
-        ))}
+        )}
       </div>
       {page.footer}
       {page.reset && (
@@ -170,7 +163,7 @@ interface RowActions {
   point: (id: string | null) => void;
 }
 
-function RowList({ title, topics, open, point, swatches = topics.some((t) => t.swatch) }: { title: string; topics: Topic[]; swatches?: boolean } & RowActions) {
+function RowList({ title, topics, open, point, swatches = topics.some(hasSwatch) }: { title: string; topics: Topic[]; swatches?: boolean } & RowActions) {
   return (
     <ul className="topics" aria-label={title}>
       {topics.map((t) => (
@@ -180,10 +173,10 @@ function RowList({ title, topics, open, point, swatches = topics.some((t) => t.s
             className="topic"
             data-topic={t.id}
             onClick={() => open(t.id)}
-            onMouseEnter={() => point(t.id)}
-            onMouseLeave={() => point(null)}
-            onFocus={() => point(t.id)}
-            onBlur={() => point(null)}
+            onMouseEnter={t.noPoint ? undefined : () => point(t.id)}
+            onMouseLeave={t.noPoint ? undefined : () => point(null)}
+            onFocus={t.noPoint ? undefined : () => point(t.id)}
+            onBlur={t.noPoint ? undefined : () => point(null)}
           >
             {swatches && <i className={t.swatch ? undefined : 'blank'} style={{ background: t.swatch }} aria-hidden="true" />}
             <span>

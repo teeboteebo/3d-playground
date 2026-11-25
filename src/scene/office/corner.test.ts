@@ -14,12 +14,12 @@ type Pieces = { readingChair?: string; dresser?: string; roundRug?: string };
 const IDS = { readingChair: 'reading-chair', dresser: 'dresser', roundRug: 'round-rug' } as const;
 /* a piece left out of `o` is hidden */
 const settings = (o: Pieces): Settings => {
-  const components = { ...DEFAULTS.office.components };
+  const components = { ...DEFAULTS.rooms.office.components };
   for (const [key, id] of Object.entries(IDS) as [keyof Pieces, (typeof IDS)[keyof Pieces]][]) {
     const v = o[key];
     components[id] = v === undefined ? { ...components[id], shown: false } : { shown: true, variant: v, options: {} };
   }
-  return { ...DEFAULTS, office: { components } };
+  return { ...DEFAULTS, rooms: { ...DEFAULTS.rooms, office: { ...DEFAULTS.rooms.office, components } } };
 };
 
 /** the office furniture and the corner, built into one group, with `o` applied */

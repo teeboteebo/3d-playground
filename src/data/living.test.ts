@@ -36,7 +36,6 @@ describe('the living room as components', () => {
     expect(comp('ceiling-light').initial).toEqual({ shown: false, variant: PENDANTS[0].id });
     expect(comp('floor-lamp').initial).toEqual({ shown: false, variant: FLOOR_LAMPS[0].id });
     for (const c of LIVING.components.filter((c) => c.category !== 'lighting')) expect(c.initial.shown).toBe(true);
-    expect(comp('sofa').initial.options).toEqual({ fabric: 'original' });
     expect(comp('sofa').options).toEqual([{ id: 'fabric', label: 'Fabric', kind: 'fabric', initial: 'original' }]);
     expect(comp('sofa').variants).toEqual([{ id: 'nockeby', name: 'IKEA NOCKEBY' }]);
     expect(comp('rug').variants).toEqual([{ id: 'quebec', name: 'ILVA Quebec, 250 × 350 cm' }]);

@@ -12,21 +12,24 @@ import { addRoomLights } from './roomLights';
 const P = PENDANTS[0].id,
   P2 = PENDANTS[1].id,
   F = FLOOR_LAMPS[0].id;
-const withLamps = (over: Partial<Settings>): Settings => ({
+type Rooms = Settings['rooms'];
+const withLamps = ({ office, living, ...over }: { time?: Settings['time']; office?: Rooms['office']; living?: Rooms['living'] }): Settings => ({
   ...DEFAULTS,
   ...over,
+  rooms: { ...DEFAULTS.rooms, ...(office && { office }), ...(living && { living }) },
 });
-const office = (pendant: string | null, floorLamp: string | null): Settings['office'] => ({
+const office = (pendant: string | null, floorLamp: string | null): Rooms['office'] => ({
+  ...DEFAULTS.rooms.office,
   components: {
-    ...DEFAULTS.office.components,
+    ...DEFAULTS.rooms.office.components,
     'ceiling-light': { shown: pendant !== null, variant: pendant ?? P, options: {} },
     'floor-lamp': { shown: floorLamp !== null, variant: floorLamp ?? F, options: {} },
   },
 });
-const living = (pendant: string | null, floorLamp: string | null): Settings['living'] => ({
-  ...DEFAULTS.living,
+const living = (pendant: string | null, floorLamp: string | null): Rooms['living'] => ({
+  ...DEFAULTS.rooms.living,
   components: {
-    ...DEFAULTS.living.components,
+    ...DEFAULTS.rooms.living.components,
     'ceiling-light': { shown: pendant !== null, variant: pendant ?? P, options: {} },
     'floor-lamp': { shown: floorLamp !== null, variant: floorLamp ?? F, options: {} },
   },
@@ -196,5 +199,12 @@ describe('addRoomLights', () => {
       withLamps({ time: 'day', office: office(P, null) }),
     );
     expect(at('office').intensity).toBe(0);
+  });
+  it('keeps the fill of a room without catalog lamps at full strength, and leaves the bedroom without one', () => {
+    const scene = new THREE.Scene();
+    const fill = addRoomLights(scene);
+    fill.apply(withLamps({ time: 'eve', office: office(P, F), living: living(P, F) }));
+    expect(scene.children.find((l) => l.name === 'hall-fill')).toHaveProperty('intensity', 0.6);
+    expect(scene.children.find((l) => l.name === 'bedroom-fill')).toBeUndefined();
   });
 });

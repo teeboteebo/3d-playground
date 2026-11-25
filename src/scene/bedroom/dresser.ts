@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { FRAMES, findById } from '../../data/catalog';
-import type { BedroomSettings } from '../../state/settings';
 import { lin, std } from '../materials';
 import { artTexture } from '../textures';
 import type { Kit } from './kit';
@@ -58,10 +57,17 @@ export function dresserLamp(parent: THREE.Object3D) {
   return bulb(parent, DRESSER_X - 0.2, 1.3, DRESSER_Z, 8, 0.55, 0.5);
 }
 
+/** the choices that repaint the vase, the picture and the frame */
+export interface Dressing {
+  accent: string;
+  art: string;
+  frame: string;
+}
+
 /** Repaints the painting (its picture and frame) and the vase for the settings. */
 export function paintingApplier(m: BedroomMaterials) {
   let artKey = '';
-  return (s: BedroomSettings, evening: boolean) => {
+  return (s: Dressing, evening: boolean) => {
     m.vase.color.copy(lin(s.accent));
     if (artKey !== `${s.art}|${s.accent}`) {
       artKey = `${s.art}|${s.accent}`;

@@ -13,7 +13,7 @@ vi.mock('../lib/cutting/optimise', async (importOriginal) => {
 
 const shop = { ...SHOP_DEFAULTS, panel: { ...SHOP_DEFAULTS.panel, lengths: [{ length: 240, price: 89 }, { length: 300, price: 109 }] } };
 /* the bed wall alone: small enough to solve at once */
-const settings = (extra: SettingsPatch = {}): Settings => applyPatch(DEFAULTS, { mouldShop: shop, bedroom: { mouldDresserWall: 'off' }, ...extra });
+const settings = (extra: SettingsPatch = {}): Settings => applyPatch(DEFAULTS, { mouldShop: shop, rooms: { bedroom: { moulding: { mouldDresserWall: 'off' } } }, ...extra });
 const direct = (s: Settings) => {
   const req = shoppingRequest('bedroom', s);
   return shoppingResult(req, req.jobs.map((j) => optimise(j.items, j.stocks, { kerf: req.kerf })), s.mouldShop);
@@ -41,7 +41,7 @@ describe('useShoppingList', () => {
   });
 
   it('is empty when every wall is off', () => {
-    const s = settings({ bedroom: { mouldBedWall: 'off', mouldDresserWall: 'off' } });
+    const s = settings({ rooms: { bedroom: { moulding: { mouldBedWall: 'off', mouldDresserWall: 'off' } } } });
     const { result } = renderHook(() => useShoppingList('bedroom', s));
     expect(result.current).toEqual({ status: 'empty' });
   });
@@ -59,7 +59,7 @@ describe('useShoppingList', () => {
 
   it('solves once for settings that change inside the wait, and for the last ones', () => {
     const a = settings();
-    const b = settings({ bedroom: { mouldDresserWall: 'off', mouldSpacing: 12 } });
+    const b = settings({ rooms: { bedroom: { moulding: { mouldDresserWall: 'off', mouldSpacing: 12 } } } });
     const { result, rerender } = renderHook(({ s }) => useShoppingList('bedroom', s), { initialProps: { s: a } });
     act(() => void vi.advanceTimersByTime(100));
     rerender({ s: b });
@@ -116,7 +116,7 @@ describe('useShoppingList', () => {
     }
     vi.stubGlobal('Worker', FakeWorker);
     const a = settings();
-    const b = settings({ bedroom: { mouldDresserWall: 'off', mouldSpacing: 12 } });
+    const b = settings({ rooms: { bedroom: { moulding: { mouldDresserWall: 'off', mouldSpacing: 12 } } } });
     const reqA = shoppingRequest('bedroom', a);
     const plansA = reqA.jobs.map((j) => optimise(j.items, j.stocks, { kerf: reqA.kerf, deadline: 0, now: () => 1 }));
     const { result, rerender } = renderHook(({ s }) => useShoppingList('bedroom', s), { initialProps: { s: a } });

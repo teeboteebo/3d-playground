@@ -1,26 +1,24 @@
-import {
-  ACCENT_DEFAULT, ARTS, DRESSERS, FLOOR_LAMPS, FRAMES, PAINTS, PENDANTS, PILLOW_SETS, READING_CHAIRS, ROUND_RUGS, RUGS,
-  WARDROBES,
-} from '../data/catalog';
+import { ACCENT_DEFAULT, DRESSERS, FLOOR_LAMPS, PAINTS, PENDANTS, READING_CHAIRS, ROUND_RUGS } from '../data/catalog';
 import { LIVING } from '../data/living';
 import { OFFICE } from '../data/office';
-import { ROOM_DEFS, type ComponentId, type ComponentRoom } from '../data/roomDefs';
-import { ROOMS, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
+import { ROOM_DEFS, type ComponentId } from '../data/roomDefs';
+import { roomById, ROOM_IDS, type RoomId, type RoomSelection } from '../data/rooms';
 import { isHex } from '../lib/color';
 import { clamp } from '../lib/math';
 import { spacingMax, type MouldWall } from '../scene/mouldLayout';
 import { SHOP_DEFAULTS, sanitizeShop, type MouldShop } from './mouldShop';
-import { componentDefaults, sanitizeComponents, type ComponentStates } from './components';
+import { componentDefaults, patchComponents, sanitizeComponents, type ComponentStates } from './components';
 import type { ComponentState } from '../data/components';
+import { BEDROOM } from '../data/bedroom';
+import { HALL } from '../data/hall';
 import {
   BEDROOM_MOULD_DEFAULTS, LIVING_MOULD_DEFAULTS, MOULD_SLIDERS, sanitizeMouldWall, type BedroomSection, type LivingSection,
 } from './mould';
 
 export type OnOff = 'on' | 'off';
 
-/** What can be changed in the bedroom. */
-export interface BedroomSettings {
-  accent: string;
+/** the bedroom's wall moulding */
+export interface BedroomMoulding {
   mouldColour: 'white' | 'tone';
   mouldBedWall: OnOff;
   mouldDresserWall: OnOff;
@@ -28,23 +26,10 @@ export interface BedroomSettings {
   mouldSpacing: number;
   mouldDado: number;
   mouldWalls: Record<BedroomSection, MouldWall>;
-  pendant: OnOff;
-  wardrobes: string;
-  rug: string;
-  pillows: string;
-  art: string;
-  frame: string;
 }
 
-/** The office: each of its components, shown or hidden, and which product it is. */
-export interface OfficeSettings {
-  components: ComponentStates<ComponentId<'office'>>;
-}
-
-/** What can be changed in the living room. */
-export interface LivingSettings {
-  /** each of its components, shown or hidden, and which product it is */
-  components: ComponentStates<ComponentId<'living'>>;
+/** the living room's wall moulding */
+export interface LivingMoulding {
   mouldColour: 'white' | 'tone';
   mouldSofaWall: OnOff;
   mouldTvWall: OnOff;
@@ -53,42 +38,58 @@ export interface LivingSettings {
   mouldWalls: Record<LivingSection, MouldWall>;
 }
 
+/** what every room keeps: its paint, and each of its components, shown or hidden, and which product it is */
+export interface RoomState<R extends RoomId> {
+  paint: string;
+  components: ComponentStates<ComponentId<R>>;
+}
+
+/** the rooms' settings; `accent` and `moulding` are only in the rooms that have them */
+export interface Rooms {
+  bedroom: RoomState<'bedroom'> & { accent: string; moulding: BedroomMoulding };
+  hall: RoomState<'hall'>;
+  living: RoomState<'living'> & { moulding: LivingMoulding };
+  office: RoomState<'office'>;
+}
+
 export interface Settings {
-  version: 4;
+  version: 5;
   /** selected room, or 'all' for none */
   room: RoomSelection;
   /** lighting, shared by every room */
   time: 'day' | 'eve';
-  /** paint id per room */
-  walls: Record<RoomId, string>;
-  bedroom: BedroomSettings;
-  living: LivingSettings;
-  office: OfficeSettings;
+  rooms: Rooms;
   /** the moulding products and cut settings, shared by every room */
   mouldShop: MouldShop;
 }
 
-/** a change to the settings: top-level fields, and any fields of a room's own settings */
-export type SettingsPatch = Partial<Omit<Settings, 'version' | 'bedroom' | 'living' | 'office'>> & {
-  bedroom?: Partial<BedroomSettings>;
-} & {
-  /** a room made of components is patched component by component, field by field */
-  [R in ComponentRoom]?: Partial<Omit<Settings[R], 'components'>> & {
-    components?: Partial<Record<ComponentId<R>, Partial<ComponentState>>>;
-  };
+/** a change to one room: its own fields, and any fields of its moulding and of each of its components */
+export type RoomPatch<R extends RoomId> = Partial<Omit<Rooms[R], 'components' | 'moulding'>> & {
+  components?: Partial<Record<ComponentId<R>, Partial<ComponentState>>>;
+} & (Rooms[R] extends { moulding: infer M } ? { moulding?: Partial<M> } : unknown);
+
+/** a change to the settings: top-level fields, and any fields of any room */
+export type SettingsPatch = Partial<Omit<Settings, 'version' | 'rooms'>> & {
+  rooms?: { [R in RoomId]?: RoomPatch<R> };
 };
 
 export function applyPatch(s: Settings, p: SettingsPatch): Settings {
-  const next = { ...s, ...p, bedroom: { ...s.bedroom, ...p.bedroom } } as Settings;
-  for (const room of Object.keys(ROOM_DEFS) as ComponentRoom[]) {
-    const components: Record<string, ComponentState> = { ...s[room].components };
-    for (const [id, patch] of Object.entries(p[room]?.components ?? {}) as [string, Partial<ComponentState>][]) {
-      const options = patch.options ? { ...components[id].options, ...patch.options } : components[id].options;
-      components[id] = { ...components[id], ...patch, options };
-    }
-    (next as unknown as Record<string, unknown>)[room] = { ...s[room], ...p[room], components };
+  const { rooms: patch, ...top } = p;
+  if (!patch) return { ...s, ...top };
+  const rooms = { ...s.rooms };
+  function patchRoom<R extends RoomId>(id: R) {
+    const rp = patch?.[id];
+    if (!rp) return;
+    const cur = s.rooms[id];
+    rooms[id] = {
+      ...cur,
+      ...rp,
+      components: rp.components ? patchComponents(ROOM_DEFS[id], cur.components, rp.components) : cur.components,
+      ...('moulding' in cur && 'moulding' in rp ? { moulding: Object.assign({}, cur.moulding, rp.moulding) } : {}),
+    };
   }
-  return next;
+  ROOM_IDS.forEach(patchRoom);
+  return { ...s, ...top, rooms };
 }
 
 export const STORAGE_KEY = 'apartment-playground';
@@ -96,35 +97,38 @@ export const STORAGE_KEY = 'apartment-playground';
 export const LEGACY_STORAGE_KEY = 'bedroom-viz';
 
 export const DEFAULTS: Settings = {
-  version: 4,
+  version: 5,
   room: 'all',
   time: 'day',
-  walls: Object.fromEntries(ROOMS.map((r) => [r.id, r.paint])) as Record<RoomId, string>,
-  bedroom: {
-    accent: ACCENT_DEFAULT,
-    mouldColour: 'white',
-    mouldBedWall: 'on',
-    mouldDresserWall: 'on',
-    mouldSpacing: 8,
-    mouldDado: 77,
-    mouldWalls: BEDROOM_MOULD_DEFAULTS,
-    pendant: 'on',
-    wardrobes: 'wall',
-    rug: 'naver',
-    pillows: 'clay',
-    art: 'sun',
-    frame: 'brass',
+  rooms: {
+    bedroom: {
+      paint: roomById('bedroom').paint,
+      accent: ACCENT_DEFAULT,
+      moulding: {
+        mouldColour: 'white',
+        mouldBedWall: 'on',
+        mouldDresserWall: 'on',
+        mouldSpacing: 8,
+        mouldDado: 77,
+        mouldWalls: BEDROOM_MOULD_DEFAULTS,
+      },
+      components: componentDefaults(BEDROOM),
+    },
+    hall: { paint: roomById('hall').paint, components: componentDefaults(HALL) },
+    living: {
+      paint: roomById('living').paint,
+      moulding: {
+        mouldColour: 'white',
+        mouldSofaWall: 'on',
+        mouldTvWall: 'on',
+        mouldSpacing: 8,
+        mouldDado: 77,
+        mouldWalls: LIVING_MOULD_DEFAULTS,
+      },
+      components: componentDefaults(LIVING),
+    },
+    office: { paint: roomById('office').paint, components: componentDefaults(OFFICE) },
   },
-  living: {
-    components: componentDefaults(LIVING),
-    mouldColour: 'white',
-    mouldSofaWall: 'on',
-    mouldTvWall: 'on',
-    mouldSpacing: 8,
-    mouldDado: 77,
-    mouldWalls: LIVING_MOULD_DEFAULTS,
-  },
-  office: { components: componentDefaults(OFFICE) },
   mouldShop: SHOP_DEFAULTS,
 };
 
@@ -139,13 +143,6 @@ const ids = (list: readonly { id: string }[]) => list.map((o) => o.id);
 const onOff = (v: unknown): OnOff => (v === 'off' ? 'off' : 'on');
 /** the office's id was 'end' before version 2 */
 const roomId = (v: unknown) => (v === 'end' ? 'office' : v);
-
-/** one valid swatch id per room, falling back to that room's default */
-function perRoom(v: unknown, allowed: readonly string[], fallback: Record<RoomId, string>): Record<RoomId, string> {
-  const o = obj(v);
-  const legacy: Raw = { ...o, office: o.office ?? o.end };
-  return Object.fromEntries(ROOM_IDS.map((r) => [r, oneOf(legacy[r], allowed, fallback[r])])) as Record<RoomId, string>;
-}
 
 /** Settings saved before version 2 were flat, with short field names; move them into the version 2 shape. */
 function fromVersion1(s: Raw): Raw {
@@ -249,11 +246,10 @@ function sanitizeWalls<K extends string>(
   ) as Record<K, MouldWall>;
 }
 
-function sanitizeLiving(raw: unknown): LivingSettings {
+function sanitizeLivingMoulding(raw: unknown): LivingMoulding {
   const l = obj(raw);
-  const d = DEFAULTS.living;
+  const d = DEFAULTS.rooms.living.moulding;
   return {
-    components: sanitizeComponents(l.components, LIVING),
     mouldColour: oneOf(l.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldSofaWall: onOff(l.mouldSofaWall),
     mouldTvWall: onOff(l.mouldTvWall),
@@ -266,11 +262,10 @@ function sanitizeLiving(raw: unknown): LivingSettings {
   };
 }
 
-function sanitizeBedroom(raw: unknown): BedroomSettings {
+function sanitizeBedroomMoulding(raw: unknown): BedroomMoulding {
   const b = obj(raw);
-  const d = DEFAULTS.bedroom;
+  const d = DEFAULTS.rooms.bedroom.moulding;
   return {
-    accent: isHex(b.accent) ? b.accent.toUpperCase() : d.accent,
     mouldColour: oneOf(b.mouldColour, ['white', 'tone'] as const, d.mouldColour),
     mouldBedWall: onOff(b.mouldBedWall),
     mouldDresserWall: onOff(b.mouldDresserWall),
@@ -284,12 +279,56 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
       },
       {},
     ),
-    pendant: onOff(b.pendant),
-    wardrobes: oneOf(b.wardrobes, ids(WARDROBES), d.wardrobes),
-    rug: oneOf(b.rug, ids(RUGS), d.rug),
-    pillows: oneOf(b.pillows, ids(PILLOW_SETS), d.pillows),
-    art: oneOf(b.art, ids(ARTS), d.art),
-    frame: oneOf(b.frame, ids(FRAMES), d.frame),
+  };
+}
+
+function fromVersion4(s: Raw): Raw {
+  const walls = obj(s.walls);
+  const paint = (room: string) => (room === 'office' ? walls.office ?? walls.end : walls[room]);
+  const { accent, pendant, wardrobes, rug, pillows, art, frame, ...bedroomMoulding } = obj(s.bedroom);
+  const { components: livingComponents, ...livingMoulding } = obj(s.living);
+  return {
+    ...s,
+    rooms: {
+      bedroom: {
+        paint: paint('bedroom'),
+        accent,
+        moulding: bedroomMoulding,
+        components: {
+          'ceiling-light': { shown: pendant !== 'off' },
+          bed: { options: { pillows } },
+          painting: { options: { art, frame } },
+          wardrobes: { options: { colour: wardrobes } },
+          rug: rug === 'none' ? { shown: false } : { variant: rug },
+        },
+      },
+      hall: { paint: paint('hall') },
+      living: { paint: paint('living'), moulding: livingMoulding, components: livingComponents },
+      office: { paint: paint('office'), components: obj(s.office).components },
+    },
+  };
+}
+
+function sanitizeRooms(raw: unknown): Rooms {
+  const r = obj(raw);
+  const d = DEFAULTS.rooms;
+  const paint = (id: RoomId) => oneOf(obj(r[id]).paint, ids(PAINTS), d[id].paint);
+  const components = <R extends RoomId>(id: R) => sanitizeComponents<ComponentId<R>>(obj(r[id]).components, ROOM_DEFS[id]);
+  const bedroom = obj(r.bedroom);
+  return {
+    bedroom: {
+      paint: paint('bedroom'),
+      accent: isHex(bedroom.accent) ? bedroom.accent.toUpperCase() : d.bedroom.accent,
+      moulding: sanitizeBedroomMoulding(bedroom.moulding),
+      components: components('bedroom'),
+    },
+    hall: { paint: paint('hall'), components: components('hall') },
+    living: {
+      paint: paint('living'),
+      moulding: sanitizeLivingMoulding(obj(r.living).moulding),
+      components: components('living'),
+    },
+    office: { paint: paint('office'), components: components('office') },
   };
 }
 
@@ -299,18 +338,16 @@ function sanitizeBedroom(raw: unknown): BedroomSettings {
  */
 export function sanitizeSettings(raw: unknown): Settings {
   const r = obj(raw);
-  const version = r.version === 2 || r.version === 3 || r.version === 4 ? r.version : 1;
+  const version = r.version === 2 || r.version === 3 || r.version === 4 || r.version === 5 ? r.version : 1;
   let s = version === 1 ? fromVersion1(r) : r;
   if (version < 3) s = { ...s, office: fromVersion2Office(s.office) };
   if (version < 4) s = fromVersion3(s);
+  if (version < 5) s = fromVersion4(s);
   return {
-    version: 4,
+    version: 5,
     room: oneOf(roomId(s.room), ['all', ...ROOM_IDS] as const, 'all'),
     time: oneOf(s.time, ['day', 'eve'] as const, 'day'),
-    walls: perRoom(s.walls, ids(PAINTS), DEFAULTS.walls),
-    bedroom: sanitizeBedroom(s.bedroom),
-    living: sanitizeLiving(s.living),
-    office: { components: sanitizeComponents(obj(s.office).components, OFFICE) },
+    rooms: sanitizeRooms(s.rooms),
     mouldShop: sanitizeShop(s.mouldShop),
   };
 }

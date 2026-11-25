@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { PAINTS, TRIM } from '../data/catalog';
-import { DEFAULTS, applyPatch, type SettingsPatch } from '../state/settings';
+import { DEFAULTS, applyPatch, type LivingMoulding } from '../state/settings';
 import { buildApartment } from './buildApartment';
 import { buildLivingMoulding } from './livingMoulding';
 import { lin } from './materials';
@@ -9,8 +9,8 @@ import { layoutSection } from './mouldLayout';
 import { LIVING_MOULD_WALLS } from './mouldWalls';
 import { strips } from './testStrips';
 
-const settings = (living: SettingsPatch['living'] = {}, walls: Partial<typeof DEFAULTS.walls> = {}) =>
-  applyPatch(DEFAULTS, { living, walls: { ...DEFAULTS.walls, ...walls } });
+const settings = (moulding: Partial<LivingMoulding> = {}, paint?: string) =>
+  applyPatch(DEFAULTS, { rooms: { living: { moulding, ...(paint ? { paint } : {}) } } });
 
 function setup() {
   const parent = new THREE.Group();
@@ -76,7 +76,7 @@ describe('living-room moulding', () => {
   it('keeps the TV wall centre column over the TV', () => {
     const { m, meshes } = setup();
     m.apply(settings());
-    const l = layoutSection(LIVING_MOULD_WALLS[1].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.living.mouldWalls.tv);
+    const l = layoutSection(LIVING_MOULD_WALLS[1].sections[0].run, { spacing: 8, dado: 77 }, DEFAULTS.rooms.living.moulding.mouldWalls.tv);
     const [c0, c1] = l.columns[1];
     expect(c0).toBeLessThanOrEqual(4.85);
     expect(c1).toBeGreaterThanOrEqual(6.31);
@@ -90,7 +90,7 @@ describe('living-room moulding', () => {
     const { m, meshes } = setup();
     for (const id of ['linen', 'stone']) {
       const hex = PAINTS.find((p) => p.id === id)!.hex;
-      m.apply(settings({ mouldColour: 'tone' }, { living: id }));
+      m.apply(settings({ mouldColour: 'tone' }, id));
       for (const name of ['living-mould-sofa', 'living-mould-tv']) {
         const mat = meshes(name)[0].material as THREE.MeshStandardMaterial;
         expect(mat.color.equals(lin(hex).multiplyScalar(0.82))).toBe(true);
@@ -133,8 +133,8 @@ describe('living-room moulding', () => {
     const tv = meshes('living-mould-tv');
     m.apply(settings({ mouldTvWall: 'off' }));
     expect(meshes('living-mould-sofa')).toEqual(sofa);
-    const wallsOf = (o: Partial<typeof DEFAULTS.living.mouldWalls.sofa>) => ({
-      ...DEFAULTS.living.mouldWalls, sofa: { ...DEFAULTS.living.mouldWalls.sofa, ...o },
+    const wallsOf = (o: Partial<typeof DEFAULTS.rooms.living.moulding.mouldWalls.sofa>) => ({
+      ...DEFAULTS.rooms.living.moulding.mouldWalls, sofa: { ...DEFAULTS.rooms.living.moulding.mouldWalls.sofa, ...o },
     });
     m.apply(settings({ mouldWalls: wallsOf({ columns: 4 }) }));
     expect(meshes('living-mould-sofa')[0]).not.toBe(sofa[0]);

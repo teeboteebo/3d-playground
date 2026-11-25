@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { PAINTS, TRIM, findById } from '../data/catalog';
 import type { XZ } from '../data/rooms';
 import type { MouldShop } from '../state/mouldShop';
-import type { LivingSettings, Settings } from '../state/settings';
+import type { LivingMoulding as LivingMouldSettings, Settings } from '../state/settings';
 import type { LivingSection } from '../state/mould';
 import { kit } from './bedroom/kit';
 import { lin } from './materials';
@@ -56,7 +56,7 @@ export function buildLivingMoulding(
     return { spec, material, wrapper, inner, key: '' };
   });
 
-  function rebuild(w: (typeof walls)[number], s: LivingSettings, shop: MouldShop) {
+  function rebuild(w: (typeof walls)[number], s: LivingMouldSettings, shop: MouldShop) {
     const { spec, material, inner } = w;
     const profile = mouldProfile(shop);
     const layouts = wallLayouts(spec.def, mouldRoom(s, shop), s.mouldWalls);
@@ -78,8 +78,8 @@ export function buildLivingMoulding(
 
   return {
     apply(settings) {
-      const s = settings.living;
-      const paint = findById(PAINTS, settings.walls.living).hex;
+      const s = settings.rooms.living.moulding;
+      const paint = findById(PAINTS, settings.rooms.living.paint).hex;
       for (const w of walls) {
         w.material.color.copy(lin(s.mouldColour === 'tone' ? paint : TRIM.hex));
         if (s.mouldColour === 'tone') w.material.color.multiplyScalar(0.82);
