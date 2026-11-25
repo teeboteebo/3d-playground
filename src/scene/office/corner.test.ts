@@ -185,12 +185,14 @@ describe('buildCorner', () => {
     expect(g.children.filter((c) => c.name === 'office-reading-chair')).toHaveLength(1);
   });
 
-  it('shows nothing for a hidden piece', () => {
+  it('keeps a hidden piece in the scene, undrawn', () => {
     const g = new THREE.Group();
     const corner = buildCorner(g);
     corner.apply(settings({ readingChair: READING_CHAIRS[0].id, dresser: DRESSERS[0].id, roundRug: ROUND_RUGS[0].id }));
     for (const n of NAMES) expect(g.getObjectByName(n)).toBeDefined();
     corner.apply(settings({}));
-    for (const n of NAMES) expect(g.getObjectByName(n)).toBeUndefined();
+    for (const n of NAMES) expect(g.getObjectByName(n)!.visible).toBe(false);
+    corner.apply(settings({ readingChair: READING_CHAIRS[0].id, dresser: DRESSERS[0].id, roundRug: ROUND_RUGS[0].id }));
+    for (const n of NAMES) expect(g.getObjectByName(n)!.visible).toBe(true);
   });
 });

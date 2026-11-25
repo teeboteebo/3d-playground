@@ -275,6 +275,7 @@ export function createApartmentScene(
   function draw() {
     bedroom.showFrom(camera.position);
     apartment.showFrom(camera.position);
+    geometry.showFrom(camera.position);
     pipeline.render();
     dirty = false;
   }
@@ -315,8 +316,8 @@ export function createApartmentScene(
     roomPoses: (room) => geometry.poses(room),
     preview(room, poses) {
       geometry.preview(room, poses);
-      highlight.refresh();
-      refreshOutline();
+      /* moving pieces keeps the same meshes, so the highlight and outline sets stay valid */
+      invalidate();
     },
     project(p) {
       const r = canvas.getBoundingClientRect();

@@ -57,7 +57,8 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
     drop: number | undefined,
   ) {
     const id = lampState.variant;
-    const shape = lampState.shown ? findById(list, id).shape : null;
+    /* a hidden lamp stays in the scene, undrawn and unlit, so it keeps its footprint and pose */
+    const shape = findById(list, id).shape;
     if (!shape) {
       remove(name);
       return;
@@ -93,6 +94,7 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
         const name = pendant ? `${room}-pendant` : `${room}-floor-lamp`;
         const p = place(name, lamp, pendant ? PENDANTS : FLOOR_LAMPS, pendant ? CEILING - PENDANT_HEIGHT : undefined);
         if (!p) continue;
+        p.lamp.group.visible = lamp.shown;
         tagOption([p.lamp.group], room, [id]);
         if (pendant) {
           const [x, z] = centroid(roomById(room).poly);
@@ -102,9 +104,10 @@ export function addRoomLamps(parent: THREE.Object3D): RoomLamps {
           p.lamp.group.position.set(x, 0, z);
           p.lamp.group.rotation.y = rotY;
         }
-        p.light.intensity = evening ? p.intensity : 0;
-        p.light.visible = evening;
-        p.lamp.setGlow(evening);
+        const lit = evening && lamp.shown;
+        p.light.intensity = lit ? p.intensity : 0;
+        p.light.visible = lit;
+        p.lamp.setGlow(lit);
       }
     },
     dispose() {

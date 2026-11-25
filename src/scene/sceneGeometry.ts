@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import type { ComponentDef, ComponentState, Mount, PiecePose } from '../data/components';
 import { ROOM_DEFS } from '../data/roomDefs';
-import type { RoomId, XZ } from '../data/rooms';
+import { roomById, type RoomId, type XZ } from '../data/rooms';
 import type { Settings } from '../state/settings';
 import type { SceneOption } from './options';
+import { roomWalls, type Wall } from './apartment';
 import type { PlacedLeaf } from './rigidPlacement';
 
 /** Rugs lie on the floor and do not obstruct other pieces. */
@@ -84,6 +85,8 @@ export interface SceneGeometry {
   release(): void;
   /** the settings' committed poses, once the builders have run; keeps the preview showing */
   commit(settings: Settings): void;
+  /** hides each wall-mounted piece with the wall it stands on (its current wall, moved or not) and the room's own show/hide switch; call after the builders' own `showFrom` */
+  showFrom(camera: THREE.Vector3): void;
   /** the scene gained or rebuilt pieces (a model arrived): poses them again */
   refresh(): void;
 }
@@ -159,6 +162,18 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
     }
   }
 
+  const walls = new Map<RoomId, Wall[]>();
+  const wallOf = (room: RoomId, edge: number) => {
+    if (!walls.has(room)) walls.set(room, roomWalls(roomById(room)));
+    return walls.get(room)!.find((w) => w.edge === edge);
+  };
+  const edgeOf = (room: RoomId, id: string): number | undefined => {
+    const mount = mountOf(room, id);
+    if (!('edge' in mount)) return undefined;
+    const p = shownPreview?.room === room ? shownPreview.poses.get(id) : undefined;
+    return (p ?? componentOf(room, id)?.pose)?.edge ?? mount.edge;
+  };
+
   const refresh = () => {
     release();
     place();
@@ -176,7 +191,42 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
       restore();
       place();
     },
+    showFrom(camera) {
+      for (const [room, leaves] of found()) {
+        for (const [id, objects] of leaves) {
+          const edge = edgeOf(room, id);
+          const wall = edge === undefined ? undefined : wallOf(room, edge);
+          if (!wall) continue;
+          /* the camera is outside the room when it is behind the wall's face, as `buildApartment` tells */
+          const ux = (wall.b[0] - wall.a[0]) / wall.length;
+          const uz = (wall.b[1] - wall.a[1]) / wall.length;
+          const inFront = -uz * (camera.x - wall.a[0]) + ux * (camera.z - wall.a[1]) > -0.05;
+          const visible = inFront && (componentOf(room, id)?.shown ?? true);
+          for (const o of objects) o.visible = visible;
+        }
+      }
+    },
     poses(room) {
+      const held = shownPreview;
+      if (held) {
+        shownPreview = null;
+        restore();
+        place();
+      }
+      try {
+        return committed(room);
+      } finally {
+        if (held) {
+          shownPreview = held;
+          restore();
+          place();
+        }
+      }
+    },
+  };
+
+  function committed(room: RoomId) {
+    {
       const out = new Map<string, PlacedLeaf>();
       const leaves = found().get(room);
       for (const { id } of ROOM_DEFS[room].components) {
@@ -190,6 +240,6 @@ export function sceneGeometry(scene: THREE.Object3D): SceneGeometry {
         out.set(id, { ...box, mount, obstructs: (state?.shown ?? true) && !RUGS.has(id) });
       }
       return out;
-    },
-  };
+    }
+  }
 }

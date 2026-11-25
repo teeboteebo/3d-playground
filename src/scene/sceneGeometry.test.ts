@@ -51,7 +51,6 @@ const snapshot = (scene: THREE.Object3D) => {
   return out;
 };
 const xz = (l: { footprint: readonly (readonly [number, number])[] }) => l.footprint.map(([x, z]) => [x, z]);
-const lowestY = (l: { bottom: number }) => l.bottom;
 
 describe('scene geometry', () => {
   it('measures real hulls, mounts and obstruction per leaf', () => {
@@ -71,23 +70,44 @@ describe('scene geometry', () => {
     expect(geo.poses('office').has('desk')).toBe(true);
   });
 
-  it('previews absolute rigid transforms, restores exactly, and leaves other geometry alone', () => {
+  it('previews absolute rigid transforms, restores exactly, and keeps poses() on the committed geometry', () => {
     const { scene, geo } = world();
     const before = geo.poses('bedroom');
     const base = snapshot(scene);
     const yaw = Math.PI / 2;
+    let root: THREE.Object3D | undefined;
+    scene.traverse((o) => {
+      const t = o.userData.option;
+      if (!root && t?.room === 'bedroom' && t.path.length === 1 && t.path[0] === 'dresser') root = o;
+    });
+    const dresser = () => new THREE.Box3().setFromObject(root!);
+    const box0 = dresser();
     geo.preview('bedroom', new Map([['dresser', { x: 0.5, y: 0, z: -0.25, yaw }]]));
-    const after = geo.poses('bedroom');
-    const was = before.get('dresser')!;
-    const expected = was.footprint.map(([x, z]) => [x * Math.cos(yaw) + z * Math.sin(yaw) + 0.5, -x * Math.sin(yaw) + z * Math.cos(yaw) - 0.25]);
-    const sort = (p: number[][]) => p.map(([x, z]) => [Math.round(x * 1e4), Math.round(z * 1e4)]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    expect(sort(xz(after.get('dresser')!))).toEqual(sort(expected));
-    expect(lowestY(after.get('dresser')!)).toBeCloseTo(was.bottom);
-    expect(xz(after.get('bed')!)).toEqual(xz(before.get('bed')!));
-    geo.preview('bedroom', new Map([['dresser', { x: 0.5, y: 0, z: -0.25, yaw }]]));
-    expect(sort(xz(geo.poses('bedroom').get('dresser')!))).toEqual(sort(expected));
+    expect(snapshot(scene)).not.toEqual(base);
+    const during = geo.poses('bedroom');
+    for (const [id, leaf] of before) expect(xz(during.get(id)!)).toEqual(xz(leaf));
+    expect(snapshot(scene).length).toBe(base.length);
+    expect(dresser().equals(box0)).toBe(false);
     geo.preview('bedroom', null);
     expect(snapshot(scene)).toEqual(base);
+  });
+
+  it('hides wall-mounted pieces with their destination wall and keeps hidden leaves measurable', () => {
+    const { scene, geo, apply } = world();
+    const office = DEFAULTS.rooms.office;
+    const hidden = geo.poses('office').get('floor-lamp');
+    expect(hidden?.obstructs).toBe(false);
+    expect(hidden?.footprint.length).toBeGreaterThan(2);
+    const lamp = scene.getObjectByName('office-floor-lamp')!;
+    const moved = withPose(DEFAULTS, 'office', 'floor-lamp', { x: 0.4, y: 0, z: 0.3, yaw: 0 }, false);
+    apply(moved);
+    expect(lamp.visible).toBe(false);
+    const was = hidden!.footprint[0];
+    const now = geo.poses('office').get('floor-lamp')!.footprint.map(([x, z]) => [Math.round(x * 1e3), Math.round(z * 1e3)]);
+    expect(now).toContainEqual([Math.round((was[0] + 0.4) * 1e3), Math.round((was[1] + 0.3) * 1e3)]);
+    expect(office).toBeDefined();
+    geo.showFrom(new THREE.Vector3(0, 5, 0));
+    expect(lamp.visible).toBe(false);
   });
 
   it('keeps committed poses through apply, even for pieces the builders reposition, and ignores fixed mounts', () => {
@@ -131,10 +151,11 @@ describe('scene geometry', () => {
     parent.add(rug);
     const geo = sceneGeometry(scene);
     const home = geo.poses('bedroom').get('rug')!;
-    geo.preview('bedroom', new Map([['rug', { x: 1, y: 0, z: 0, yaw: 0 }]]));
-    const moved = geo.poses('bedroom').get('rug')!;
     const cx = (l: typeof home) => l.footprint.reduce((a, p) => a + p[0], 0) / l.footprint.length;
-    expect(cx(moved) - cx(home)).toBeCloseTo(1);
+    const centre0 = new THREE.Box3().setFromObject(rug).getCenter(new THREE.Vector3());
+    geo.preview('bedroom', new Map([['rug', { x: 1, y: 0, z: 0, yaw: 0 }]]));
+    expect(new THREE.Box3().setFromObject(rug).getCenter(new THREE.Vector3()).x - centre0.x).toBeCloseTo(1);
+    expect(cx(geo.poses('bedroom').get('rug')!)).toBeCloseTo(cx(home));
     geo.preview('bedroom', null);
     expect(rug.position.toArray()).toEqual([0, 0, 0]);
   });

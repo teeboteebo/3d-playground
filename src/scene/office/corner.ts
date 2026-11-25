@@ -180,17 +180,21 @@ export function buildCorner(parent: THREE.Object3D): Corner {
 
   /** the menu row each piece opens */
   /** the piece called `name` for `id`, built if it changed; null (and none in the scene) for no shape */
-  function place<S>(name: string, path: OfficeComponentId, id: string, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
+  function place<S>(name: string, path: OfficeComponentId, id: string, shown: boolean, shape: S | null, build: (s: S) => Piece): THREE.Group | null {
     if (!shape) {
       remove(name);
       return null;
     }
     const p = placed.get(name);
-    if (p?.id === id) return p.piece.group;
+    if (p?.id === id) {
+      p.piece.group.visible = shown;
+      return p.piece.group;
+    }
     remove(name);
     const piece = build(shape);
     piece.group.name = name;
     tagOption([piece.group], 'office', [path]);
+    piece.group.visible = shown;
     parent.add(piece.group);
     placed.set(name, { id, piece });
     return piece.group;
@@ -200,16 +204,16 @@ export function buildCorner(parent: THREE.Object3D): Corner {
     apply(s) {
       const c = s.rooms.office.components;
       const chairId = c['reading-chair'].variant;
-      const chairShape = c['reading-chair'].shown ? findById(READING_CHAIRS, chairId).shape : null;
-      const chair = place('office-reading-chair', 'reading-chair', chairId, chairShape, buildArmchair);
+      const chairShape = findById(READING_CHAIRS, chairId).shape;
+      const chair = place('office-reading-chair', 'reading-chair', chairId, c['reading-chair'].shown, chairShape, buildArmchair);
       if (chair && chairShape) {
         const { x, z, facing } = placeReadingChair(chairShape.w, chairShape.d);
         chair.position.set(x, 0, z);
         chair.rotation.y = turn(facing);
       }
       const dresserId = c.dresser.variant;
-      const dresserShape = c.dresser.shown ? findById(DRESSERS, dresserId).shape : null;
-      const dresser = place('office-dresser', 'dresser', dresserId, dresserShape, buildDresser);
+      const dresserShape = findById(DRESSERS, dresserId).shape;
+      const dresser = place('office-dresser', 'dresser', dresserId, c.dresser.shown, dresserShape, buildDresser);
       if (dresser && dresserShape) {
         const { a, b, gap } = CORNER.dresserWall;
         const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -221,8 +225,8 @@ export function buildCorner(parent: THREE.Object3D): Corner {
         dresser.rotation.y = turn(Math.atan2(nz, nx));
       }
       const rugId = c['round-rug'].variant;
-      const rugShape = c['round-rug'].shown ? findById(ROUND_RUGS, rugId).shape : null;
-      const rug = place('office-round-rug', 'round-rug', rugId, rugShape, buildRoundRug);
+      const rugShape = findById(ROUND_RUGS, rugId).shape;
+      const rug = place('office-round-rug', 'round-rug', rugId, c['round-rug'].shown, rugShape, buildRoundRug);
       if (rug && rugShape) {
         const { x, windowZ, gap } = CORNER.rug;
         rug.position.set(x, 0, windowZ - gap - rugShape.d / 2);
