@@ -6,8 +6,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ComponentDef, Mount } from '../data/components';
 import { LIVING } from '../data/living';
 import { roomById } from '../data/rooms';
+import { defaultTree, groupSiblings, type RoomTree } from '../data/tree';
 import { placePiece } from './furniture';
-import { proposeTranslation, type PlacedLeaf } from './rigidPlacement';
+import { proposeRigidMove, type PlacedLeaf } from './rigidPlacement';
 import { sideboard } from './sideboard';
 
 const rect = (x: number, z: number, w: number, d: number, mount: Mount = { kind: 'floor' }): PlacedLeaf => ({
@@ -35,11 +36,11 @@ describe('rigid group movement', () => {
           bottom: min.y, top: max.y,
         });
       }
-      const ids = [...nodes.keys()];
+      const tree = groupSiblings(defaultTree(LIVING), [...nodes.keys()], 'media', 'TV and sideboard')!;
       const tvPose = poses.get('tv')!;
       const benchPose = poses.get('tv-bench')!;
       expect(tvPose.bottom - benchPose.top).toBeCloseTo(0.11);
-      const move = proposeTranslation(room, ids, poses, { x: 0.2, y: 0, z: 0 });
+      const move = proposeRigidMove(room, tree, 'media', poses, { x: 0.2, y: 0, z: 0 });
       expect(move.ok).toBe(true);
       if (!move.ok) throw new Error(move.reason);
       for (const [id, node] of nodes) {
@@ -49,8 +50,8 @@ describe('rigid group movement', () => {
         expect(next.bottom).toBe(original.bottom);
         expect(new THREE.Box3().setFromObject(node, true).min.x).toBeCloseTo(original.footprint[0][0]);
       }
-      expect(proposeTranslation(room, ids, poses, { x: 0, y: 0, z: -0.2 })).toEqual({ ok: false, reason: 'wall', member: 'tv' });
-      expect(proposeTranslation(room, ids, poses, { x: 0, y: 0.1, z: 0 })).toEqual({ ok: false, reason: 'floor', member: 'tv-bench' });
+      expect(proposeRigidMove(room, tree, 'media', poses, { x: 0, y: 0, z: -0.2 })).toEqual({ ok: false, reason: 'wall', member: 'tv' });
+      expect(proposeRigidMove(room, tree, 'media', poses, { x: 0, y: 0.1, z: 0 })).toEqual({ ok: false, reason: 'floor', member: 'tv-bench' });
     } finally {
       canvas.mockRestore();
     }
@@ -61,26 +62,30 @@ describe('rigid group movement', () => {
       ['left', rect(-1.5, 0, 0.4, 0.3)], ['right', rect(1, 0, 0.4, 0.3)],
       ['obstacle', rect(0, 0.2, 0.4, 0.3)], ['rug', { ...rect(-2, 0.2, 4, 0.6), obstructs: false }],
     ]);
-    const move = (x: number) => proposeTranslation(roomById('bedroom'), ['left', 'right'], poses, { x, y: 0, z: 0.2 });
+    const tree: RoomTree = { root: ['pair', 'rug', 'obstacle'], groups: { pair: { name: 'Tables', children: ['left', 'right'] } } };
+    const move = (x: number) => proposeRigidMove(roomById('bedroom'), tree, 'pair', poses, { x, y: 0, z: 0.2 });
     expect(move(0)).toMatchObject({ ok: true, overlaps: [] });
     expect(move(-0.62)).toMatchObject({ ok: true, overlaps: ['obstacle'] });
   });
 
   it('checks the angled bay and blocks solid mounting patches over a doorway', () => {
     const box = new Map([['small', rect(8.0, 1.5, 0.2, 0.3)]]);
-    expect(proposeTranslation(roomById('living'), ['small'], box, { x: 0.3, y: 0, z: 0.35 })).toMatchObject({ ok: false, reason: 'outside' });
+    expect(proposeRigidMove(roomById('living'), { root: ['small'], groups: {} }, 'small', box, { x: 0.3, y: 0, z: 0.35 })).toMatchObject({ ok: false, reason: 'outside' });
     const art = { ...rect(-1, 1.92, 0.4, 0.05, { kind: 'wall', edge: 2 }), bottom: 1.2, top: 1.8 };
-    expect(proposeTranslation(roomById('bedroom'), ['art'], new Map([['art', art]]), { x: 1, y: 0, z: 0 })).toMatchObject({ ok: false, reason: 'opening' });
+    expect(proposeRigidMove(roomById('bedroom'), { root: ['art'], groups: {} }, 'art', new Map([['art', art]]), { x: 1, y: 0, z: 0 })).toMatchObject({ ok: false, reason: 'opening' });
   });
 
   it('does not move part of a group when a descendant is hidden and fixed, or not loaded', () => {
     const floor = rect(5, 0, 0.5, 0.5);
-    const poses = new Map<string, PlacedLeaf>([
-      ['floor', floor], ['ceiling-light', { ...floor, mount: { kind: 'fixed' }, obstructs: false }],
-    ]);
+    const tree = {
+      root: ['set'],
+      groups: { set: { name: 'Set', children: ['floor', 'lighting'] }, lighting: { name: 'Lights', children: ['lamp', 'ceiling-light'] } },
+    };
+    const poses = new Map<string, PlacedLeaf>([['floor', floor], ['lamp', floor], ['ceiling-light', { ...floor, mount: { kind: 'fixed' }, obstructs: false }]]);
     const delta = { x: 0.25, y: 0, z: 0 };
-    expect(proposeTranslation(roomById('living'), ['floor', 'ceiling-light'], poses, delta)).toMatchObject({ ok: false, reason: 'fixed' });
-    expect(proposeTranslation(roomById('living'), ['floor', 'late'], poses, delta)).toMatchObject({ ok: false, reason: 'unavailable' });
+    expect(proposeRigidMove(roomById('living'), tree, 'set', poses, delta)).toMatchObject({ ok: false, reason: 'fixed' });
+    poses.delete('lamp');
+    expect(proposeRigidMove(roomById('living'), tree, 'set', poses, delta)).toMatchObject({ ok: false, reason: 'unavailable', member: 'lamp' });
     expect(floor.footprint[0]).toEqual([5, 0]);
   });
 });

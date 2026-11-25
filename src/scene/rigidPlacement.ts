@@ -1,5 +1,6 @@
 import { CEILING, type Room, type XZ } from '../data/rooms';
 import type { Mount } from '../data/components';
+import { leavesOf, type RoomTree } from '../data/tree';
 import { footprintsOverlap } from '../lib/footprint';
 import { roomWalls, type Wall } from './apartment';
 
@@ -46,16 +47,17 @@ function overlaps(a: PlacedLeaf, b: PlacedLeaf): boolean {
 }
 
 /** Propose one translation from the current poses, never a sequence of per-piece edits. Includes hidden descendants. */
-export function proposeTranslation(
+export function proposeRigidMove(
   room: Room,
-  members: readonly string[],
+  tree: RoomTree,
+  selection: string,
   poses: ReadonlyMap<string, PlacedLeaf>,
   delta: Translation,
 ): MoveProposal {
-  if (!members.length || !Object.values(delta).every(Number.isFinite)) throw new Error('Invalid translation request');
+  if (!Object.values(delta).every(Number.isFinite)) throw new Error('Invalid translation request');
   const walls = roomWalls(room);
   const next = new Map<string, PlacedLeaf>();
-  for (const id of members) {
+  for (const id of leavesOf(tree, selection)) {
     const source = poses.get(id);
     if (!source) return { ok: false, member: id, reason: 'unavailable' };
     const { mount } = source;
