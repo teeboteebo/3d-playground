@@ -15,13 +15,15 @@ function choicesOf(piece: Parameters<typeof bedroomDef>[0], option: string): rea
 }
 
 describe('the bedroom as components', () => {
-  it('has the ten slots, in their categories', () => {
+  it('has the twelve slots, in their categories', () => {
     expect(comps.map((c) => [c.id, c.category])).toEqual([
       ['ceiling-light', 'lighting'],
-      ['bedside-lamps', 'lighting'],
+      ['bedside-lamp-left', 'lighting'],
+      ['bedside-lamp-right', 'lighting'],
       ['bed', 'furniture'],
       ['bench', 'furniture'],
-      ['bedside-tables', 'furniture'],
+      ['bedside-table-left', 'furniture'],
+      ['bedside-table-right', 'furniture'],
       ['dresser', 'furniture'],
       ['mirror', 'furniture'],
       ['painting', 'furniture'],
@@ -53,8 +55,10 @@ describe('the bedroom products', () => {
     expect(comps.filter((c) => c.id !== 'rug').map((c) => c.variants.map((v) => v.name))).toEqual([
       ['IKEA GULLSUDARE'],
       ['Mio Adina'],
+      ['Mio Adina'],
       ['IKEA TONSTAD, 160 × 200 cm'],
       ['ILVA Amigo'],
+      ['AC Design Cholet'],
       ['AC Design Cholet'],
       ['Mio TOVA'],
       ['Full-length mirror'],

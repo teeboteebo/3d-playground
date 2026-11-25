@@ -50,8 +50,10 @@ export function change(h: History, patch: SettingsPatch, at: number): History {
   const next = applyPatch(h.present, patch);
   if (design(next) === design(h.present)) return { ...h, present: next };
   const key = patchKey(patch);
-  const changesVisibility = Object.values(patch.rooms ?? {}).some((room) =>
-    Object.values<Partial<ComponentState> | undefined>(room.components ?? {}).some((piece) => piece?.shown !== undefined),
+  const changesVisibility = Object.values(patch.rooms ?? {}).some(
+    (room) =>
+      room.tree !== undefined ||
+      Object.values<Partial<ComponentState> | undefined>(room.components ?? {}).some((piece) => piece?.shown !== undefined),
   );
   const merge = h.last !== null && h.last.key === key && at - h.last.at < MERGE_MS && h.past.length > 0;
   return {

@@ -63,9 +63,19 @@ export interface ComponentDef {
   initial: { shown: boolean; variant: string };
 }
 
+/** a physical group a room starts with: pieces that stand and move as one, which the user can open, ungroup or regroup */
+export interface DefaultGroup {
+  id: string;
+  name: string;
+  children: readonly string[];
+}
+
 export interface RoomDef {
   id: RoomId;
+  /** the menu's headings; not physical groups (see `physicalGroups`) */
   groups?: readonly { id: string; name: string }[];
+  /** the physical groups a room's tree starts with, outermost first; ids must not collide with component ids */
+  physicalGroups?: readonly DefaultGroup[];
   components: readonly ComponentDef[];
 }
 

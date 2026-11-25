@@ -105,3 +105,17 @@ describe('history', () => {
     expect(undo(back).present.rooms).toEqual(DEFAULTS.rooms);
   });
 });
+
+describe('history of the group tree', () => {
+  it('keeps two quick edits of the tree as two steps', () => {
+    const tree = (name: string) => ({ root: ['bed'], groups: { g: { name, children: ['bench'] } } });
+    let h = startHistory(DEFAULTS);
+    h = change(h, { rooms: { bedroom: { tree: tree('A') } } }, 0);
+    h = change(h, { rooms: { bedroom: { tree: tree('B') } } }, 10);
+    expect(h.past).toHaveLength(2);
+    h = undo(h);
+    expect(h.present.rooms.bedroom.tree.groups.g.name).toBe('A');
+    h = undo(h);
+    expect(h.present.rooms.bedroom.tree).toEqual(DEFAULTS.rooms.bedroom.tree);
+  });
+});

@@ -154,6 +154,22 @@ describe('the bedroom with the camera looking through a wall', () => {
   });
 });
 
+describe('the bedside pairs', () => {
+  it('hide and show each table and each lamp on its own, without moving the others', () => {
+    const { room, meshesOf } = build();
+    const box = (id: string) => meshesOf(id).reduce((b, m) => b.union(new THREE.Box3().setFromObject(m)), new THREE.Box3());
+    const before = { left: box('bedside-table-left'), right: box('bedside-table-right') };
+    room.apply(hide('bedside-table-left'));
+    expect(meshesOf('bedside-table-left').some((m) => on(m))).toBe(false);
+    expect(meshesOf('bedside-table-right').every((m) => on(m))).toBe(true);
+    expect(meshesOf('bedside-lamp-left').every((m) => on(m))).toBe(true);
+    room.apply(DEFAULTS);
+    expect(meshesOf('bedside-table-left').every((m) => on(m))).toBe(true);
+    expect(box('bedside-table-left')).toEqual(before.left);
+    expect(box('bedside-table-right')).toEqual(before.right);
+  });
+});
+
 describe('the bedroom lights in the evening', () => {
   /** the intensity of each light, by what it is: dresser lamp, bedside lamps, pendant */
   function levels(parent: THREE.Object3D, lights: THREE.PointLight[]) {
@@ -173,8 +189,11 @@ describe('the bedroom lights in the evening', () => {
     room.apply(evening(hide('dresser')));
     expect(levels(parent, lights())).toEqual({ pendant: [0.7], dresser: [0, 0], bedside: [0.35, 0.35, 0.35, 0.35] });
 
-    room.apply(evening(hide('bedside-lamps')));
+    room.apply(evening(hide('bedside-lamp-left', 'bedside-lamp-right')));
     expect(levels(parent, lights())).toEqual({ pendant: [0.7], dresser: [0.55, 0.5], bedside: [0, 0, 0, 0] });
+
+    room.apply(evening(hide('bedside-lamp-left')));
+    expect(levels(parent, lights())).toEqual({ pendant: [0.7], dresser: [0.55, 0.5], bedside: [0, 0, 0.35, 0.35] });
 
     room.apply(evening(hide('ceiling-light')));
     expect(levels(parent, lights())).toEqual({ pendant: [0], dresser: [0.55, 0.5], bedside: [0.35, 0.35, 0.35, 0.35] });
@@ -182,10 +201,11 @@ describe('the bedroom lights in the evening', () => {
 
   it('does not put out a lamp when its table is hidden, or the tables when the lamps are', () => {
     const { parent, room, lights, meshesOf } = build();
-    room.apply(evening(hide('bedside-tables')));
+    room.apply(evening(hide('bedside-table-left', 'bedside-table-right')));
     expect(levels(parent, lights()).bedside).toEqual([0.35, 0.35, 0.35, 0.35]);
-    room.apply(evening(hide('bedside-lamps')));
-    expect(meshesOf('bedside-tables').every((m) => on(m))).toBe(true);
+    room.apply(evening(hide('bedside-lamp-left', 'bedside-lamp-right')));
+    expect(meshesOf('bedside-table-left').every((m) => on(m))).toBe(true);
+    expect(meshesOf('bedside-table-right').every((m) => on(m))).toBe(true);
   });
 
   it('keeps every light dark by day, shown or not', () => {
@@ -196,7 +216,7 @@ describe('the bedroom lights in the evening', () => {
 
   it('casts shadows only from the lights that are on', () => {
     const { room, lights } = build();
-    room.apply(evening(hide('dresser', 'bedside-lamps', 'ceiling-light')));
+    room.apply(evening(hide('dresser', 'bedside-lamp-left', 'bedside-lamp-right', 'ceiling-light')));
     expect(lights().some((l) => l.castShadow)).toBe(false);
   });
 });

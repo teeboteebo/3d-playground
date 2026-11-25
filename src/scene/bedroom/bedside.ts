@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BEDSIDES, type BedSide } from '../../data/bedroom';
 import { BRASS } from '../../data/catalog';
 import { std } from '../materials';
 import { mergeMeshes } from '../merge';
@@ -7,22 +8,26 @@ import { ADINA_SHADE_Y, ADINA_STEM_OUT, L, NIGHTSTAND, NIGHTSTAND_X } from './di
 import { bulb, glowShade, type Bulb } from './lamps';
 import type { BedroomMaterials } from './materials';
 
+/** one value for each side of the bed, by its left and right as seen from its foot */
+export type Sides<T> = Record<BedSide, T>;
+
 export interface Bedside {
-  /** the merged meshes of the two tables; the lamps are not among them */
-  tables: THREE.Object3D[];
-  /** the merged meshes of the two wall lamps, without their lights */
-  lampParts: THREE.Object3D[];
+  /** the merged meshes of each table; the lamps are not among them */
+  tables: Sides<THREE.Object3D[]>;
+  /** the merged meshes of each wall lamp, without its light */
+  lampParts: Sides<THREE.Object3D[]>;
   /** stands the tables, and only the tables, `depth` m off the bed wall, in front of the moulding */
   standOff(depth: number): void;
-  setEvening(on: boolean): void;
-  /** the lamps' lights */
-  lamps: Bulb[];
+  /** lights or darkens each lamp's glow and light */
+  setEvening(on: Sides<boolean>): void;
+  /** each lamp's light */
+  lamps: Sides<Bulb>;
 }
 
 /**
  * Wall-hung bedside tables (AC Design Cholet, 40 × 23 × 30 cm), one each side of the bed, each with a Mio Adina wall
- * lamp centred above it. They stand at fixed distances from the window wall and the wardrobes (`NIGHTSTAND_X`). The
- * tables and the lamps are merged apart, so each pair can be shown, hidden or clicked on its own.
+ * lamp centred above it. They stand at fixed distances from the window wall and the wardrobes (`NIGHTSTAND_X`). Each
+ * table and each lamp is merged apart from the others, so every one can be shown, hidden or clicked on its own.
  */
 export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMaterials): Bedside {
   const lampBrass = std(BRASS, 0.55, 0.5); // brushed: rougher and duller than the polished brass handles
@@ -31,7 +36,7 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
   lampShade.side = THREE.DoubleSide;
   const lampBulb = new THREE.MeshBasicMaterial({ color: 0xffe6b8 });
   const { w, h, d, y0 } = NIGHTSTAND;
-  const tables = mergeMeshes(NIGHTSTAND_X.flatMap((x) =>
+  const table = (x: number) => mergeMeshes(
     collect(() => {
       const back = -L / 2; // flush with the wall; standOff moves the tables out in front of the moulding strips
       const zc = back + d / 2;
@@ -44,8 +49,8 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
       box(w - 0.04, 0.015, d - 0.03, m.oak, x, y0 + h / 2 - 0.0075, zc);
       add(new THREE.SphereGeometry(0.012, 12, 10), m.brass, x, TOP - 0.055, zc + d / 2 + 0.01);
     }),
-  ));
-  const lampParts = mergeMeshes(NIGHTSTAND_X.flatMap((x) =>
+  );
+  const lampParts = (x: number) => mergeMeshes(
     collect(() => {
       const TOP = y0 + h;
       /* Mio Adina, H26 × B18 cm, in brushed brass: round wall disc, a short arm out to a vertical stem, a tapered
@@ -69,19 +74,22 @@ export function buildBedside({ add, box, collect, parent }: Kit, m: BedroomMater
       add(new THREE.CylinderGeometry(0.0025, 0.0025, cordTop - TOP, 6), lampCord, cordX, (cordTop + TOP) / 2, wz + 0.004, true);
       box(0.022, 0.06, 0.016, lampCord, cordX, cordTop - 0.22, wz + 0.01, true);
     }),
-  ));
-  const flushZ = tables.map((o) => o.position.z);
-  const lamps = NIGHTSTAND_X.map((x) => bulb(parent, x, ADINA_SHADE_Y - 0.015, -L / 2 + ADINA_STEM_OUT, 7, 0.35, 0.35));
+  );
+  const sides = <T>(make: (x: number) => T): Sides<T> => ({ left: make(NIGHTSTAND_X[0]), right: make(NIGHTSTAND_X[1]) });
+  const tables = sides(table);
+  const lampMeshes = sides(lampParts);
+  const flushZ = BEDSIDES.flatMap((side) => tables[side].map((o) => o.position.z));
+  const lamps = sides((x) => bulb(parent, x, ADINA_SHADE_Y - 0.015, -L / 2 + ADINA_STEM_OUT, 7, 0.35, 0.35));
   return {
     tables,
-    lampParts,
+    lampParts: lampMeshes,
     lamps,
     standOff(depth) {
-      tables.forEach((o, i) => (o.position.z = flushZ[i] + depth));
+      BEDSIDES.flatMap((side) => tables[side]).forEach((o, i) => (o.position.z = flushZ[i] + depth));
     },
     setEvening(on) {
-      for (const l of lamps) l.set(on);
-      glowShade(lampShade, on);
+      for (const side of BEDSIDES) lamps[side].set(on[side]);
+      glowShade(lampShade, on.left || on.right);
     },
   };
 }

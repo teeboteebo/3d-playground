@@ -746,13 +746,13 @@ describe('room menu', () => {
     expect(sections()).toEqual(['Room', 'Lighting', 'Furniture', 'Textiles and decor']);
     expect(rowTitles()).toEqual([
       'Wall colour', 'Wall moulding', 'Accent colour', 'Show or hide pieces',
-      'Ceiling light', 'Bedside lamps',
-      'Bed', 'Bench', 'Bedside tables', 'Dresser', 'Mirror', 'Painting', 'Wardrobes',
+      'Ceiling light', 'Left bedside lamp', 'Right bedside lamp',
+      'Bed', 'Bench', 'Left bedside table', 'Right bedside table', 'Dresser', 'Mirror', 'Painting', 'Wardrobes',
       'Rug',
       'About the room',
     ]);
     expect(row('Wall moulding')).toHaveTextContent('White · Bed wall, Dresser wall');
-    expect(row('Show or hide pieces')).toHaveTextContent('10 of 10 shown');
+    expect(row('Show or hide pieces')).toHaveTextContent('12 of 12 shown');
     expect(row('Painting')).toHaveTextContent('Clay sun · brass frame');
     expect(row('Bed')).toHaveTextContent('Accent');
     expect(screen.queryByRole('group', { name: 'Show moulding on' })).toBeNull();
@@ -819,9 +819,9 @@ describe('room menu', () => {
 
 describe('bedroom pieces', () => {
   const TITLES = [
-    'Ceiling light', 'Bedside lamps', 'Bed', 'Bench', 'Bedside tables', 'Dresser', 'Mirror', 'Painting', 'Wardrobes', 'Rug',
+    'Ceiling light', 'Left bedside lamp', 'Right bedside lamp', 'Bed', 'Bench', 'Left bedside table', 'Right bedside table', 'Dresser', 'Mirror', 'Painting', 'Wardrobes', 'Rug',
   ] as const;
-  const IDS = ['ceiling-light', 'bedside-lamps', 'bed', 'bench', 'bedside-tables', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug'] as const;
+  const IDS = ['ceiling-light', 'bedside-lamp-left', 'bedside-lamp-right', 'bed', 'bench', 'bedside-table-left', 'bedside-table-right', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug'] as const;
   const pieces = () => stored().rooms.bedroom.components;
 
   it.each(TITLES)('opens the %s page with its own switch', async (title) => {
@@ -838,7 +838,7 @@ describe('bedroom pieces', () => {
     expect(Object.entries(pieces()).filter(([, c]) => !c.shown).map(([k]) => k)).toEqual([id]);
     up('Bedroom');
     expect(row(title)).toHaveTextContent('Hidden');
-    expect(row('Show or hide pieces')).toHaveTextContent('9 of 10 shown');
+    expect(row('Show or hide pieces')).toHaveTextContent('11 of 12 shown');
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
     expect(Object.values(pieces()).every((c) => c.shown)).toBe(true);
   });
@@ -847,7 +847,7 @@ describe('bedroom pieces', () => {
     await renderIn('bedroom');
     goTo('Show or hide pieces');
     expect(within(screen.getByRole('group', { name: 'Furniture' })).getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual(
-      TITLES.slice(2, 9),
+      TITLES.slice(3, 11),
     );
     fireEvent.click(screen.getByRole('switch', { name: 'Mirror' }));
     expect(pieces().mirror.shown).toBe(false);
@@ -994,13 +994,13 @@ describe('clicking options in 3D', () => {
   it.each([
     ['bedroom', ['walls'], 'Wall colour'],
     ['bedroom', ['ceiling-light'], 'Ceiling light'],
-    ['bedroom', ['bedside-lamps'], 'Bedside lamps'],
+    ['bedroom', ['bedside-lamp-left'], 'Left bedside lamp'],
     ['bedroom', ['accent'], 'Accent colour'],
     ['bedroom', ['moulding', 'dresser'], 'Dresser wall'],
     ['bedroom', ['wardrobes'], 'Wardrobes'],
     ['bedroom', ['bed'], 'Bed'],
     ['bedroom', ['bench'], 'Bench'],
-    ['bedroom', ['bedside-tables'], 'Bedside tables'],
+    ['bedroom', ['bedside-table-right'], 'Right bedside table'],
     ['bedroom', ['dresser'], 'Dresser'],
     ['bedroom', ['mirror'], 'Mirror'],
     ['bedroom', ['painting'], 'Painting'],

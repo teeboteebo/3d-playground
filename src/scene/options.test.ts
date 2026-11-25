@@ -49,7 +49,7 @@ describe('options', () => {
     const room = buildBedroom(parent, '#B5654A');
     room.apply(applyPatch(DEFAULTS, { room: 'bedroom' }));
     expect(paths(parent, 'bedroom')).toEqual([
-      'bed', 'bedside-lamps', 'bedside-tables', 'bench', 'ceiling-light', 'dresser', 'mirror', 'moulding/bed', 'moulding/dresser', 'painting', 'rug', 'wardrobes',
+      'bed', 'bedside-lamp-left', 'bedside-lamp-right', 'bedside-table-left', 'bedside-table-right', 'bench', 'ceiling-light', 'dresser', 'mirror', 'moulding/bed', 'moulding/dresser', 'painting', 'rug', 'wardrobes',
     ]);
   });
 

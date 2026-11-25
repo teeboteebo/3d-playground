@@ -176,7 +176,7 @@ describe('office settings', () => {
   });
   it('reads version 5 as saved', () => {
     expect(sanitizeSettings(DEFAULTS)).toEqual(DEFAULTS);
-    expect(DEFAULTS.version).toBe(5);
+    expect(DEFAULTS.version).toBe(6);
   });
   it('renames the office pendant', () => {
     const v3 = { version: 3, office: { components: { pendant: { shown: true, variant: P } } } };
@@ -319,9 +319,9 @@ describe('moulding shop settings', () => {
 describe('version 5 rooms', () => {
   it('has a state for each of the four rooms, the hall with a paint and no pieces', () => {
     expect(Object.keys(DEFAULTS.rooms)).toEqual(['bedroom', 'hall', 'living', 'office']);
-    expect(DEFAULTS.rooms.hall).toEqual({ paint: 'frostrok', components: {} });
+    expect(DEFAULTS.rooms.hall).toMatchObject({ paint: 'frostrok', components: {} });
     expect(Object.keys(DEFAULTS.rooms.bedroom.components)).toEqual([
-      'ceiling-light', 'bedside-lamps', 'bed', 'bench', 'bedside-tables', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug',
+      'ceiling-light', 'bedside-lamp-left', 'bedside-lamp-right', 'bed', 'bench', 'bedside-table-left', 'bedside-table-right', 'dresser', 'mirror', 'painting', 'wardrobes', 'rug',
     ]);
   });
 
@@ -403,13 +403,13 @@ describe('migrating version 4 to 5', () => {
   });
 
   it('keeps the hall to its paint', () => {
-    expect(v4({ walls: { hall: 'chalk' } }).rooms.hall).toEqual({ paint: 'chalk', components: {} });
+    expect(v4({ walls: { hall: 'chalk' } }).rooms.hall).toMatchObject({ paint: 'chalk', components: {} });
   });
 
   it('keeps the store products and the selection', () => {
     const shop = { ...SHOP_DEFAULTS, joins: true };
     const s = v4({ room: 'hall', time: 'eve', mouldShop: shop });
-    expect([s.version, s.room, s.time, s.mouldShop]).toEqual([5, 'hall', 'eve', shop]);
+    expect([s.version, s.room, s.time, s.mouldShop]).toEqual([6, 'hall', 'eve', shop]);
   });
 
   it('walks a version 2 and a version 3 design through every step', () => {
@@ -427,10 +427,45 @@ describe('migrating version 4 to 5', () => {
     localStorage.clear();
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ rug: 'none', pendant: 'off', mould: 'tone', room: 'end', walls: { end: 'chalk' } }));
     const s = loadSettings();
-    expect(s.version).toBe(5);
+    expect(s.version).toBe(6);
     expect(s.room).toBe('office');
     expect(s.rooms.office.paint).toBe('chalk');
     expect(s.rooms.bedroom.components.rug.shown).toBe(false);
     expect(s.rooms.bedroom.components['ceiling-light'].shown).toBe(false);
+  });
+});
+
+describe('migrating version 5 to 6', () => {
+  const v5 = (components: Record<string, unknown>) =>
+    sanitizeSettings({ version: 5, rooms: { bedroom: { components } } }).rooms.bedroom;
+
+  it('gives both tables and both lamps the state the pair had, so a hidden pair stays hidden', () => {
+    const b = v5({
+      'bedside-tables': { shown: false, variant: 'cholet', options: {} },
+      'bedside-lamps': { shown: true, variant: 'adina', options: {} },
+    });
+    expect(b.components['bedside-table-left'].shown).toBe(false);
+    expect(b.components['bedside-table-right'].shown).toBe(false);
+    expect(b.components['bedside-lamp-left'].shown).toBe(true);
+    expect(b.components['bedside-lamp-right'].shown).toBe(true);
+    expect('bedside-tables' in b.components).toBe(false);
+  });
+
+  it('starts each room from its authored groups', () => {
+    const b = v5({});
+    expect(b.tree.groups['bedside-tables'].children).toEqual(['bedside-table-left', 'bedside-table-right']);
+  });
+});
+
+describe('the saved group tree', () => {
+  it('keeps an ungrouped bedroom ungrouped across a save and a load', () => {
+    const flat = { root: DEFAULTS.rooms.bedroom.components ? Object.keys(DEFAULTS.rooms.bedroom.components) : [], groups: {} };
+    const s = applyPatch(DEFAULTS, { rooms: { bedroom: { tree: flat } } });
+    expect(sanitizeSettings(JSON.parse(JSON.stringify(s))).rooms.bedroom.tree).toEqual(flat);
+  });
+
+  it('repairs a tree that holds nothing valid', () => {
+    const s = sanitizeSettings({ ...DEFAULTS, rooms: { ...DEFAULTS.rooms, office: { ...DEFAULTS.rooms.office, tree: { root: ['zzz'], groups: {} } } } });
+    expect(s.rooms.office.tree.root.length).toBe(OFFICE.components.length);
   });
 });
